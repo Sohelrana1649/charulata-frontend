@@ -186,12 +186,18 @@ export default function AdminBannersPage() {
       const res = await uploadImage(formData).unwrap();
       const url = res?.data?.url || res?.url;
       if (url) {
-        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-backend.onrender.com/api/v1';
-        if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
-          baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
+        // If the URL is already a full URL (e.g. Cloudinary), use it directly
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          setForm(prev => ({ ...prev, image: url }));
+        } else {
+          // Relative path — prepend backend base URL
+          let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-backend.onrender.com/api/v1';
+          if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
+            baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
+          }
+          const fullUrl = `${baseApiUrl.replace('/api/v1', '')}${url}`;
+          setForm(prev => ({ ...prev, image: fullUrl }));
         }
-        const fullUrl = `${baseApiUrl.replace('/api/v1', '')}${url}`;
-        setForm(prev => ({ ...prev, image: fullUrl }));
         toast.success(`Banner image uploaded! Validated dimensions: ${validation.width}x${validation.height}px.`);
       }
     } catch (err: any) {

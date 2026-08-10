@@ -259,7 +259,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin" className="flex items-center space-x-2.5 min-w-0">
             <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-primary/10 border-2 border-primary/30 overflow-hidden relative flex items-center justify-center shrink-0 shadow-md ring-2 ring-primary/20">
               <Image 
-                src="/images/charulataLogo.png" 
+                src="/logo.png" 
                 alt="Charulata Logo" 
                 fill 
                 className="object-cover" 
