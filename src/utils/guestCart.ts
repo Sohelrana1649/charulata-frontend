@@ -1,0 +1,92 @@
+export interface IGuestCartItem {
+  _id: string;
+  product: any;
+  quantity: number;
+  color?: string;
+  size?: string;
+  selectedAttributes?: Record<string, string>;
+  price: number;
+}
+
+export const getGuestCart = (): IGuestCartItem[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const data = localStorage.getItem('charulata_guest_cart');
+    return data ? JSON.parse(data) : [];
+  } catch (err) {
+    return [];
+  }
+};
+
+export const saveGuestCart = (items: IGuestCartItem[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('charulata_guest_cart', JSON.stringify(items));
+    window.dispatchEvent(new Event('guest_cart_updated'));
+  } catch (err) {
+    console.error('Failed to save guest cart', err);
+  }
+};
+
+export const addToGuestCart = (
+  product: any, 
+  quantity: number = 1, 
+  color?: string, 
+  size?: string, 
+  selectedAttributes?: Record<string, string>
+) => {
+  const currentCart = getGuestCart();
+  const productId = product._id || product.id || product;
+  
+  const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
+  const salePrice = (!isDiscountExpired && product?.salePrice !== undefined && product?.salePrice !== null && Number(product.salePrice) > 0)
+    ? Number(product.salePrice)
+    : 0;
+  const regularPrice = Number(product.price) || 0;
+  const unitPrice = (salePrice > 0 && salePrice < regularPrice) ? salePrice : regularPrice;
+
+  const existingIndex = currentCart.findIndex(
+    item => (item.product?._id === productId || item.product === productId) &&
+            item.color === color &&
+            item.size === size
+  );
+
+  if (existingIndex > -1) {
+    currentCart[existingIndex].quantity += quantity;
+    currentCart[existingIndex].product = product;
+    currentCart[existingIndex].price = unitPrice;
+  } else {
+    currentCart.push({
+      _id: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      product,
+      quantity,
+      color,
+      size,
+      selectedAttributes,
+      price: unitPrice
+    });
+  }
+
+  saveGuestCart(currentCart);
+};
+
+export const removeFromGuestCart = (itemId: string) => {
+  const currentCart = getGuestCart();
+  const filtered = currentCart.filter(item => item._id !== itemId);
+  saveGuestCart(filtered);
+};
+
+export const updateGuestCartQuantity = (itemId: string, quantity: number) => {
+  const currentCart = getGuestCart();
+  const item = currentCart.find(i => i._id === itemId);
+  if (item) {
+    item.quantity = Math.max(1, quantity);
+    saveGuestCart(currentCart);
+  }
+};
+
+export const clearGuestCart = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('charulata_guest_cart');
+  window.dispatchEvent(new Event('guest_cart_updated'));
+};
