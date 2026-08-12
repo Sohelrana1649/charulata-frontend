@@ -8,6 +8,7 @@ import {
   useDeleteCategoryMutation
 } from '@/store/api/productApi';
 import { useUploadImageMutation } from '@/store/api/adminApi';
+import { useGetAttributesQuery } from '@/store/api/attributeApi';
 import { 
   Plus, 
   Search, 
@@ -32,6 +33,7 @@ interface CategoryForm {
   slug: string;
   description: string;
   image: string;
+  attributes: string[];
   isActive: boolean;
 }
 
@@ -40,11 +42,15 @@ const initialForm: CategoryForm = {
   slug: '',
   description: '',
   image: '',
+  attributes: [],
   isActive: true
 };
 
 export default function AdminCategoriesPage() {
   const { data: categoriesRes, isLoading, refetch } = useGetCategoriesQuery({});
+  const { data: attributesRes } = useGetAttributesQuery({});
+  
+  const allMasterAttributes = attributesRes?.data?.attributes || attributesRes?.data || attributesRes?.attributes || [];
   
   const [createCategory, { isLoading: isCreating }] = useCreateCategoryMutation();
   const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
@@ -113,6 +119,7 @@ export default function AdminCategoriesPage() {
       slug: cat.slug || '',
       description: cat.description || '',
       image: cat.image || '',
+      attributes: cat.attributes || [],
       isActive: cat.isActive !== undefined ? !!cat.isActive : true
     });
     setIsModalOpen(true);
@@ -619,6 +626,42 @@ export default function AdminCategoriesPage() {
                     >
                       <X size={14} />
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Category Attributes Multi-Select */}
+              <div className="space-y-2 pt-1 border-t border-border">
+                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
+                  Category Attributes
+                </label>
+                <p className="text-[10px] text-muted-foreground">
+                  Select attributes that apply to products in this category (e.g. Color, Size, Volume):
+                </p>
+                {allMasterAttributes.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic">No attributes created yet. Go to Attributes menu to add master attributes.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 bg-muted/30 p-2.5 rounded-xl border border-border max-h-36 overflow-y-auto">
+                    {allMasterAttributes.map((attr: any) => {
+                      const isChecked = form.attributes.includes(attr.name);
+                      return (
+                        <label key={attr._id || attr.name} className="flex items-center space-x-2 text-xs font-medium text-foreground cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setForm(prev => ({ ...prev, attributes: [...prev.attributes, attr.name] }));
+                              } else {
+                                setForm(prev => ({ ...prev, attributes: prev.attributes.filter(a => a !== attr.name) }));
+                              }
+                            }}
+                            className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                          />
+                          <span className="truncate">{attr.name}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
               </div>

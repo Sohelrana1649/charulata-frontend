@@ -45,7 +45,8 @@ import {
   Sparkles,
   ArrowRight,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sliders
 } from 'lucide-react';
 import Image from '@/components/SafeImage';
 
@@ -63,6 +64,7 @@ const allSidebarSections = [
       { label: 'Orders', href: '/admin/orders', icon: ShoppingCart, badge: true, minRole: 2 },
       { label: 'Products', href: '/admin/products', icon: Package, minRole: 2 },
       { label: 'Categories', href: '/admin/categories', icon: Grid3X3, minRole: 2 },
+      { label: 'Attributes', href: '/admin/attributes', icon: Sliders, minRole: 2 },
       { label: 'Delivery', href: '/admin/delivery', icon: Truck, minRole: 3 },
     ]
   },

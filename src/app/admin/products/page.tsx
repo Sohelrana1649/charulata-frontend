@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Image from '@/components/SafeImage';
-import { getAttributesForCategory, GLOBAL_ATTRIBUTES } from '@/utils/attributes.config';
+import { useGetAttributesQuery, useGetCategoryAttributesQuery } from '@/store/api/attributeApi';
 
 export interface ProductFormVariant {
   sku: string;
@@ -104,6 +104,7 @@ const initialForm: ProductForm = {
 export default function AdminProductsPage() {
   const { data: productsRes, isLoading: productsLoading, refetch } = useGetProductsQuery({ limit: 200 });
   const { data: categoriesRes } = useGetCategoriesQuery({});
+  const { data: attributesRes } = useGetAttributesQuery({});
   
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
@@ -475,7 +476,14 @@ export default function AdminProductsPage() {
   };
 
   const selectedCatObj = categoriesList.find((c: any) => c._id === form.category);
-  const categoryAttributes = getAttributesForCategory(selectedCatObj?.name || selectedCatObj?.slug);
+
+  const { data: categoryAttributesRes } = useGetCategoryAttributesQuery(form.category, { skip: !form.category });
+  const allMasterAttributes = attributesRes?.data?.attributes || attributesRes?.data || attributesRes?.attributes || [];
+  const categoryAttrNames: string[] = categoryAttributesRes?.data?.attributes || categoryAttributesRes?.data || categoryAttributesRes?.attributes || selectedCatObj?.attributes || [];
+
+  const categoryAttributes: { name: string; values: string[] }[] = allMasterAttributes.filter(
+    (attr: any) => categoryAttrNames.includes(attr.name)
+  );
 
   const handleToggleAttributeOption = (attrName: string, optionValue: string) => {
     setForm(prev => {
@@ -501,6 +509,54 @@ export default function AdminProductsPage() {
       }
       return { ...prev, attributes: currentAttrs };
     });
+  };
+
+  const handleGenerateVariants = () => {
+    const selectedAttrs = (form.attributes || []).filter(a => a.options && a.options.length > 0);
+    if (selectedAttrs.length === 0) {
+      toast.error('Please select at least one attribute option first');
+      return;
+    }
+
+    const cartesian = (arrays: string[][]): string[][] => {
+      return arrays.reduce<string[][]>(
+        (acc, curr) => acc.flatMap(c => curr.map(n => [...c, n])),
+        [[]]
+      );
+    };
+
+    const attrNames = selectedAttrs.map(a => a.name);
+    const attrOptions = selectedAttrs.map(a => a.options);
+    const combinations = cartesian(attrOptions);
+
+    const newVariants: ProductFormVariant[] = combinations.map((combo) => {
+      const attrMap: Record<string, string> = {};
+      const skuParts: string[] = [];
+
+      combo.forEach((val, i) => {
+        const name = attrNames[i];
+        attrMap[name] = val;
+        skuParts.push(val.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      });
+
+      const colorVal = attrMap['Color'];
+      const sizeVal = attrMap['Size'];
+      const baseSku = form.sku ? form.sku.trim() : 'SKU';
+      const comboSku = `${baseSku}-${skuParts.join('-')}`;
+
+      return {
+        sku: comboSku,
+        price: form.price || 0,
+        stockQuantity: 10,
+        image: '',
+        color: colorVal,
+        size: sizeVal,
+        attributes: attrMap
+      };
+    });
+
+    setForm(prev => ({ ...prev, variants: newVariants }));
+    toast.success(`Generated ${newVariants.length} variant combination(s)!`);
   };
 
   const handleAddVariant = () => {
@@ -1532,14 +1588,25 @@ export default function AdminProductsPage() {
                       <label className="block text-xs font-black text-foreground uppercase tracking-wider">
                         Product Variants ({form.variants.length})
                       </label>
-                      <button
-                        type="button"
-                        onClick={handleAddVariant}
-                        className="inline-flex items-center space-x-1 text-xs font-bold text-primary hover:underline transition cursor-pointer"
-                      >
-                        <Plus size={14} />
-                        <span>Add Variant</span>
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          type="button"
+                          onClick={handleGenerateVariants}
+                          className="inline-flex items-center space-x-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline transition cursor-pointer"
+                          title="Generate all combinations from selected attribute options"
+                        >
+                          <Zap size={13} />
+                          <span>Auto-Generate</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddVariant}
+                          className="inline-flex items-center space-x-1 text-xs font-bold text-primary hover:underline transition cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>Add Variant</span>
+                        </button>
+                      </div>
                     </div>
 
                     {form.variants.length > 0 ? (

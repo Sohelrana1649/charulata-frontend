@@ -319,46 +319,6 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [campaignTargetDate]);
 
-  // Fallback initial data to match SSR render and eliminate layout shifts (CLS/LCP)
-  const DEFAULT_CATEGORIES = React.useMemo(() => [
-    {
-      _id: "6a325e723cbc957107614508",
-      name: "Beauty & Attar",
-      slug: "beauty",
-      image: "https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=400"
-    },
-    {
-      _id: "6a325e723cbc957107614505",
-      name: "Designer Kurtis",
-      slug: "designer-kurtis",
-      image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?w=400"
-    },
-    {
-      _id: "6a325e723cbc957107614504",
-      name: "Jamdani & Silk Sarees",
-      slug: "jamdani-silk-sarees",
-      image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      _id: "6a325e723cbc957107614509",
-      name: "Modern Gadgets",
-      slug: "gadgets",
-      image: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400"
-    },
-    {
-      _id: "6a325e723cbc957107614507",
-      name: "Premium Jewelry",
-      slug: "jewelry",
-      image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400"
-    },
-    {
-      _id: "6a325e723cbc957107614506",
-      name: "Premium Panjabis",
-      slug: "panjabi",
-      image: "https://res.cloudinary.com/dau8sazoh/image/upload/v1781684539/download_4_liieog.jpg"
-    }
-  ], []);
-
   const DEFAULT_BANNERS = React.useMemo(() => [
     {
       _id: "6a325e753cbc95710761451d",
@@ -391,9 +351,8 @@ export default function HomePage() {
   }, [landingData?.banners, DEFAULT_BANNERS]);
 
   const categories = useMemo(() => {
-    const raw = landingData?.categories || [];
-    return raw.length > 0 ? raw : DEFAULT_CATEGORIES;
-  }, [landingData?.categories, DEFAULT_CATEGORIES]);
+    return landingData?.categories || [];
+  }, [landingData?.categories]);
 
   const bestSellingProducts = useMemo(() =>
     (landingData?.bestSelling || []).slice(0, 12),
