@@ -516,14 +516,13 @@ export default function HomePage() {
           {isLandingLoading && !landingData ? (
             <BannerSkeleton />
           ) : (
-            <div className="relative overflow-hidden bg-neutral-950 aspect-[2.4/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[200px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] group shadow-none border-0">
+            <div className="relative overflow-hidden bg-card aspect-[2.4/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[200px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] group shadow-none border-0">
 
               {/* Slides with Premium Cross-Fade */}
               {banners.map((banner: any, idx: number) => {
                 const isActive = idx === currentSlide;
 
-                // Intelligently parse long titles into headline + description to avoid crowded paragraphs
-                const rawTitle = banner.title || "Exclusive Collection";
+                const rawTitle = banner.title || "";
                 const hasDot = rawTitle.includes('.');
                 const isTitleTooLong = rawTitle.length > 40;
 
@@ -533,56 +532,62 @@ export default function HomePage() {
 
                 const displayDesc = (isTitleTooLong && hasDot)
                   ? (banner.subtitle && banner.subtitle !== "Best Deals & Trending Styles" ? banner.subtitle : rawTitle.split('.').slice(1).join('.').trim())
-                  : (banner.subtitle || "Discover handcrafted traditional sarees, designer panjabis, and premium lifestyle accessories.");
+                  : (banner.subtitle || "");
+
+                const bannerLink = resolveBannerLink(banner.link);
 
                 return (
                   <div
                     key={banner._id || idx}
-                    className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-[1.01] pointer-events-none'
+                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-100 pointer-events-none'
                       }`}
                   >
-                    {/* Slide Image with slow Ken Burns effect */}
-                    <Image
-                      src={banner.image || "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=1600"}
-                      alt={displayTitle}
-                      fill
-                      priority={idx === 0}
-                      sizes="100vw"
-                      className={`object-cover transition-transform duration-[4000ms] ease-out ${isActive ? 'scale-105' : 'scale-100'
-                        }`}
-                    />
+                    <Link href={bannerLink} className="block w-full h-full relative cursor-pointer group/banner">
+                      {/* 100% Clear, Crisp, Unshadowed Banner Image (Daraz/Amazon Style) */}
+                      <Image
+                        src={banner.image || "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=1600"}
+                        alt={displayTitle || "Banner"}
+                        fill
+                        priority={idx === 0}
+                        sizes="100vw"
+                        quality={95}
+                        className="object-cover transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
+                      />
 
-                    {/* Slide Content Overlaid on top with soft subtle vignette mask */}
-                    <div className="absolute inset-0 z-20 flex items-center bg-gradient-to-r from-black/75 via-black/25 to-transparent w-full h-full">
-                      {/* Generous Left Padding (pl-14 sm:pl-20 lg:pl-28) to ensure text NEVER overlaps left arrow button */}
-                      <div className="pl-14 sm:pl-20 lg:pl-28 pr-12 sm:pr-16 w-full text-left">
-                        <div className={`space-y-2 sm:space-y-3.5 transition-all duration-[800ms] delay-200 ease-out transform max-w-lg sm:max-w-xl ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                          }`}>
-                          <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary/20 text-[#e6ca65] border border-primary/30 px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest backdrop-blur-md uppercase">
-                            <Sparkles size={11} className="animate-pulse" />
-                            <span>EXPORT QUALITY · CHARULATA</span>
-                          </div>
+                      {/* Optional Text Overlay — Only shown if title/subtitle is explicitly set */}
+                      {(displayTitle || displayDesc) && (
+                        <div className="absolute inset-0 z-20 flex items-center w-full h-full pointer-events-none">
+                          <div className="pl-10 sm:pl-16 lg:pl-24 pr-10 sm:pr-16 w-full text-left">
+                            <div className={`space-y-2 sm:space-y-3.5 transition-all duration-700 ease-out transform max-w-md sm:max-w-lg p-4 sm:p-6 rounded-2xl bg-black/30 backdrop-blur-xs border border-white/10 shadow-2xl ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                              }`}>
+                              <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary text-white px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest uppercase shadow-xs">
+                                <Sparkles size={11} className="animate-pulse" />
+                                <span>EXPORT QUALITY · CHARULATA</span>
+                              </div>
 
-                          <h1 className="hero-title-white text-xl sm:text-3xl lg:text-[40px] font-extrabold tracking-tight text-white font-serif leading-[1.18] drop-shadow-md line-clamp-2">
-                            {displayTitle}
-                          </h1>
+                              {displayTitle && (
+                                <h1 className="hero-title-white text-xl sm:text-3xl lg:text-[36px] font-extrabold tracking-tight text-white font-serif leading-[1.2] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] line-clamp-2">
+                                  {displayTitle}
+                                </h1>
+                              )}
 
-                          <p className="hero-subtitle-white text-[11px] sm:text-xs md:text-sm text-gray-200/90 font-medium line-clamp-2 max-w-md leading-relaxed">
-                            {displayDesc}
-                          </p>
+                              {displayDesc && (
+                                <p className="hero-subtitle-white text-[11px] sm:text-xs md:text-sm text-white/95 font-medium line-clamp-2 leading-relaxed drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                                  {displayDesc}
+                                </p>
+                              )}
 
-                          <div className="pt-1 sm:pt-2">
-                            <Link
-                              href={resolveBannerLink(banner.link)}
-                              className="inline-flex items-center space-x-2 bg-gradient-to-r from-primary to-[#b0842e] hover:from-[#b0842e] hover:to-primary text-white text-xs sm:text-sm font-black uppercase tracking-wider px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-primary/30 hover:scale-105 active:scale-95 cursor-pointer"
-                            >
-                              <span>{locale === 'bn' ? 'শপ করুন' : 'Shop Now'}</span>
-                              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform stroke-[2.5]" />
-                            </Link>
+                              <div className="pt-1">
+                                <span className="inline-flex items-center space-x-2 bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-black uppercase tracking-wider px-5 py-2 sm:py-2.5 rounded-xl transition-all duration-300 shadow-md">
+                                  <span>{locale === 'bn' ? 'শপ করুন' : 'Shop Now'}</span>
+                                  <ArrowRight size={14} className="stroke-[2.5]" />
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
+                      )}
+                    </Link>
                   </div>
                 );
               })}
@@ -901,7 +906,7 @@ export default function HomePage() {
           <div className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center">
             {/* Top Accent Gradient Border on Hover */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-rose-500/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            
+
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-rose-500 group-hover:text-white transition-all duration-300 shadow-2xs">
               <Users size={24} className="stroke-[2.2]" />
             </div>

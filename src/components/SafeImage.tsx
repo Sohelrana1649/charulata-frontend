@@ -43,9 +43,9 @@ export function cleanImageUrl(src: string): string {
     cleaned = cleaned.replace('localhost', window.location.hostname);
   }
 
-  // Auto-optimize Cloudinary image delivery (WebP/AVIF format & smart compression for 10x faster loading)
+  // Auto-optimize Cloudinary image delivery (WebP/AVIF format & smart compression without downscaling resolution)
   if (typeof cleaned === 'string' && cleaned.includes('res.cloudinary.com') && cleaned.includes('/upload/') && !cleaned.includes('f_auto')) {
-    cleaned = cleaned.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
+    cleaned = cleaned.replace('/upload/', '/upload/f_auto,q_auto/');
   }
 
   return cleaned;
