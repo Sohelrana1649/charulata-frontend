@@ -103,14 +103,14 @@ const SectionSkeleton = ({ count = 5 }: { count?: number }) => (
 );
 
 const BannerSkeleton = () => (
-  <div className="relative overflow-hidden bg-neutral-950 aspect-[2.4/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[200px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] shadow-none border-0">
+  <div className="relative overflow-hidden bg-neutral-950 aspect-[2.8/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[120px] sm:min-h-[240px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] shadow-none border-0">
     <div className="absolute inset-0 bg-gradient-to-r from-neutral-900 to-neutral-800" />
     <div className="absolute inset-0 flex items-center">
-      <div className="mx-auto max-w-7xl pl-16 sm:pl-24 lg:pl-28 pr-16 sm:pr-24 w-full space-y-4">
-        <div className="h-5 bg-white/10 rounded-full w-32 shimmer-bg" style={{ opacity: 0.2 }} />
-        <div className="h-8 sm:h-10 bg-white/10 rounded w-80 max-w-full shimmer-bg" style={{ opacity: 0.2 }} />
-        <div className="h-4 bg-white/10 rounded w-60 max-w-full shimmer-bg" style={{ opacity: 0.2 }} />
-        <div className="h-9 sm:h-11 bg-white/10 rounded-xl w-36 shimmer-bg" style={{ opacity: 0.2 }} />
+      <div className="mx-auto max-w-7xl pl-8 sm:pl-24 lg:pl-28 pr-8 sm:pr-24 w-full space-y-4">
+        <div className="h-4 sm:h-5 bg-white/10 rounded-full w-32 shimmer-bg" style={{ opacity: 0.2 }} />
+        <div className="h-6 sm:h-10 bg-white/10 rounded w-80 max-w-full shimmer-bg" style={{ opacity: 0.2 }} />
+        <div className="h-3 sm:h-4 bg-white/10 rounded w-60 max-w-full shimmer-bg" style={{ opacity: 0.2 }} />
+        <div className="h-8 sm:h-11 bg-white/10 rounded-xl w-36 shimmer-bg" style={{ opacity: 0.2 }} />
       </div>
     </div>
   </div>
@@ -514,7 +514,7 @@ export default function HomePage() {
           {isLandingLoading && !landingData ? (
             <BannerSkeleton />
           ) : (
-            <div className="relative overflow-hidden bg-card aspect-[2.4/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[200px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] group shadow-none border-0">
+            <div className="relative overflow-hidden bg-card aspect-[2.8/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[120px] sm:min-h-[240px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] group shadow-none border-0">
 
               {/* Slides with Premium Cross-Fade */}
               {banners.map((banner: any, idx: number) => {
@@ -549,13 +549,13 @@ export default function HomePage() {
                         priority={idx === 0}
                         sizes="100vw"
                         quality={95}
-                        className="object-cover transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
+                        className="object-contain sm:object-cover object-center transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
                       />
 
                       {/* Optional Text Overlay — Only shown if title/subtitle is explicitly set */}
                       {(displayTitle || displayDesc) && (
                         <div className="absolute inset-0 z-20 flex items-center w-full h-full pointer-events-none">
-                          <div className="pl-10 sm:pl-16 lg:pl-24 pr-10 sm:pr-16 w-full text-left">
+                          <div className="pl-4 sm:pl-16 lg:pl-24 pr-4 sm:pr-16 w-full text-left">
                             <div className={`space-y-2 sm:space-y-3.5 transition-all duration-700 ease-out transform max-w-md sm:max-w-lg p-4 sm:p-6 rounded-2xl bg-black/30 backdrop-blur-xs border border-white/10 shadow-2xl ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                               }`}>
                               <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary text-white px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest uppercase shadow-xs">
@@ -654,55 +654,56 @@ export default function HomePage() {
                   <h3 className="text-xl sm:text-3xl font-extrabold text-foreground font-serif">{t('home.flashSale')}</h3>
 
                   {/* User-Friendly Live Digital Countdown Box */}
-                  <div className="flex items-center space-x-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl">
-                    <span className="inline-flex items-center space-x-1.5 text-xs sm:text-sm font-bold text-primary tracking-wider">
-                      <Clock size={16} className="animate-pulse text-primary shrink-0" />
-                      <span>{locale === 'bn' ? 'সময় বাকি:' : 'Ends in:'}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 bg-primary/10 border border-primary/20 px-4 sm:px-5 py-1.5 rounded-full max-w-full overflow-hidden shadow-xs">
+                    <span className="inline-flex items-center space-x-1.5 text-xs sm:text-sm font-bold text-primary tracking-wider whitespace-nowrap shrink-0">
+                      <Clock size={15} className="animate-pulse text-primary shrink-0" />
+                      <span className="whitespace-nowrap">{locale === 'bn' ? 'সময় বাকি:' : 'Ends in:'}</span>
                     </span>
 
-                    <div className="flex items-center space-x-1.5 font-bold">
+                    <div className="flex items-center space-x-1 sm:space-x-1.5 font-bold whitespace-nowrap shrink-0">
                       {timeLeft.days > 0 && (
                         <>
-                          <div className="flex items-center space-x-1">
-                            <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
+                          <div className="flex items-center space-x-1 whitespace-nowrap">
+                            <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
                               {locale === 'bn' ? toBanglaDigits(timeLeft.days) : String(timeLeft.days).padStart(2, '0')}
                             </span>
-                            <span className="text-[11px] sm:text-xs font-extrabold text-primary">
+                            <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap">
                               {locale === 'bn' ? 'দিন' : 'Days'}
                             </span>
                           </div>
 
-                          <span className="text-primary font-bold text-xs sm:text-sm">:</span>
+                          <span className="text-primary font-bold text-xs leading-none">:</span>
                         </>
                       )}
 
-                      <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
+                      <div className="flex items-center space-x-1 whitespace-nowrap">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.hours) : String(timeLeft.hours).padStart(2, '0')}
                         </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary">
+                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap">
                           {locale === 'bn' ? 'ঘণ্টা' : 'Hours'}
                         </span>
                       </div>
 
-                      <span className="text-primary font-bold text-xs sm:text-sm">:</span>
+                      <span className="text-primary font-bold text-xs leading-none">:</span>
 
-                      <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
+                      <div className="flex items-center space-x-1 whitespace-nowrap">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.minutes) : String(timeLeft.minutes).padStart(2, '0')}
                         </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary">
+                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap pr-1 sm:pr-0">
                           {locale === 'bn' ? 'মিনিট' : 'Mins'}
                         </span>
                       </div>
 
-                      <span className="text-primary font-bold text-xs sm:text-sm">:</span>
+                      <span className="text-primary font-bold text-xs leading-none hidden sm:inline">:</span>
 
-                      <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
+                      {/* Seconds pill hidden on mobile for clean compact UI, visible on desktop */}
+                      <div className="hidden sm:flex items-center space-x-1 whitespace-nowrap">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.seconds) : String(timeLeft.seconds).padStart(2, '0')}
                         </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary">
+                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap pr-1">
                           {locale === 'bn' ? 'সেকেন্ড' : 'Secs'}
                         </span>
                       </div>

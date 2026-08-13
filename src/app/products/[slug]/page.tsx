@@ -1351,18 +1351,19 @@ export default function ProductDetailPage() {
             <h2 className="text-xl sm:text-2xl font-extrabold text-foreground font-serif tracking-tight">
               {locale === 'bn' ? 'অনুরূপ পণ্যসমূহ' : 'You May Also Like'}
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Explore more products from the same collection.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {locale === 'bn' ? 'একই কালেকশনের আরও চমৎকার পণ্যসমূহ দেখুন।' : 'Explore more products from the same collection.'}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
             {relatedProducts.map((rel: any) => (
-              <div key={rel._id} className="w-[170px] sm:w-[220px] shrink-0">
-                <ProductCard 
-                  product={rel} 
-                  isWishlisted={wishlistArray.some((id: string) => id === rel._id?.toString())}
-                  onWishlistToggle={handleWishlistToggle}
-                />
-              </div>
+              <ProductCard 
+                key={rel._id} 
+                product={rel} 
+                isWishlisted={wishlistArray.some((id: string) => id === rel._id?.toString())}
+                onWishlistToggle={handleWishlistToggle}
+              />
             ))}
           </div>
         </div>

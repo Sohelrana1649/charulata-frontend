@@ -446,24 +446,29 @@ export default function Header() {
             </button>
 
             {/* Language Toggle */}
-            <div className="flex items-center bg-muted/60 border border-border/80 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs">
+            <div className="flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang">
+              <div className="pl-2 pr-1 text-primary flex items-center justify-center">
+                <Languages size={15} className="text-primary group-hover/lang:rotate-12 transition-transform duration-300" />
+              </div>
               <button
                 onClick={() => setLocale('en')}
-                className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all focus:outline-none cursor-pointer min-w-[36px] ${
+                className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'en'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs scale-[1.02]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                title="Switch to English"
               >
                 EN
               </button>
               <button
                 onClick={() => setLocale('bn')}
-                className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all focus:outline-none cursor-pointer min-w-[36px] ${
+                className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'bn'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs scale-[1.02]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                title="বাংলা ভার্সন"
               >
                 বাংলা
               </button>
@@ -475,7 +480,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-card/95 backdrop-blur-md text-foreground">
+    <header className="sticky top-0 z-[100] w-full bg-card/95 backdrop-blur-md text-foreground border-b border-border/80 shadow-xs">
       {/* FIRST TOPBAR: Logo, Search, Actions */}
       <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full flex h-16 sm:h-20 items-center justify-between gap-2 sm:gap-6">
         
@@ -565,26 +570,31 @@ export default function Header() {
           </button>
 
           {/* Desktop Language Toggle Pill (Laptop & Desktop) */}
-          <div className="hidden md:flex items-center bg-muted/60 border border-border/80 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs">
+          <div className="hidden md:flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang">
+            <div className="pl-2 pr-1 text-primary flex items-center justify-center">
+              <Languages size={15} className="text-primary group-hover/lang:rotate-12 transition-transform duration-300" />
+            </div>
             <button
               onClick={() => setLocale('en')}
-              className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all focus:outline-none cursor-pointer min-w-[36px] ${
+              className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                 locale === 'en'
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs scale-[1.02]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
+              title="Switch to English"
             >
               EN
             </button>
             <button
               onClick={() => setLocale('bn')}
-              className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all focus:outline-none cursor-pointer min-w-[36px] ${
+              className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                 locale === 'bn'
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs scale-[1.02]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
+              title="বাংলা ভার্সন"
             >
-              বাং
+              বাংলা
             </button>
           </div>
 
@@ -1018,26 +1028,31 @@ export default function Header() {
             </button>
 
             {/* Language Switcher Pill */}
-            <div className="flex items-center bg-muted/60 border border-border/80 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs">
+            <div className="flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang">
+              <div className="pl-2 pr-1 text-primary flex items-center justify-center">
+                <Languages size={15} className="text-primary group-hover/lang:rotate-12 transition-transform duration-300" />
+              </div>
               <button
                 onClick={() => setLocale('en')}
-                className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all cursor-pointer min-w-[36px] ${
+                className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'en'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs scale-[1.02]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                title="Switch to English"
               >
                 EN
               </button>
               <button
                 onClick={() => setLocale('bn')}
-                className={`h-8 px-3 flex items-center justify-center rounded-lg text-xs font-extrabold transition-all cursor-pointer min-w-[36px] ${
+                className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'bn'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs scale-[1.02]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                title="বাংলা ভার্সন"
               >
-                বাং
+                বাংলা
               </button>
             </div>
           </div>

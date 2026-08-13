@@ -144,14 +144,16 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       )}
 
       {/* Product Image - Aspect Square for compact e-commerce height */}
-      <Link href={`/products/${product.slug}`} prefetch={false} className="aspect-square overflow-hidden bg-muted relative block">
-        <Image 
-          src={img} 
-          alt={product?.title || 'Product'} 
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          className="transition duration-500 group-hover:scale-105 object-cover" 
-        />
+      <div className="aspect-square overflow-hidden bg-muted relative block">
+        <Link href={`/products/${product.slug}`} prefetch={false} className="block w-full h-full relative">
+          <Image 
+            src={img} 
+            alt={product?.title || 'Product'} 
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="transition duration-500 group-hover:scale-105 object-cover" 
+          />
+        </Link>
 
         {/* Individual Product Flash Sale Time Remaining Badge */}
         {productTimeLeftText && (
@@ -160,14 +162,18 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             <span>{productTimeLeftText}</span>
           </span>
         )}
-        {/* Hover Overlay - View Details Button */}
-        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-          <span className="flex items-center space-x-1.5 bg-white/95 text-[#0B0F19] text-[11px] font-extrabold uppercase tracking-widest px-4 py-2 rounded-full shadow-lg scale-90 group-hover:scale-100 transition-transform duration-300">
-            <ArrowRight size={12} className="stroke-[3]" />
-            <span>{locale === 'bn' ? 'বিস্তারিত দেখুন' : 'View Details'}</span>
-          </span>
+
+        {/* Image Quick Action Overlay - Direct 'Order Now' Button */}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center p-3 z-10 pointer-events-none group-hover:pointer-events-auto">
+          <button
+            onClick={handleOrderNowClick}
+            className="pointer-events-auto flex items-center space-x-1.5 bg-primary hover:bg-[#b0842e] text-white text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl shadow-xl scale-90 group-hover:scale-100 transition-all duration-300 cursor-pointer active:scale-95 border border-white/20"
+          >
+            <span>{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
+            <ArrowRight size={13} className="stroke-[3]" />
+          </button>
         </div>
-      </Link>
+      </div>
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2">
