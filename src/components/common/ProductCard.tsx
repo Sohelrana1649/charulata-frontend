@@ -171,12 +171,18 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2">
-        <div className="space-y-1.5">
-          <h3 className="font-extrabold text-foreground text-xs sm:text-[13px] lg:text-sm leading-snug hover:text-primary transition-colors line-clamp-2 min-h-[2.3rem] flex items-center">
-            <Link href={`/products/${product.slug}`} prefetch={false}>{product?.title || product?.name || 'Product'}</Link>
+        <div className="space-y-1.5 flex-1 flex flex-col">
+          {/* Daraz & Amazon Style Clamped Title with Reserved 2-Line Height */}
+          <h3 
+            className="text-xs sm:text-[13px] font-semibold leading-[1.35] text-foreground hover:text-primary transition-colors line-clamp-2 h-[2.7em] overflow-hidden"
+            title={product?.title || product?.name || 'Product'}
+          >
+            <Link href={`/products/${product.slug}`} prefetch={false} className="hover:underline block">
+              {product?.title || product?.name || 'Product'}
+            </Link>
           </h3>
           
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1.5 pt-0.5">
             <div className="flex text-amber-400">
               <Star size={13} fill="currentColor" className="stroke-amber-400" />
             </div>
@@ -189,7 +195,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
           </div>
 
           {/* Pricing Section with High-Contrast Luxury Theme Match */}
-          <div className="flex flex-wrap items-baseline gap-1.5 pt-1">
+          <div className="flex flex-wrap items-baseline gap-1.5 pt-1 min-h-[1.75rem]">
             {isSale ? (
               <>
                 <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
@@ -211,7 +217,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
         </div>
 
         {/* Action Buttons: Order Now (Primary) + Add to Cart (Secondary Icon Button) */}
-        <div className="flex items-center space-x-1.5 pt-2 border-t border-border/60">
+        <div className="flex items-center space-x-1.5 pt-2 border-t border-border/60 mt-auto">
           {/* Order Now (Primary Button) */}
           <button
             onClick={handleOrderNowClick}

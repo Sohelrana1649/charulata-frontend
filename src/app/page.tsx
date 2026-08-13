@@ -221,7 +221,7 @@ export default function HomePage() {
     return String(num).padStart(2, '0').replace(/\d/g, (digit) => bnDigits[parseInt(digit, 10)]);
   };
 
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
     const calculateFlashSaleTime = () => {
@@ -256,7 +256,7 @@ export default function HomePage() {
       const difference = targetTime - now;
 
       if (difference <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
 
@@ -265,9 +265,7 @@ export default function HomePage() {
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-      const totalHours = days * 24 + hours;
-
-      setTimeLeft({ hours: totalHours, minutes, seconds });
+      setTimeLeft({ days, hours, minutes, seconds });
     };
 
     calculateFlashSaleTime();
@@ -663,8 +661,23 @@ export default function HomePage() {
                     </span>
 
                     <div className="flex items-center space-x-1.5 font-bold">
+                      {timeLeft.days > 0 && (
+                        <>
+                          <div className="flex items-center space-x-1">
+                            <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
+                              {locale === 'bn' ? toBanglaDigits(timeLeft.days) : String(timeLeft.days).padStart(2, '0')}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-extrabold text-primary">
+                              {locale === 'bn' ? 'দিন' : 'Days'}
+                            </span>
+                          </div>
+
+                          <span className="text-primary font-bold text-xs sm:text-sm">:</span>
+                        </>
+                      )}
+
                       <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.hours) : String(timeLeft.hours).padStart(2, '0')}
                         </span>
                         <span className="text-[11px] sm:text-xs font-extrabold text-primary">
@@ -675,7 +688,7 @@ export default function HomePage() {
                       <span className="text-primary font-bold text-xs sm:text-sm">:</span>
 
                       <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.minutes) : String(timeLeft.minutes).padStart(2, '0')}
                         </span>
                         <span className="text-[11px] sm:text-xs font-extrabold text-primary">
@@ -686,7 +699,7 @@ export default function HomePage() {
                       <span className="text-primary font-bold text-xs sm:text-sm">:</span>
 
                       <div className="flex items-center space-x-1">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono">
+                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-lg shadow-xs font-mono min-w-[28px] text-center">
                           {locale === 'bn' ? toBanglaDigits(timeLeft.seconds) : String(timeLeft.seconds).padStart(2, '0')}
                         </span>
                         <span className="text-[11px] sm:text-xs font-extrabold text-primary">

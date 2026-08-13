@@ -54,7 +54,7 @@ export default function ProductSlider({ products, wishlistArray = [], onWishlist
 
           return (
             <SwiperSlide key={product._id} className="!h-auto flex">
-              <div className="w-full">
+              <div className="w-full h-full flex flex-col">
                 <ProductCard
                   product={product}
                   isWishlisted={isWishlisted}
