@@ -75,9 +75,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
-    if (stored && (stored === 'en' || stored === 'bn')) {
-      setLocaleState(stored);
+    let initialLocale: Locale | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang') as Locale | null;
+      if (urlLang && (urlLang === 'en' || urlLang === 'bn')) {
+        initialLocale = urlLang;
+      } else {
+        const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
+        if (stored && (stored === 'en' || stored === 'bn')) {
+          initialLocale = stored;
+        }
+      }
+    }
+    if (initialLocale) {
+      setLocaleState(initialLocale);
+      document.documentElement.lang = initialLocale;
     }
     setMounted(true);
   }, []);

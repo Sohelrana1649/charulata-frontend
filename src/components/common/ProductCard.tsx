@@ -147,7 +147,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       <Link href={`/products/${product.slug}`} prefetch={false} className="aspect-square overflow-hidden bg-muted relative block group/img cursor-pointer">
         <Image 
           src={img} 
-          alt={product?.title || 'Product'} 
+          alt={`${product?.title || 'Product'} - চারুলতা লাইফস্টাইল (Charulata Lifestyle)`} 
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className="transition duration-500 group-hover:scale-105 object-cover" 

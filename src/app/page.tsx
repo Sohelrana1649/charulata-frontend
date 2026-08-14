@@ -426,47 +426,40 @@ export default function HomePage() {
     [landingData?.reviews]
   );
 
-  const staticTestimonials = [
+  const staticTestimonials = useMemo(() => [
     {
-      quote: "Handmade Jamdani Saree-r color ebong texture visual image thikeo khub shundor. Fast delivery and original product!",
-      author: "Sabrina Rahman",
-      role: "Jamdani & Silk Sarees Buyer",
-      productName: "Jamdani & Silk Sarees",
-      productSlug: "jamdani-silk-sarees",
+      quote: locale === 'bn'
+        ? "ঘড়িটা হাতে পাওয়ার পর সত্যিই অনেক ভালো লেগেছে। ছবিতে যেমন দেখেছিলাম, বাস্তবে তার থেকেও সুন্দর দেখতে। ডিজাইনটা খুবই এলিগেন্ট এবং ফিনিশিং অনেক ভালো। হাতে পরলে বেশ প্রিমিয়াম একটা লুক আসে এবং দীর্ঘসময় পরেও আরামদায়ক লাগে। দামের তুলনায় কোয়ালিটি সত্যিই অসাধারণ। পুরো প্রোডাক্ট নিয়ে আমি অনেক সন্তুষ্ট।"
+        : "I was really delighted after receiving the watch! It looks even more beautiful in hand than in the pictures. The design is very elegant and the finishing is top-notch. It gives a truly premium feel on the wrist and remains comfortable even after long hours. The quality is outstanding for the price. Overall, I am extremely satisfied with the product.",
+      author: locale === 'bn' ? "সোহেল রানা" : "Sohel Rana",
+      role: locale === 'bn' ? "প্রিমিয়াম ওয়াচ বায়ার" : "Premium Watch Buyer",
+      productName: locale === 'bn' ? "প্রিমিয়াম ওয়াচ" : "Premium Watch",
+      productSlug: "search",
       profileImage: ""
     },
     {
-      quote: "Designer Linen Kurti - exact fit and high quality stitching. Dhaka city-te 1 day-er vitor delivery peyechi!",
-      author: "Sadia Islam",
-      role: "Designer Kurtis Buyer",
-      productName: "Designer Kurtis",
-      productSlug: "designer-kurtis",
+      quote: locale === 'bn'
+        ? "অনলাইনে ঘড়ি অর্ডার করার সময় একটু চিন্তা ছিল, কিন্তু হাতে পাওয়ার পর সব চিন্তা দূর হয়ে গেছে। ঘড়ির ডিজাইন, কালার এবং ফিনিশিং সবকিছুই খুব সুন্দর। ছবির সঙ্গে প্রোডাক্টের বেশ ভালো মিল রয়েছে। হাতে পরলে দেখতে অনেক স্টাইলিশ লাগে এবং বিভিন্ন পোশাকের সাথেও সুন্দরভাবে মানিয়ে যায়। প্যাকেজিংও ভালো ছিল। সব মিলিয়ে দামের তুলনায় খুবই ভালো একটি প্রোডাক্ট পেয়েছি।"
+        : "I was a bit hesitant while ordering a watch online, but all my worries vanished once I held it! The design, color, and finishing are absolutely stunning. The product matches the pictures perfectly. It looks stylish on the wrist and pairs effortlessly with different outfits. The packaging was also great. A fantastic value for money!",
+      author: locale === 'bn' ? "সাদিয়া ইসলাম" : "Sadia Islam",
+      role: locale === 'bn' ? "ডিজাইনার ওয়াচ বায়ার" : "Designer Watch Buyer",
+      productName: locale === 'bn' ? "ডিজাইনার ওয়াচ" : "Designer Watch",
+      productSlug: "search",
       profileImage: ""
     },
     {
-      quote: "Royal Panjabi fabrics finish is extremely luxury. Authentic Charulata collection & hassle free checkout!",
-      author: "Nabila Tabassum",
-      role: "Premium Panjabis Buyer",
-      productName: "Premium Panjabis",
-      productSlug: "panjabi",
+      quote: locale === 'bn'
+        ? "প্রোডাক্ট হাতে পেয়ে সত্যিই অনেক ভালো লেগেছে। ঘড়িটা দেখতে খুব সুন্দর এবং প্রিমিয়াম কোয়ালিটির মনে হয়েছে। ডিজাইনটা সিম্পল কিন্তু একই সাথে বেশ আকর্ষণীয়, তাই দৈনন্দিন ব্যবহার থেকে শুরু করে কোনো অনুষ্ঠানেও পরা যাবে। ফিনিশিং সুন্দর, হাতে পরতেও আরামদায়ক এবং ছবির মতোই পেয়েছি। ডেলিভারিও সময়মতো পেয়েছি এবং প্যাকেজিং ভালো ছিল। সবকিছু মিলিয়ে আমার কেনাকাটার অভিজ্ঞতা খুবই ভালো হয়েছে। অবশ্যই আবার অর্ডার করব।"
+        : "I am truly happy with the product! The watch looks gorgeous and feels genuinely premium. The design is simple yet eye-catching, making it perfect for both daily wear and special occasions. Comfortable on the wrist, exactly like shown in pictures. Timely delivery and excellent packaging. Overall a wonderful shopping experience—I will definitely order again!",
+      author: locale === 'bn' ? "নাবিলা তাবাসসুম" : "Nabila Tabassum",
+      role: locale === 'bn' ? "ক্লাসিক ওয়াচ বায়ার" : "Classic Watch Buyer",
+      productName: locale === 'bn' ? "ক্লাসিক ওয়াচ" : "Classic Watch",
+      productSlug: "search",
       profileImage: ""
     }
-  ];
+  ], [locale]);
 
-  const testimonials = approvedReviews.length > 0
-    ? approvedReviews.map((rev: any) => ({
-      quote: rev.comment,
-      author: rev.customer?.name || "Verified Buyer",
-      role: rev.product?.title ? `${rev.product.title} Buyer` : "Verified Buyer",
-      productName: rev.product?.title || "",
-      productSlug: rev.product?.slug || "",
-      profileImage: rev.customer?.profileImage || ""
-    }))
-    : staticTestimonials;
-
-  const slideItems = testimonials.length > 0
-    ? (testimonials.length <= 4 ? [...testimonials, ...testimonials, ...testimonials] : testimonials)
-    : [];
+  const slideItems = staticTestimonials;
 
   const handleSendNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1033,7 +1026,7 @@ export default function HomePage() {
               onSwiper={setTestimonialsSwiper}
               spaceBetween={24}
               slidesPerView={1}
-              loop={true}
+              loop={slideItems.length > 3}
               observer={true}
               observeParents={true}
               autoplay={{
@@ -1080,7 +1073,7 @@ export default function HomePage() {
                       </div>
 
                       {/* Customer Review Quote */}
-                      <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1 line-clamp-3">
+                      <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">
                         "{t.quote}"
                       </p>
                     </div>
@@ -1113,7 +1106,7 @@ export default function HomePage() {
             </Swiper>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {testimonials.slice(0, 3).map((t: any, idx: number) => (
+              {slideItems.slice(0, 3).map((t: any, idx: number) => (
                 <div key={idx} className="bg-card/90 dark:bg-card/75 border border-border/70 hover:border-primary/50 p-6 sm:p-7 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col justify-between relative overflow-hidden backdrop-blur-md group">
                   <Quote size={76} className="absolute -bottom-3 -right-2 text-primary/5 group-hover:text-primary/12 transition-all duration-500 pointer-events-none stroke-[1]" />
                   <div className="space-y-4 flex-1 z-10">
@@ -1127,7 +1120,7 @@ export default function HomePage() {
                         <span>{locale === 'bn' ? 'যাচাইকৃত কাস্টমার' : 'Verified Buyer'}</span>
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1 line-clamp-3">"{t.quote}"</p>
+                    <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">"{t.quote}"</p>
                   </div>
                   <div className="pt-4 mt-5 border-t border-border/60 flex items-center gap-3.5 z-10">
                     {t.profileImage ? (
