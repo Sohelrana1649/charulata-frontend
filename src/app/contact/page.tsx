@@ -96,8 +96,8 @@ export default function ContactPage() {
                   <MapPin size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-foreground text-xs sm:text-sm leading-snug">{t('home.mainShowroom') || 'মূল ফ্ল্যাগশিপ শোরুম'}</p>
-                  <p className="mt-0.5 text-muted-foreground text-xs sm:text-sm font-semibold leading-snug">{t('home.showroomAddress') || 'গুলশান-২, ঢাকা ১২১২, বাংলাদেশ'}</p>
+                  <p className="font-extrabold text-foreground text-xs sm:text-sm leading-snug">{t('home.mainShowroom') || (locale === 'bn' ? 'মূল শোরুম ও হেড অফিস' : 'Main Showroom & Office')}</p>
+                  <p className="mt-0.5 text-muted-foreground text-xs sm:text-sm font-semibold leading-snug">{t('home.showroomAddress') || (locale === 'bn' ? 'শফী কমপ্লেক্স, ১/এ আউটার সার্কুলার রোড, মগবাজার, ঢাকা' : 'Shofi Complex, 1/A Outer Circular Rd, Moghbazar, Dhaka')}</p>
                 </div>
               </div>
 
@@ -137,7 +137,7 @@ export default function ContactPage() {
               {/* Quick Action Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-border">
                 <a
-                  href="https://maps.google.com/?q=Gulshan-2,+Dhaka,+Bangladesh"
+                  href="https://maps.google.com/?q=Shofi+Complex,+1/A+Outer+Circular+Rd,+Moghbazar,+Dhaka"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border border-border bg-muted/50 hover:bg-muted text-xs font-bold text-foreground transition-colors"

@@ -38,8 +38,8 @@ export default function FAQPage() {
     {
       q: locale === 'bn' ? 'আপনাদের কি কোনো ফিজিক্যাল শোরুম আছে?' : 'Do you have a physical retail flagship store?',
       a: locale === 'bn'
-        ? 'হ্যাঁ! ঢাকার গুলশানে আমাদের একটি ফ্ল্যাগশিপ শোরুম রয়েছে। ব্যক্তিগত স্টাইলিং পরামর্শ ও একটি প্রিমিয়াম কেনাকাটার অভিজ্ঞতার জন্য আমাদের শোরুমে আমন্ত্রণ রইল।'
-        : 'Yes! We have a flagship store in Gulshan, Dhaka. Visit us for a premium in-person shopping experience with personal styling consultations.'
+        ? 'হ্যাঁ! ঢাকার মগবাজারে শফী কমপ্লেক্সে আমাদের মূল শোরুম ও অফিস রয়েছে। সরাসরি প্রোডাক্ট দেখতে ও স্টাইলিং পরামর্শের জন্য আমাদের শোরুমে আমন্ত্রণ রইল।'
+        : 'Yes! We have an office & showroom at Shofi Complex, 1/A Outer Circular Rd, Moghbazar, Dhaka. Visit us for an in-person shopping experience.'
     },
     {
       q: locale === 'bn' ? 'কিভাবে অর্ডার প্লে করব?' : 'How do I place an order?',
