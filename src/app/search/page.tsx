@@ -211,22 +211,14 @@ function SearchResults() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Dynamic list of categories from backend or fallback list
-  const dbCategoriesList = Array.isArray(categories) && categories.length > 0
-    ? categories
-    : [
-        { slug: 'saree', name: t('nav.saree') },
-        { slug: 'panjabi', name: t('nav.panjabi') },
-        { slug: 'jewelry', name: t('nav.jewelry') },
-        { slug: 'beauty', name: t('nav.beauty') },
-        { slug: 'gadgets', name: t('nav.gadgets') }
-      ];
+  // Dynamic list of categories from backend
+  const dbCategoriesList = Array.isArray(categories) ? categories : [];
 
   const categoryOptions = [
     { id: 'all', label: t('search.allPieces') },
     ...dbCategoriesList.map((c: any) => ({
       id: c.slug || c._id,
-      label: translateCategoryName(c.name, locale)
+      label: translateCategoryName(c, locale)
     }))
   ];
 

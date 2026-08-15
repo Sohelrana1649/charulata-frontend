@@ -94,7 +94,7 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
     }
   };
 
-  const catName = currentCategory?.name ? translateCategoryName(currentCategory.name, locale) : (slug ? slug.replace(/-/g, ' ') : 'Category');
+  const catName = currentCategory ? translateCategoryName(currentCategory, locale) : (slug ? slug.replace(/-/g, ' ') : 'Category');
 
   return (
     <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full py-6 flex-1 space-y-6">

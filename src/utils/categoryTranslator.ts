@@ -47,6 +47,14 @@ export const CATEGORY_PHRASE_MAP: Record<string, { bn: string; en: string }> = {
   
   'home & lifestyle': { bn: 'হোম ও লাইফস্টাইল', en: 'Home & Lifestyle' },
   'home lifestyle': { bn: 'হোম ও লাইফস্টাইল', en: 'Home & Lifestyle' },
+  'home appliance': { bn: 'হোম অ্যাপ্লায়েন্স', en: 'Home Appliance' },
+  'home appliances': { bn: 'হোম অ্যাপ্লায়েন্স', en: 'Home Appliances' },
+  'home applyance': { bn: 'হোম অ্যাপ্লায়েন্স', en: 'Home Appliance' },
+  'home applyances': { bn: 'হোম অ্যাপ্লায়েন্স', en: 'Home Appliances' },
+  'appliance': { bn: 'অ্যাপ্লায়েন্স', en: 'Appliance' },
+  'appliances': { bn: 'অ্যাপ্লায়েন্স', en: 'Appliances' },
+  'applyance': { bn: 'অ্যাপ্লায়েন্স', en: 'Appliance' },
+  'applyances': { bn: 'অ্যাপ্লায়েন্স', en: 'Appliances' },
   'bed': { bn: 'বেড ও বিছানা', en: 'Bed' },
   'bed sheet': { bn: 'বেড শিট', en: 'Bed Sheet' },
   'bed sheets': { bn: 'বেড শিট', en: 'Bed Sheets' },
@@ -58,6 +66,8 @@ export const CATEGORY_PHRASE_MAP: Record<string, { bn: string; en: string }> = {
   'kids': { bn: 'শিশু ও কিডস', en: 'Kids' },
   'baby': { bn: 'বেবি ও শিশু', en: 'Baby' },
   'kids fashion': { bn: 'কিডস ফ্যাশন', en: 'Kids Fashion' },
+  'kids zone': { bn: 'কিডস জোন', en: 'Kids Zone' },
+  'kid zone': { bn: 'কিডস জোন', en: 'Kids Zone' },
   
   'winter collection': { bn: 'শীতের কালেকশন', en: 'Winter Collection' },
   'summer collection': { bn: 'সামার কালেকশন', en: 'Summer Collection' },
@@ -174,6 +184,10 @@ export const WORD_TRANSLATIONS: Record<string, string> = {
   // Home & Bedding Keywords
   'home': 'হোম',
   'lifestyle': 'লাইফস্টাইল',
+  'appliance': 'অ্যাপ্লায়েন্স',
+  'appliances': 'অ্যাপ্লায়েন্স',
+  'applyance': 'অ্যাপ্লায়েন্স',
+  'applyances': 'অ্যাপ্লায়েন্স',
   'bed': 'বেড',
   'sheet': 'শিট',
   'sheets': 'শিট',
@@ -192,6 +206,7 @@ export const WORD_TRANSLATIONS: Record<string, string> = {
   'children': 'শিশু',
   'toy': 'খেলনা',
   'toys': 'খেলনা',
+  'zone': 'জোন',
 
   // Electronics & Gadgets Keywords
   'gadget': 'গ্যাজেট',
@@ -258,43 +273,41 @@ export function translateCategoryName(categoryOrName: any, locale: string = 'bn'
 
   if (typeof categoryOrName === 'object' && categoryOrName !== null) {
     name = categoryOrName.name || categoryOrName.title || '';
-    nameBn = categoryOrName.nameBn || categoryOrName.name_bn || categoryOrName.titleBn || '';
+    nameBn = categoryOrName.nameBn || categoryOrName.name_bn || categoryOrName.titleBn || categoryOrName.bn || '';
   } else {
     name = String(categoryOrName);
   }
 
-  // If language is English
+  // When language is English ('en'): return database English name field
   if (locale !== 'bn') {
-    return name || nameBn;
+    return (name && name.trim()) ? name.trim() : (nameBn || '');
   }
 
-  // If admin explicitly provided a custom Bangla category name from backend/admin panel
+  // When language is Bangla ('bn'): return database Bangla name field (nameBn) directly!
   if (nameBn && nameBn.trim()) {
-    return nameBn;
+    return nameBn.trim();
   }
 
   if (!name || !name.trim()) return '';
 
   const normalized = name.toLowerCase().trim();
 
-  // 1. Direct match in Phrase Map
+  // Dictionary Fallback (only if nameBn was missing in DB)
   if (CATEGORY_PHRASE_MAP[normalized]) {
     return CATEGORY_PHRASE_MAP[normalized].bn;
   }
 
-  // 2. Slugified match in Phrase Map
   const slugified = normalized.replace(/\s+/g, '-').replace(/&/g, 'and');
   if (CATEGORY_PHRASE_MAP[slugified]) {
     return CATEGORY_PHRASE_MAP[slugified].bn;
   }
 
-  // 3. Check if input is ALREADY written in Bengali script (e.g. "শীতের পোশাক" or "শাড়ি")
-  const isBanglaScript = /[\u0980-\u09FF]/.test(name);
-  if (isBanglaScript) {
+  // Check if string itself is already written in Bengali script
+  if (/[\u0980-\u09FF]/.test(name)) {
     return name;
   }
 
-  // 4. Dynamic Word-by-Word Component Translation Algorithm
+  // Dynamic Word-by-Word Fallback
   const words = normalized.split(/[\s\-_]+/);
   let translatedWords: string[] = [];
   let translatedCount = 0;
@@ -302,13 +315,12 @@ export function translateCategoryName(categoryOrName: any, locale: string = 'bn'
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
 
-    // Check 2-word sub-phrase (e.g., "winter collection")
     if (i < words.length - 1) {
       const pair = `${word} ${words[i + 1]}`;
       if (CATEGORY_PHRASE_MAP[pair]) {
         translatedWords.push(CATEGORY_PHRASE_MAP[pair].bn);
         translatedCount += 2;
-        i++; // skip next word
+        i++;
         continue;
       }
     }
@@ -317,12 +329,10 @@ export function translateCategoryName(categoryOrName: any, locale: string = 'bn'
       translatedWords.push(WORD_TRANSLATIONS[word]);
       translatedCount++;
     } else {
-      // Keep capitalized original or phonetic approximation
       translatedWords.push(word.charAt(0).toUpperCase() + word.slice(1));
     }
   }
 
-  // If at least one keyword was translated, return joined Bengali sentence
   if (translatedCount > 0) {
     return translatedWords.join(' ');
   }

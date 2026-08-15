@@ -29,10 +29,12 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
 
   // Transform backend categories
   const displayList = React.useMemo(() => {
-    return categories.map((cat, idx) => ({
+    return categories.map((cat: any, idx) => ({
+      ...cat,
       _id: cat._id || cat.id || `cat-${idx}`,
       name: cat.name,
-      slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+      nameBn: cat.nameBn || cat.name_bn || cat.titleBn || '',
+      slug: cat.slug || cat.name?.toLowerCase().replace(/\s+/g, '-'),
       image: cat.image,
       iconBg: cat.iconBg || 'bg-primary text-white',
       LucideIcon: cat.LucideIcon || Package
@@ -114,7 +116,7 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
                 <span className={`text-[11px] sm:text-xs font-semibold text-center line-clamp-2 leading-snug tracking-normal mt-2 w-full px-1 min-h-[2.25rem] flex items-center justify-center ${
                   isSelected ? 'text-primary font-bold' : 'text-foreground/90'
                 }`}>
-                  {translateCategoryName(cat.name, locale)}
+                  {translateCategoryName(cat, locale)}
                 </span>
               </Link>
             );
@@ -157,7 +159,7 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
               </div>
 
               <span className="text-xs sm:text-[13px] lg:text-sm font-semibold text-foreground group-hover:text-primary transition-colors text-center line-clamp-2 leading-snug tracking-normal mt-2.5 min-h-[2.5rem] flex items-center justify-center">
-                {translateCategoryName(cat.name, locale)}
+                {translateCategoryName(cat, locale)}
               </span>
             </Link>
           );

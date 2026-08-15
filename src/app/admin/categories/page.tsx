@@ -30,6 +30,7 @@ import Image from '@/components/SafeImage';
 
 interface CategoryForm {
   name: string;
+  nameBn: string;
   slug: string;
   description: string;
   image: string;
@@ -39,6 +40,7 @@ interface CategoryForm {
 
 const initialForm: CategoryForm = {
   name: '',
+  nameBn: '',
   slug: '',
   description: '',
   image: '',
@@ -116,6 +118,7 @@ export default function AdminCategoriesPage() {
     setEditId(cat._id);
     setForm({
       name: cat.name || '',
+      nameBn: cat.nameBn || '',
       slug: cat.slug || '',
       description: cat.description || '',
       image: cat.image || '',
@@ -127,6 +130,10 @@ export default function AdminCategoriesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim() || !form.nameBn.trim()) {
+      toast.error('ক্যাটাগরির ইংরেজি নাম এবং বাংলা নাম উভয়ই পূরণ করা বাধ্যতামূলক!');
+      return;
+    }
     try {
       if (editId) {
         await updateCategory({ id: editId, categoryData: form }).unwrap();
@@ -529,10 +536,10 @@ export default function AdminCategoriesPage() {
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Category Name */}
+              {/* Category Name English */}
               <div>
                 <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                  Category Name *
+                  Category Name (English) *
                 </label>
                 <input
                   type="text"
@@ -540,6 +547,21 @@ export default function AdminCategoriesPage() {
                   placeholder="e.g. Jamdani & Silk Sarees"
                   value={form.name}
                   onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
+                />
+              </div>
+
+              {/* Category Name Bangla */}
+              <div>
+                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
+                  ক্যাটাগরির নাম (বাংলা) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: জামদানি ও সিল্ক শাড়ি"
+                  value={form.nameBn}
+                  onChange={(e) => setForm(prev => ({ ...prev, nameBn: e.target.value }))}
                   className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
                 />
               </div>

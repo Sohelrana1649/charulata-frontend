@@ -42,7 +42,6 @@ import {
   PhoneCall
 } from 'lucide-react';
 import { translateCategoryName } from '@/utils/categoryTranslator';
-import { useTheme } from 'next-themes';
 
 export default function Header() {
   const pathname = usePathname();
@@ -144,6 +143,18 @@ export default function Header() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isWishlistDrawerOpen, setIsWishlistDrawerOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -265,19 +276,10 @@ export default function Header() {
 
     // Show Popular Searches when input is focused but empty
     if (!debouncedSearch || debouncedSearch.length < 1) {
-      const popularTags = categoriesList.length > 0 
-        ? categoriesList.map((cat: any) => ({
-            label: translateCategoryName(cat.name, locale),
-            query: cat.slug || cat.name
-          }))
-        : [
-            { label: locale === 'bn' ? 'শাড়ি' : 'Saree', query: 'saree' },
-            { label: locale === 'bn' ? 'পাঞ্জাবী' : 'Panjabi', query: 'panjabi' },
-            { label: locale === 'bn' ? 'জুয়েলারি' : 'Jewelry', query: 'jewelry' },
-            { label: locale === 'bn' ? 'আতর' : 'Attar', query: 'beauty' },
-            { label: locale === 'bn' ? 'কুর্তি' : 'Kurtis', query: 'kurtis' },
-            { label: locale === 'bn' ? 'গ্যাজেট' : 'Gadgets', query: 'gadgets' },
-          ];
+      const popularTags = categoriesList.map((cat: any) => ({
+        label: translateCategoryName(cat, locale),
+        query: cat.slug || cat.name
+      }));
 
       return (
         <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-card/98 backdrop-blur-md border border-border rounded-2xl shadow-2xl p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -396,31 +398,69 @@ export default function Header() {
     );
   };
 
+  const sortedCategories = React.useMemo(() => {
+    if (!Array.isArray(categoriesList)) return [];
+
+    // Priority keywords for main navbar display (Women's Fashion, Men's Fashion, Sarees, Panjabi, Kurtis)
+    const priorityKeywords = [
+      'women', 'men', 'saree', 'sharee', 'panjabi', 'kurti', 'shirt', 'shart', 'tshirt', 't-shirt',
+      'jewelry', 'beauty', 'gadget', 'আতর', 'ব্যাগ'
+    ];
+
+    const getPriority = (cat: any) => {
+      const nameLower = (cat.name || '').toLowerCase();
+      const slugLower = (cat.slug || '').toLowerCase();
+      const nameBnLower = (cat.nameBn || '').toLowerCase();
+
+      for (let i = 0; i < priorityKeywords.length; i++) {
+        const kw = priorityKeywords[i];
+        if (nameLower.includes(kw) || slugLower.includes(kw) || nameBnLower.includes(kw)) {
+          return i;
+        }
+      }
+      return 999;
+    };
+
+    return [...categoriesList].sort((a: any, b: any) => getPriority(a) - getPriority(b));
+  }, [categoriesList]);
+
+  const topCategories = React.useMemo(() => {
+    // Show top 5 core departments for a spacious, luxury, non-cluttered navbar strip
+    return sortedCategories.slice(0, 5).map((cat: any) => ({
+      name: translateCategoryName(cat, locale),
+      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
+    }));
+  }, [sortedCategories, locale]);
+
+  const moreCategories = React.useMemo(() => {
+    // All other categories in clean "More..." dropdown
+    return sortedCategories.slice(5).map((cat: any) => ({
+      name: translateCategoryName(cat, locale),
+      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
+    }));
+  }, [sortedCategories, locale]);
+
   const menuItems = React.useMemo(() => {
     const baseItems = [
       { name: t('nav.home'), key: 'home', href: '/' },
       { name: t('nav.shop'), key: 'shop', href: '/search' },
     ];
+    return [...baseItems, ...topCategories];
+  }, [topCategories, t]);
 
-    if (categoriesList && categoriesList.length > 0) {
-      // Show top 7 core categories on main navbar strip to maintain clean Amazon-style balance
-      const dynamicCats = categoriesList.slice(0, 7).map((cat: any) => ({
-        name: translateCategoryName(cat.name, locale),
-        key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-        href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
-      }));
-      return [...baseItems, ...dynamicCats];
-    }
-
-    // Fallback if backend categories are empty or loading
-    return [
-      ...baseItems,
-      { name: t('nav.saree'), key: 'saree', href: '/search?category=saree' },
-      { name: t('nav.panjabi'), key: 'panjabi', href: '/search?category=panjabi' },
-      { name: t('nav.jewelry'), key: 'jewelry', href: '/search?category=jewelry' },
-      { name: t('nav.beauty'), key: 'beauty', href: '/search?category=beauty' },
-      { name: t('nav.gadgets'), key: 'gadgets', href: '/search?category=gadgets' }
+  const mobileMenuItems = React.useMemo(() => {
+    const baseItems = [
+      { name: t('nav.home'), key: 'home', href: '/' },
+      { name: t('nav.shop'), key: 'shop', href: '/search' },
     ];
+    const allCats = categoriesList.map((cat: any) => ({
+      name: translateCategoryName(cat, locale),
+      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
+    }));
+    return [...baseItems, ...allCats];
   }, [categoriesList, t, locale]);
 
   const isAdminPage = pathname?.startsWith('/admin');
@@ -860,29 +900,22 @@ export default function Header() {
                             href={`/search?category=${encodeURIComponent(cat.slug || cat.name)}`}
                             className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors group/item"
                           >
-                            <span className="group-hover/item:translate-x-0.5 transition-transform truncate">{translateCategoryName(cat.name, locale)}</span>
+                            <span className="group-hover/item:translate-x-0.5 transition-transform truncate">{translateCategoryName(cat, locale)}</span>
                             <ChevronRight size={13} className="text-muted-foreground group-hover/item:text-primary opacity-50 group-hover/item:opacity-100 transition-all shrink-0" />
                           </Link>
                         ))
                       ) : (
-                        ['saree', 'panjabi', 'jewelry', 'beauty', 'gadgets'].map((slug) => (
-                          <Link
-                            key={slug}
-                            href={`/search?category=${slug}`}
-                            className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors capitalize group/item"
-                          >
-                            <span className="group-hover/item:translate-x-0.5 transition-transform">{slug}</span>
-                            <ChevronRight size={13} className="text-muted-foreground group-hover/item:text-primary opacity-50 group-hover/item:opacity-100 transition-all shrink-0" />
-                          </Link>
-                        ))
+                        <div className="px-4 py-3 text-xs text-muted-foreground text-center">
+                          {locale === 'bn' ? 'কোন ক্যাটাগরি পাওয়া যায়নি' : 'No categories found'}
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic Scrollable Categories List */}
-              <div className="flex items-center space-x-6 sm:space-x-7 text-xs sm:text-sm font-extrabold w-full overflow-x-auto no-scrollbar scroll-smooth flex-nowrap tracking-wide">
+              {/* Dynamic Categories Navbar Strip */}
+              <div className="flex items-center space-x-7 sm:space-x-8 lg:space-x-9 text-xs sm:text-sm font-extrabold w-full overflow-visible flex-nowrap tracking-wide">
                 {menuItems.map((item) => {
                   let isActive = false;
                   if (item.key === 'home') {
@@ -910,6 +943,36 @@ export default function Header() {
                     </Link>
                   );
                 })}
+
+                {/* "More..." Dropdown for extra categories */}
+                {moreCategories.length > 0 && (
+                  <div ref={moreDropdownRef} className="relative group/more shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsMoreOpen(prev => !prev)}
+                      className="flex items-center space-x-1 py-2 text-white-force hover-gold font-extrabold text-xs sm:text-sm cursor-pointer transition-colors whitespace-nowrap"
+                    >
+                      <span>{locale === 'bn' ? 'আরও...' : 'More...'}</span>
+                      <ChevronDown size={14} className={`text-white-force group-hover/more:text-[#c99a3c] transition-transform duration-200 ${isMoreOpen ? 'rotate-180 text-[#c99a3c]' : 'group-hover/more:rotate-180'}`} />
+                    </button>
+
+                    <div className={`absolute top-full right-0 pt-2 w-56 z-[100] transition-all duration-200 ${isMoreOpen ? 'block' : 'hidden group-hover/more:block'}`}>
+                      <div className="bg-card dark:bg-card text-foreground border border-border/80 rounded-2xl shadow-2xl overflow-hidden py-2 max-h-80 overflow-y-auto no-scrollbar divide-y divide-border/30">
+                        {moreCategories.map((item) => (
+                          <Link
+                            key={item.key}
+                            href={item.href}
+                            onClick={() => setIsMoreOpen(false)}
+                            className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors group/sub"
+                          >
+                            <span className="group-hover/sub:translate-x-0.5 transition-transform truncate">{item.name}</span>
+                            <ChevronRight size={13} className="text-muted-foreground group-hover/sub:text-primary opacity-50 group-hover/sub:opacity-100 transition-all shrink-0" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Admin Panel */}
                 {mounted && isAuthenticated && ['super_admin', 'admin', 'staff'].includes(user?.role || '') && (
@@ -933,7 +996,7 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="border-t border-border bg-card px-5 py-4 md:hidden space-y-4 shadow-lg animate-fadeIn">
           <div className="flex flex-col space-y-1 w-full">
-            {menuItems.map((item) => {
+            {mobileMenuItems.map((item) => {
               let isActive = false;
               if (item.key === 'home') {
                 isActive = pathname === '/';
