@@ -11,6 +11,8 @@ import {
 } from '@/store/api/productApi';
 import { useAddToCartMutation } from '@/store/api/cartApi';
 import { addToGuestCart } from '@/utils/guestCart';
+import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
+import ProductDescription from '@/components/common/ProductDescription';
 import { useAppSelector } from '@/store/hooks';
 import { 
   ShoppingBag, 
@@ -86,6 +88,7 @@ export default function ProductDetailClient() {
   const [newComment, setNewComment] = useState<string>('');
   const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
+  const [isCartBouncing, setIsCartBouncing] = useState<boolean>(false);
 
   const reviewsList = reviewsResponse?.data?.reviews || reviewsResponse?.reviews || [];
 
@@ -271,7 +274,13 @@ export default function ProductDetailClient() {
     if (attrName === 'Size') setSelectedSize(optionVal);
   };
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e?: React.MouseEvent) => {
+    if (e?.currentTarget) {
+      setIsCartBouncing(true);
+      setTimeout(() => setIsCartBouncing(false), 300);
+      triggerFlyToCartAnimation(e.currentTarget as HTMLElement, product?.productImages?.[0]);
+    }
+
     if (product.attributes && product.attributes.length > 0) {
       for (const attr of product.attributes) {
         if (!selectedAttributes[attr.name]) {
@@ -948,7 +957,7 @@ export default function ProductDetailClient() {
               <button
                 onClick={handleBuyNow}
                 disabled={isAdding}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm transition flex items-center justify-center space-x-2 shadow-md shadow-amber-600/10 cursor-pointer"
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-600/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-amber-600/10 cursor-pointer will-change-transform"
               >
                 <Zap size={18} />
                 <span>{locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now'}</span>
@@ -957,7 +966,9 @@ export default function ProductDetailClient() {
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding}
-                className="w-full bg-primary text-white py-3.5 px-4 rounded-xl font-extrabold text-sm hover:bg-primary/90 transition flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer"
+                className={`w-full bg-primary text-white py-3.5 px-4 rounded-xl font-extrabold text-sm hover:bg-primary/90 transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer will-change-transform ${
+                  isCartBouncing ? 'animate-cart-bounce' : ''
+                }`}
               >
                 {isAdding ? (
                   <>
@@ -1126,9 +1137,9 @@ export default function ProductDetailClient() {
         {activeTab === 'description' && (
           <div className="space-y-4 max-w-4xl animate-in fade-in">
             <h3 className="text-lg font-bold text-foreground font-serif">Product Description & Heritage</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {product.description || (locale === 'bn' ? 'এই পণ্যের জন্য বিস্তারিত বিবরণ উপলব্ধ রয়েছে।' : 'Premium quality Bangladeshi lifestyle product crafted with precision and care.')}
-            </p>
+            <ProductDescription 
+              html={product.description || (locale === 'bn' ? '<p>এই পণ্যের জন্য বিস্তারিত বিবরণ উপলব্ধ রয়েছে।</p>' : '<p>Premium quality Bangladeshi lifestyle product crafted with precision and care.</p>')} 
+            />
           </div>
         )}
 

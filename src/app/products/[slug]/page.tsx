@@ -37,7 +37,8 @@ export async function generateMetadata({
   const categoryName = product?.category?.name || 'Ethnic Wear';
   const effectivePrice = product.salePrice || product.price;
   const title = `${product.title} - ৳${effectivePrice.toLocaleString()}`;
-  const description = `Buy ${product.title} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${product.description ? product.description.slice(0, 120) : ''}`;
+  const plainDesc = product.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
+  const description = `Buy ${product.title} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${plainDesc ? plainDesc.slice(0, 120) : ''}`;
   const images = product.productImages && product.productImages.length > 0 ? product.productImages : ['/logo.png'];
 
   return {

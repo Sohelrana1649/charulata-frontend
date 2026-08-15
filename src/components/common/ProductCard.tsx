@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from '@/components/SafeImage';
@@ -10,6 +10,7 @@ import { useAddToCartMutation } from '@/store/api/cartApi';
 import { addToGuestCart } from '@/utils/guestCart';
 import { useAppSelector } from '@/store/hooks';
 import { toast } from 'react-toastify';
+import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
 
 interface ProductCardProps {
   product: any;
@@ -21,6 +22,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const { locale } = useTranslation();
   const router = useRouter();
   const [addToCart, { isLoading: isAdding }] = useAddToCartMutation();
+  const [isCartBouncing, setIsCartBouncing] = useState(false);
 
   const price = Number(product?.price) || 0;
   const salePrice = Number(product?.salePrice) || 0;
@@ -56,6 +58,14 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const handleAddToCartClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Trigger bounce micro-interaction
+    setIsCartBouncing(true);
+    setTimeout(() => setIsCartBouncing(false), 300);
+
+    // Trigger fly to cart animation effect
+    const buttonTarget = e.currentTarget as HTMLElement;
+    triggerFlyToCartAnimation(buttonTarget, img);
 
     if (hasVariantsOrAttributes) {
       router.push(`/products/${product.slug}`);
@@ -222,7 +232,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
           {/* Order Now (Primary Button) */}
           <button
             onClick={handleOrderNowClick}
-            className="flex-1 bg-primary hover:bg-[#b0842e] text-white text-[11px] sm:text-xs md:text-[13px] font-bold h-9 sm:h-10 px-2 sm:px-3 rounded-xl transition-all shadow-xs flex items-center justify-center space-x-1 whitespace-nowrap active:scale-95 cursor-pointer min-w-0"
+            className="flex-1 bg-primary hover:bg-[#b0842e] text-white text-[11px] sm:text-xs md:text-[13px] font-bold h-9 sm:h-10 px-2 sm:px-3 rounded-xl transition-all duration-200 ease-out hover:scale-[1.03] hover:shadow-md hover:shadow-primary/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-1 whitespace-nowrap cursor-pointer min-w-0 will-change-transform"
           >
             <span className="whitespace-nowrap truncate">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
             <ArrowRight size={13} className="stroke-[2.5] shrink-0" />
@@ -232,11 +242,13 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
           <button
             onClick={handleAddToCartClick}
             disabled={isAdding}
-            className="w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 rounded-xl transition-all shrink-0 cursor-pointer shadow-xs active:scale-95 flex items-center justify-center font-bold"
+            className={`w-9 h-9 sm:w-10 sm:h-10 min-w-[36px] sm:min-w-[40px] bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 rounded-xl transition-all duration-200 ease-out hover:scale-[1.05] hover:shadow-md hover:shadow-primary/20 active:scale-[0.92] active:duration-150 shrink-0 cursor-pointer shadow-xs flex items-center justify-center font-bold will-change-transform ${
+              isCartBouncing ? 'animate-cart-bounce' : ''
+            }`}
             title={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
             aria-label="Add to Cart"
           >
-            <ShoppingCart size={16} className="stroke-[2.5]" />
+            <ShoppingCart size={16} className={`stroke-[2.5] transition-transform duration-200 ${isCartBouncing ? 'scale-110' : ''}`} />
           </button>
         </div>
       </div>

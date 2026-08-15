@@ -701,4 +701,111 @@ table thead td {
   scrollbar-width: none !important;
 }
 
+/* --- Micro-Interaction Animations --- */
+
+/* Cart Button Bounce (300ms) */
+@keyframes cart-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.animate-cart-bounce {
+  animation: cart-bounce 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Header Cart Shake/Bounce on Item Add (450ms) */
+@keyframes header-cart-shake {
+  0% { transform: scale(1) rotate(0deg); }
+  20% { transform: scale(1.25) rotate(-12deg); }
+  40% { transform: scale(1.25) rotate(12deg); }
+  60% { transform: scale(1.15) rotate(-6deg); }
+  80% { transform: scale(1.1) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.animate-header-cart-shake {
+  animation: header-cart-shake 450ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Fly to Cart Animation Thumbnail */
+.fly-to-cart-thumbnail {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(197, 155, 39, 0.5);
+  border: 2px solid #c59b27;
+  transition: all 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, left, top, width, height, opacity;
+}
+
+/* --- TipTap Rich Text Editor & Typography Customizations --- */
+
+.ProseMirror {
+  outline: none !important;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground, #71717A);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Product Description Prose Typography & Custom Bullet Markers */
+.product-description-prose {
+  color: var(--foreground);
+}
+
+.product-description-prose ul {
+  list-style-type: disc !important;
+  padding-left: 1.25rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.product-description-prose ol {
+  list-style-type: decimal !important;
+  padding-left: 1.25rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.product-description-prose li {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.product-description-prose ul li::marker {
+  color: var(--primary, #E11D48) !important;
+}
+
+.product-description-prose ol li::marker {
+  color: var(--primary, #E11D48) !important;
+  font-weight: 700 !important;
+}
+
+.product-description-prose h3 {
+  font-family: serif;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.product-description-prose p {
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.product-description-prose strong,
+.product-description-prose b {
+  font-weight: 800;
+  color: var(--foreground);
+}
 

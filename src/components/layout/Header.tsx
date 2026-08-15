@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { usePathname, useRouter } from 'next/navigation';
@@ -36,9 +36,13 @@ import {
   LayoutGrid,
   ShieldCheck,
   ArrowLeft,
-  Lock
+  Lock,
+  Layers,
+  ArrowUpRight,
+  PhoneCall
 } from 'lucide-react';
 import { translateCategoryName } from '@/utils/categoryTranslator';
+import { useTheme } from 'next-themes';
 
 export default function Header() {
   const pathname = usePathname();
@@ -55,6 +59,7 @@ export default function Header() {
   });
 
   const [guestCartCount, setGuestCartCount] = useState(0);
+  const [isCartShake, setIsCartShake] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -73,6 +78,27 @@ export default function Header() {
   const cartItemsCount = isAuthenticated
     ? (cartObj?.items?.reduce((acc: number, item: any) => acc + item.quantity, 0) || 0)
     : guestCartCount;
+
+  const prevCartCountRef = useRef(cartItemsCount);
+
+  useEffect(() => {
+    if (cartItemsCount !== prevCartCountRef.current) {
+      prevCartCountRef.current = cartItemsCount;
+      setIsCartShake(true);
+      const timer = setTimeout(() => setIsCartShake(false), 450);
+      return () => clearTimeout(timer);
+    }
+  }, [cartItemsCount]);
+
+  useEffect(() => {
+    const triggerShake = () => {
+      setIsCartShake(true);
+      const timer = setTimeout(() => setIsCartShake(false), 450);
+      return () => clearTimeout(timer);
+    };
+    window.addEventListener('cart_icon_bounce', triggerShake);
+    return () => window.removeEventListener('cart_icon_bounce', triggerShake);
+  }, []);
 
   const { data: wishlistResponse } = useGetWishlistQuery(undefined, {
     skip: !isAuthenticated,
@@ -621,15 +647,19 @@ export default function Header() {
 
           {/* Cart (Shop Icon) */}
           <Link 
-            href="/cart" 
-            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all relative border border-primary/20 shadow-2xs" 
+            href="/cart"
+            id="header-cart-icon"
+            data-cart-icon
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all relative border border-primary/20 shadow-2xs cursor-pointer active:scale-95" 
             aria-label={t('header.cart')}
           >
-            <div className="relative flex items-center justify-center">
+            <div className={`relative flex items-center justify-center ${isCartShake ? 'animate-header-cart-shake' : ''}`}>
               <ShoppingCart size={22} className="w-5.5 h-5.5 text-primary fill-primary/25 stroke-[2.25]" />
               {cartItemsCount > 0 && (
                 <span 
-                  className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary !text-white text-[11px] font-black ring-2 ring-background shadow-xs leading-none select-none"
+                  className={`absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary !text-white text-[11px] font-black ring-2 ring-background shadow-xs leading-none select-none transition-transform duration-200 ${
+                    isCartShake ? 'scale-125' : ''
+                  }`}
                   style={{ color: '#ffffff' }}
                 >
                   {cartItemsCount}

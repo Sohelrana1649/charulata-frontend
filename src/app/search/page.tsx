@@ -643,7 +643,7 @@ function SearchResults() {
                             </h3>
 
                             <p className="text-xs text-muted-foreground line-clamp-2 mt-1 font-normal">
-                              {product.description}
+                              {product.description ? product.description.replace(/<[^>]*>/g, '').trim() : ''}
                             </p>
 
                             {product.colors && (

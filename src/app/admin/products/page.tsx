@@ -11,6 +11,7 @@ import {
   useBulkDeleteProductsMutation
 } from '@/store/api/productApi';
 import { useUploadImageMutation, useUploadVideoMutation } from '@/store/api/adminApi';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 import { 
   Plus, 
   Search, 
@@ -1522,16 +1523,14 @@ export default function AdminProductsPage() {
 
               </div>
 
-              {/* Description */}
+              {/* Description (Rich Text Editor) */}
               <div>
                 <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Description</label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe the product, key features, specifications, and care instructions"
-                  value={form.description}
-                  onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition resize-none"
-                ></textarea>
+                <RichTextEditor
+                  content={form.description}
+                  onChange={(html) => setForm(prev => ({ ...prev, description: html }))}
+                  placeholder="Describe the product, key features, specifications, and care instructions..."
+                />
               </div>
 
               {/* Dynamic Attributes & Product Variants Section */}
