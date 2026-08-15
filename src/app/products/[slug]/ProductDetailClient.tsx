@@ -90,7 +90,13 @@ export default function ProductDetailClient() {
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [isCartBouncing, setIsCartBouncing] = useState<boolean>(false);
 
-  const reviewsList = reviewsResponse?.data?.reviews || reviewsResponse?.reviews || [];
+  const reviewsList = Array.isArray(reviewsResponse?.data?.reviews)
+    ? reviewsResponse.data.reviews
+    : Array.isArray(reviewsResponse?.reviews)
+      ? reviewsResponse.reviews
+      : Array.isArray(reviewsResponse?.data)
+        ? reviewsResponse.data
+        : [];
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -772,24 +778,37 @@ export default function ProductDetailClient() {
             </h1>
 
             <div className="flex items-center justify-between gap-2 pt-1 border-b border-border/60 pb-3 flex-wrap text-xs">
-              <div className="flex items-center space-x-2">
-                <div className="flex text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      size={15} 
-                      fill={i < Math.round(product.ratings?.average || 4.5) ? 'currentColor' : 'none'} 
-                      className="stroke-amber-400"
-                    />
-                  ))}
+              {reviewsList.length > 0 || (product.ratings?.count > 0 && product.ratings?.average > 0) ? (
+                <div className="flex items-center space-x-2">
+                  <div className="flex text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={15} 
+                        fill={i < Math.round(product.ratings?.average || 5) ? 'currentColor' : 'none'} 
+                        className="stroke-amber-400"
+                      />
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('reviews')}
+                    className="font-bold text-foreground hover:text-primary transition underline cursor-pointer"
+                  >
+                    {Number(product.ratings?.average || 5).toFixed(1)} ({reviewsList.length || product.ratings?.count} {locale === 'bn' ? 'টি রিভিউ' : 'reviews'})
+                  </button>
                 </div>
+              ) : (
                 <button 
-                  onClick={() => setActiveTab('reviews')}
-                  className="font-bold text-foreground hover:text-primary transition underline cursor-pointer"
+                  onClick={() => {
+                    setActiveTab('reviews');
+                    setShowReviewForm(true);
+                  }}
+                  className="text-xs font-bold text-primary bg-primary/10 hover:bg-primary hover:text-white px-2.5 py-1 rounded-lg transition cursor-pointer border border-primary/20 flex items-center space-x-1"
                 >
-                  {product.ratings?.average || 4.5} ({reviewsList.length} {locale === 'bn' ? 'টি রিভিউ' : 'reviews'})
+                  <Star size={13} className="fill-amber-400 stroke-amber-400" />
+                  <span>{locale === 'bn' ? 'প্রথম রিভিউটি আপনি দিন' : 'Be the first to review'}</span>
                 </button>
-              </div>
+              )}
 
               <div className="flex items-center space-x-1.5 text-muted-foreground font-mono text-[11px]">
                 <span>SKU: <strong className="text-foreground">{matchedVariant?.sku || product.sku}</strong></span>

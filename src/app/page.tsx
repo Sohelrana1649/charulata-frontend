@@ -434,7 +434,8 @@ export default function HomePage() {
       author: locale === 'bn' ? "সোহেল রানা" : "Sohel Rana",
       role: locale === 'bn' ? "প্রিমিয়াম ওয়াচ বায়ার" : "Premium Watch Buyer",
       productName: locale === 'bn' ? "প্রিমিয়াম ওয়াচ" : "Premium Watch",
-      productSlug: "search",
+      productSlug: "/search",
+      rating: 5,
       profileImage: ""
     },
     {
@@ -444,7 +445,8 @@ export default function HomePage() {
       author: locale === 'bn' ? "সাদিয়া ইসলাম" : "Sadia Islam",
       role: locale === 'bn' ? "ডিজাইনার ওয়াচ বায়ার" : "Designer Watch Buyer",
       productName: locale === 'bn' ? "ডিজাইনার ওয়াচ" : "Designer Watch",
-      productSlug: "search",
+      productSlug: "/search",
+      rating: 5,
       profileImage: ""
     },
     {
@@ -454,12 +456,37 @@ export default function HomePage() {
       author: locale === 'bn' ? "নাবিলা তাবাসসুম" : "Nabila Tabassum",
       role: locale === 'bn' ? "ক্লাসিক ওয়াচ বায়ার" : "Classic Watch Buyer",
       productName: locale === 'bn' ? "ক্লাসিক ওয়াচ" : "Classic Watch",
-      productSlug: "search",
+      productSlug: "/search",
+      rating: 5,
       profileImage: ""
     }
   ], [locale]);
 
-  const slideItems = staticTestimonials;
+  const dbTestimonials = useMemo(() => {
+    if (!Array.isArray(approvedReviews) || approvedReviews.length === 0) return [];
+    return approvedReviews.map((rev: any) => {
+      const customerObj = typeof rev.customer === 'object' ? rev.customer : {};
+      const productObj = typeof rev.product === 'object' ? rev.product : {};
+
+      const authorName = customerObj?.name || (locale === 'bn' ? 'যাচাইকৃত কাস্টমার' : 'Verified Buyer');
+      const productName = productObj?.title || (locale === 'bn' ? 'চারুলতা প্রোডাক্ট' : 'Charulata Product');
+      const pSlug = productObj?.slug ? `/products/${productObj.slug}` : '/search';
+
+      return {
+        quote: rev.comment,
+        author: authorName,
+        role: `${productName} ${locale === 'bn' ? 'ক্রেতা' : 'Buyer'}`,
+        productName: productName,
+        productSlug: pSlug,
+        rating: rev.rating || 5,
+        profileImage: customerObj?.profileImage || ''
+      };
+    });
+  }, [approvedReviews, locale]);
+
+  const slideItems = useMemo(() => {
+    return dbTestimonials.length > 0 ? dbTestimonials : staticTestimonials;
+  }, [dbTestimonials, staticTestimonials]);
 
   const handleSendNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1063,7 +1090,9 @@ export default function HomePage() {
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} size={12} fill="currentColor" className="stroke-amber-400" />
                           ))}
-                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">5.0</span>
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">
+                            {(t.rating || 5).toFixed(1)}
+                          </span>
                         </div>
 
                         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
@@ -1090,7 +1119,7 @@ export default function HomePage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">{t.author}</p>
                         <Link
-                          href={t.productSlug ? `/products/${t.productSlug}` : '/search'}
+                          href={t.productSlug || '/search'}
                           prefetch={false}
                           className="inline-flex items-center space-x-1 text-[10px] text-primary hover:underline font-extrabold tracking-wide mt-0.5 max-w-full group/link"
                           title={locale === 'bn' ? 'প্রোডাক্ট বিস্তারিত দেখুন' : 'View Product Details'}

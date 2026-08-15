@@ -512,193 +512,275 @@ export default function AdminCategoriesPage() {
 
       {/* Edit / Add Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-auto">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-foreground font-serif">
-                  {editId ? 'Edit Category' : 'Create New Category'}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {editId ? 'Update category details and settings' : 'Add a new product collection to store'}
-                </p>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold">
+                  <FolderTree size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground font-serif">
+                    {editId ? 'Edit Category' : 'Create New Category'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {editId ? 'Update category details, images, and attribute mappings' : 'Add a new product collection to store navigation'}
+                  </p>
+                </div>
               </div>
               
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition cursor-pointer"
+                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition cursor-pointer"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Category Name English */}
-              <div>
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                  Category Name (English) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jamdani & Silk Sarees"
-                  value={form.name}
-                  onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
-                />
-              </div>
-
-              {/* Category Name Bangla */}
-              <div>
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                  ক্যাটাগরির নাম (বাংলা) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="যেমন: জামদানি ও সিল্ক শাড়ি"
-                  value={form.nameBn}
-                  onChange={(e) => setForm(prev => ({ ...prev, nameBn: e.target.value }))}
-                  className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
-                />
-              </div>
-
-              {/* URL Slug */}
-              <div>
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                  URL Slug *
-                </label>
-                <div className="flex items-center bg-muted/60 border border-border rounded-xl px-3.5 py-2.5">
-                  <span className="text-xs text-muted-foreground font-mono mr-1">/</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="jamdani-silk-sarees"
-                    value={form.slug}
-                    onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
-                    className="w-full bg-transparent text-xs font-mono text-foreground outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Brief description of products in this category..."
-                  value={form.description}
-                  onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition resize-none"
-                ></textarea>
-              </div>
-
-              {/* Category Image URL / Local File Upload */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
-                    Category Banner Image
-                  </label>
-                  <span className="text-[10px] text-muted-foreground font-semibold">Paste HTTP URL or upload from PC</span>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/photo-..."
-                    value={form.image}
-                    onChange={(e) => setForm(prev => ({ ...prev, image: e.target.value }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
-                  />
-
-                  <label 
-                    className="p-2.5 bg-muted hover:bg-primary hover:text-white rounded-xl border border-border transition cursor-pointer text-muted-foreground shrink-0 flex items-center space-x-1.5" 
-                    title="Upload Local File (.png, .jpg, .webp)"
-                  >
-                    {isUploading ? (
-                      <Loader2 size={16} className="animate-spin text-primary" />
-                    ) : (
-                      <>
-                        <Upload size={16} />
-                        <span className="text-xs font-bold hidden sm:inline">Upload</span>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCategoryImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                
-                {form.image && (
-                  <div className="mt-2.5 h-28 w-full rounded-xl bg-muted border border-border overflow-hidden relative shadow-xs group">
-                    <Image src={form.image} alt="Category Banner Preview" fill className="object-cover" />
+            {/* Quick Preset Buttons (for New Category) */}
+            {!editId && (
+              <div className="bg-muted/40 p-3 rounded-2xl border border-border/60 space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground block">
+                  ⚡ Quick Suggestions (1-Click Fill):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { en: "Women's Fashion", bn: "নারীর ফ্যাশন" },
+                    { en: "Men's Fashion", bn: "পুরুষের ফ্যাশন" },
+                    { en: "Jamdani & Silk Sarees", bn: "জামদানি ও সিল্ক শাড়ি" },
+                    { en: "Premium Panjabis", bn: "প্রিমিয়াম পাঞ্জাবী" },
+                    { en: "Designer Kurtis", bn: "ডিজাইনার কুর্তি" },
+                    { en: "Premium Jewelry", bn: "প্রিমিয়াম জুয়েলারি" },
+                    { en: "Attar & Beauty", bn: "আতর ও বিউটি" },
+                  ].map((preset, idx) => (
                     <button
+                      key={idx}
                       type="button"
-                      onClick={() => setForm(prev => ({ ...prev, image: '' }))}
-                      className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-rose-600 text-white rounded-lg transition backdrop-blur-xs cursor-pointer opacity-80 group-hover:opacity-100"
-                      title="Remove Image"
+                      onClick={() => setForm(prev => ({ ...prev, name: preset.en, nameBn: preset.bn }))}
+                      className="px-2.5 py-1 bg-card hover:bg-primary hover:text-white text-foreground text-xs font-semibold rounded-lg border border-border transition cursor-pointer shadow-2xs"
                     >
-                      <X size={14} />
+                      {preset.en} ({preset.bn})
                     </button>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* Category Attributes Multi-Select */}
-              <div className="space-y-2 pt-1 border-t border-border">
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
-                  Category Attributes
-                </label>
-                <p className="text-[10px] text-muted-foreground">
-                  Select attributes that apply to products in this category (e.g. Color, Size, Volume):
-                </p>
-                {allMasterAttributes.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground italic">No attributes created yet. Go to Attributes menu to add master attributes.</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2 bg-muted/30 p-2.5 rounded-xl border border-border max-h-36 overflow-y-auto">
-                    {allMasterAttributes.map((attr: any) => {
-                      const isChecked = form.attributes.includes(attr.name);
-                      return (
-                        <label key={attr._id || attr.name} className="flex items-center space-x-2 text-xs font-medium text-foreground cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setForm(prev => ({ ...prev, attributes: [...prev.attributes, attr.name] }));
-                              } else {
-                                setForm(prev => ({ ...prev, attributes: prev.attributes.filter(a => a !== attr.name) }));
-                              }
-                            }}
-                            className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                          />
-                          <span className="truncate">{attr.name}</span>
-                        </label>
-                      );
-                    })}
+            {/* Modal Form Grid */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* COLUMN 1: Basic Information */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary border-b border-border pb-1">
+                    1. Basic Information
+                  </h4>
+
+                  {/* Category Name English */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
+                      Category Name (English) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Jamdani & Silk Sarees"
+                      value={form.name}
+                      onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-medium"
+                    />
                   </div>
-                )}
-              </div>
 
-              {/* Status Checkbox */}
-              <div className="pt-1">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => setForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] sm:text-xs font-bold text-foreground">Active (Visible in Store Navigation)</span>
-                </label>
+                  {/* Category Name Bangla */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
+                      ক্যাটাগরির নাম (বাংলা) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="যেমন: জামদানি ও সিল্ক শাড়ি"
+                      value={form.nameBn}
+                      onChange={(e) => setForm(prev => ({ ...prev, nameBn: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-medium"
+                    />
+                  </div>
+
+                  {/* URL Slug */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
+                        URL Slug *
+                      </label>
+                      <span className="text-[10px] text-muted-foreground font-mono">Auto-generated from name</span>
+                    </div>
+                    <div className="flex items-center bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 focus-within:border-primary transition">
+                      <span className="text-xs text-muted-foreground font-mono mr-1">/</span>
+                      <input
+                        type="text"
+                        required
+                        placeholder="jamdani-silk-sarees"
+                        value={form.slug}
+                        onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                        className="w-full bg-transparent text-xs font-mono text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
+                      Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Brief description of products in this category..."
+                      value={form.description}
+                      onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition resize-none font-medium"
+                    ></textarea>
+                  </div>
+
+                  {/* Visibility Toggle */}
+                  <div className="pt-2">
+                    <label className="flex items-center space-x-3 p-3 bg-muted/30 border border-border rounded-xl cursor-pointer hover:border-primary/40 transition">
+                      <input
+                        type="checkbox"
+                        checked={form.isActive}
+                        onChange={(e) => setForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-foreground block">Active Visibility</span>
+                        <span className="text-[10px] text-muted-foreground block">Visible in store navbar strip & search filters</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* COLUMN 2: Banner Image & Attributes */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary border-b border-border pb-1">
+                    2. Image & Attributes
+                  </h4>
+
+                  {/* Category Image URL / File Upload */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
+                      Category Banner Image
+                    </label>
+
+                    {/* Image Preview Box */}
+                    {form.image ? (
+                      <div className="h-32 w-full rounded-2xl bg-muted border border-border overflow-hidden relative shadow-sm group">
+                        <Image src={form.image} alt="Category Banner Preview" fill className="object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, image: '' }))}
+                            className="p-2 bg-rose-600 text-white rounded-xl transition cursor-pointer shadow-md font-bold text-xs flex items-center space-x-1"
+                          >
+                            <Trash2 size={14} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Drag & Drop Upload Zone */
+                      <div className="border-2 border-dashed border-border rounded-2xl p-4 text-center bg-muted/30 hover:bg-muted/50 transition">
+                        <div className="w-10 h-10 mx-auto rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                          <Upload size={18} />
+                        </div>
+                        <p className="text-xs font-bold text-foreground">Upload category banner image</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG, WebP up to 5MB</p>
+
+                        <div className="mt-3 flex items-center justify-center space-x-2">
+                          <label className="px-3.5 py-1.5 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center space-x-1">
+                            {isUploading ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Upload size={13} />
+                                <span>Browse File</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleCategoryImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Paste URL Input */}
+                    <div className="pt-1">
+                      <input
+                        type="url"
+                        placeholder="Or paste HTTP Image URL..."
+                        value={form.image}
+                        onChange={(e) => setForm(prev => ({ ...prev, image: e.target.value }))}
+                        className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2 text-[11px] text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category Attributes Chip Selector */}
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
+                        Category Attributes
+                      </label>
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                        {form.attributes.length} Selected
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground">
+                      Select attributes applicable to products in this category:
+                    </p>
+
+                    {allMasterAttributes.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic bg-muted/30 p-3 rounded-xl border border-border">
+                        No attributes defined. Add master attributes in Attributes section.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-muted/30 border border-border rounded-xl">
+                        {allMasterAttributes.map((attr: any) => {
+                          const isChecked = form.attributes.includes(attr.name);
+                          return (
+                            <button
+                              key={attr._id || attr.name}
+                              type="button"
+                              onClick={() => {
+                                if (isChecked) {
+                                  setForm(prev => ({ ...prev, attributes: prev.attributes.filter(a => a !== attr.name) }));
+                                } else {
+                                  setForm(prev => ({ ...prev, attributes: [...prev.attributes, attr.name] }));
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 border ${
+                                isChecked
+                                  ? 'bg-primary text-white border-primary shadow-xs'
+                                  : 'bg-card text-foreground/80 border-border hover:border-primary/40 hover:text-foreground'
+                              }`}
+                            >
+                              <span>{attr.name}</span>
+                              {isChecked && <Check size={12} className="stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               </div>
 
               {/* Action Buttons */}
@@ -706,19 +788,19 @@ export default function AdminCategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-bold transition cursor-pointer"
+                  className="px-5 py-2.5 border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating || isUpdating}
-                  className="inline-flex items-center space-x-1.5 px-5 py-2 bg-primary text-white rounded-xl text-xs font-extrabold hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-md"
+                  className="inline-flex items-center space-x-2 px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-extrabold hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   {isCreating || isUpdating ? (
                     <Loader2 className="animate-spin h-4 w-4 mr-1" />
                   ) : (
-                    <Check size={15} />
+                    <Check size={16} />
                   )}
                   <span>{editId ? 'Update Category' : 'Create Category'}</span>
                 </button>

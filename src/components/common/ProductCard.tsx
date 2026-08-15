@@ -193,16 +193,25 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             </Link>
           </h3>
           
-          <div className="flex items-center space-x-1.5 pt-0.5">
-            <div className="flex text-amber-400">
-              <Star size={13} fill="currentColor" className="stroke-amber-400" />
-            </div>
-            <span className="text-[11px] font-bold text-foreground/80">
-              {product.ratings?.average || 4.7}
-            </span>
-            <span className="text-[10px] text-muted-foreground font-medium">
-              ({product.ratings?.count || 10})
-            </span>
+          {/* Dynamic DB Rating or New Arrival Badge */}
+          <div className="flex items-center space-x-1.5 pt-0.5 min-h-[22px]">
+            {product.ratings?.count > 0 && product.ratings?.average > 0 ? (
+              <>
+                <div className="flex text-amber-400">
+                  <Star size={13} fill="currentColor" className="stroke-amber-400" />
+                </div>
+                <span className="text-[11px] font-black text-foreground/90 font-mono">
+                  {Number(product.ratings.average).toFixed(1)}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold">
+                  ({product.ratings.count})
+                </span>
+              </>
+            ) : (
+              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-mono tracking-tight">
+                {locale === 'bn' ? 'নতুন কালেকশন' : 'New Collection'}
+              </span>
+            )}
           </div>
 
           {/* Pricing Section with High-Contrast Luxury Theme Match */}

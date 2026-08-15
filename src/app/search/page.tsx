@@ -622,12 +622,18 @@ function SearchResults() {
                           <div>
                             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                               <span>{getProductCategory(product) || 'Collection'}</span>
-                              <div className="flex items-center space-x-1">
-                                <Star size={10} fill="currentColor" className="text-amber-400 stroke-amber-400" />
-                                <span className="text-muted-foreground font-medium">
-                                  {product.ratings?.average || 4.7} ({product.ratings?.count || 10})
+                              {product.ratings?.count > 0 && product.ratings?.average > 0 ? (
+                                <div className="flex items-center space-x-1">
+                                  <Star size={10} fill="currentColor" className="text-amber-400 stroke-amber-400" />
+                                  <span className="text-muted-foreground font-semibold">
+                                    {Number(product.ratings.average).toFixed(1)} ({product.ratings.count})
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                                  New
                                 </span>
-                              </div>
+                              )}
                             </div>
 
                             <h3 className="font-bold text-foreground text-base sm:text-lg leading-tight hover:text-primary transition line-clamp-1 mt-1 font-serif">
