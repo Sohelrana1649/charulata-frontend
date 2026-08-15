@@ -11,6 +11,17 @@ interface ProductDescriptionProps {
   isCollapsible?: boolean;
 }
 
+function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 export default function ProductDescription({ html, className = '', isCollapsible = true }: ProductDescriptionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { locale } = useTranslation();
@@ -23,25 +34,30 @@ export default function ProductDescription({ html, className = '', isCollapsible
     );
   }
 
+  // Unescape raw HTML entities (e.g. &lt;span style="color: #2563EB"&gt;) if stored as encoded string
+  const decodedContent = decodeHtmlEntities(html);
+
   // Check if string contains HTML tags
-  const isHtml = /<[a-z][\s\S]*>/i.test(html);
+  const isHtml = /<[a-z][\s\S]*>/i.test(decodedContent);
 
   // Format legacy plain strings (with newlines) into HTML paragraphs if HTML tags are missing
   const rawContent = isHtml 
-    ? html 
-    : html
+    ? decodedContent 
+    : decodedContent
         .split('\n')
         .filter(line => line.trim().length > 0)
         .map(line => `<p>${line}</p>`)
         .join('');
 
-  // Sanitize HTML string against XSS attacks using DOMPurify
+  // Sanitize HTML string against XSS attacks using DOMPurify with rich color span support
   const cleanHtml = DOMPurify.sanitize(rawContent, {
     ALLOWED_TAGS: [
       'p', 'b', 'i', 'em', 'strong', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
       'ul', 'ol', 'li', 'br', 'span', 'div', 'blockquote', 'hr'
     ],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'title'],
+    ADD_TAGS: ['span'],
+    ADD_ATTR: ['style'],
   });
 
   // Calculate if content is long enough to require "Read More" collapse

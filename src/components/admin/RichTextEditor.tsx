@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import { 
   Bold, 
   Italic, 
@@ -47,6 +49,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           levels: [3],
         },
       }),
+      TextStyle,
+      Color,
     ],
     content: content || '',
     onUpdate: ({ editor }) => {
@@ -77,13 +81,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
 
   const applyColor = (colorHex: string) => {
     if (editor) {
-      const selection = editor.state.selection;
-      if (!selection.empty) {
-        const selectedText = editor.state.doc.textBetween(selection.from, selection.to);
-        editor.chain().focus().insertContent(`<span style="color: ${colorHex}">${selectedText}</span>`).run();
-      } else {
-        editor.chain().focus().insertContent(`<span style="color: ${colorHex}">colored text</span>`).run();
-      }
+      (editor.chain().focus() as any).setColor(colorHex).run();
     }
   };
 
