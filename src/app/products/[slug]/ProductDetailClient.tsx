@@ -973,19 +973,21 @@ export default function ProductDetailClient() {
           {/* Action CTA Buttons */}
           <div className="space-y-2.5 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Buy Now (Primary Solid Action) */}
               <button
                 onClick={handleBuyNow}
                 disabled={isAdding}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-600/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-amber-600/10 cursor-pointer will-change-transform"
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-rose-600/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-rose-600/20 cursor-pointer will-change-transform"
               >
                 <Zap size={18} />
                 <span>{locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now'}</span>
               </button>
 
+              {/* Add to Cart (Secondary Outline Action) */}
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding}
-                className={`w-full bg-primary text-white py-3.5 px-4 rounded-xl font-extrabold text-sm hover:bg-primary/90 transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer will-change-transform ${
+                className={`w-full border-2 border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 cursor-pointer will-change-transform ${
                   isCartBouncing ? 'animate-cart-bounce' : ''
                 }`}
               >
@@ -1028,7 +1030,7 @@ export default function ProductDetailClient() {
             </div>
           </div>
 
-          {/* WhatsApp Direct Order Banner Card */}
+          {/* WhatsApp Direct Order Banner Card — Entire Box Clickable */}
           {(() => {
             const productName = product?.title || product?.name || 'N/A';
             const productSku = product?.sku || 'N/A';
@@ -1045,6 +1047,7 @@ export default function ProductDetailClient() {
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 p-3.5 rounded-2xl flex items-center justify-between transition-all duration-300 cursor-pointer group shadow-xs hover:shadow-md min-h-[44px]"
+                title={locale === 'bn' ? 'হোয়াটসঅ্যাপে অর্ডার করুন' : 'Order via WhatsApp'}
               >
                 <div className="flex items-center space-x-3">
                   <div className="relative w-10 h-10 shrink-0 flex items-center justify-center">
@@ -1066,10 +1069,8 @@ export default function ProductDetailClient() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-[10px] sm:text-xs font-black uppercase text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-xl shadow-xs inline-flex items-center space-x-1 shrink-0 whitespace-nowrap transition-colors">
-                    <span className="whitespace-nowrap">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
-                  </span>
+                <div className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+                  <ChevronRight size={20} />
                 </div>
               </a>
             );
