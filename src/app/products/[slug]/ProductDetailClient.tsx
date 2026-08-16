@@ -759,32 +759,36 @@ export default function ProductDetailClient() {
           </div>
         )}
 
-        {/* Right Details Column */}
-        <div className="lg:col-span-7 xl:col-span-7 space-y-5 sm:space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-lg border border-primary/20">
+        {/* Right Details Column - Amazon E-Commerce Typography Specs */}
+        <div className="lg:col-span-7 xl:col-span-7 space-y-4">
+          
+          {/* Top Category & Stock Badge Bar */}
+          <div className="space-y-2 border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="px-2 py-0.5 bg-muted text-muted-foreground font-normal uppercase tracking-wider rounded text-[11px]">
                 {categoryName}
               </span>
               
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                 <Check size={12} />
-                <span>In Stock & Ready to Ship</span>
+                <span>In Stock</span>
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground font-serif leading-tight tracking-tight">
+            {/* Amazon Title Specs: 18px-22px, Regular 400 Weight */}
+            <h1 className="text-lg sm:text-xl md:text-[22px] font-normal text-foreground font-sans leading-snug tracking-normal">
               {product.title}
             </h1>
 
-            <div className="flex items-center justify-between gap-2 pt-1 border-b border-border/60 pb-3 flex-wrap text-xs">
+            {/* Rating, Reviews & SKU Row */}
+            <div className="flex items-center justify-between gap-2 pt-1 flex-wrap text-xs">
               {reviewsList.length > 0 || (product.ratings?.count > 0 && product.ratings?.average > 0) ? (
                 <div className="flex items-center space-x-2">
                   <div className="flex text-amber-400">
                     {[...Array(5)].map((_, i) => (
                       <Star 
                         key={i} 
-                        size={15} 
+                        size={13} 
                         fill={i < Math.round(product.ratings?.average || 5) ? 'currentColor' : 'none'} 
                         className="stroke-amber-400"
                       />
@@ -792,9 +796,9 @@ export default function ProductDetailClient() {
                   </div>
                   <button 
                     onClick={() => setActiveTab('reviews')}
-                    className="font-bold text-foreground hover:text-primary transition underline cursor-pointer"
+                    className="font-normal text-primary hover:underline cursor-pointer"
                   >
-                    {Number(product.ratings?.average || 5).toFixed(1)} ({reviewsList.length || product.ratings?.count} {locale === 'bn' ? 'টি রিভিউ' : 'reviews'})
+                    {Number(product.ratings?.average || 5).toFixed(1)} ({reviewsList.length || product.ratings?.count} reviews)
                   </button>
                 </div>
               ) : (
@@ -803,7 +807,7 @@ export default function ProductDetailClient() {
                     setActiveTab('reviews');
                     setShowReviewForm(true);
                   }}
-                  className="text-xs font-bold text-primary bg-primary/10 hover:bg-primary hover:text-white px-2.5 py-1 rounded-lg transition cursor-pointer border border-primary/20 flex items-center space-x-1"
+                  className="text-xs font-normal text-rose-600 hover:underline flex items-center space-x-1 cursor-pointer"
                 >
                   <Star size={13} className="fill-amber-400 stroke-amber-400" />
                   <span>{locale === 'bn' ? 'প্রথম রিভিউটি আপনি দিন' : 'Be the first to review'}</span>
@@ -811,7 +815,7 @@ export default function ProductDetailClient() {
               )}
 
               <div className="flex items-center space-x-1.5 text-muted-foreground font-mono text-[11px]">
-                <span>SKU: <strong className="text-foreground">{matchedVariant?.sku || product.sku}</strong></span>
+                <span>SKU: <strong className="text-foreground font-normal">{matchedVariant?.sku || product.sku}</strong></span>
                 <button 
                   onClick={() => {
                     navigator.clipboard.writeText(matchedVariant?.sku || product.sku);
@@ -826,48 +830,35 @@ export default function ProductDetailClient() {
             </div>
           </div>
 
-          {/* Pricing Box */}
-          <div className="bg-card border border-border p-4 rounded-2xl shadow-2xs space-y-2">
-            <span className="text-[10px] text-muted-foreground font-extrabold uppercase tracking-wider block">Special Price</span>
-            <div className="flex items-baseline space-x-3 flex-wrap gap-y-1">
+          {/* Amazon Pricing Specs: 24px-28px Regular Price, Line-through Original Price */}
+          <div className="bg-muted/20 dark:bg-card/70 border border-border/70 p-3.5 sm:p-4 rounded-lg space-y-1">
+            <span className="text-[11px] text-muted-foreground font-normal uppercase tracking-wider block">Special Price</span>
+            <div className="flex items-baseline space-x-2.5 flex-wrap gap-y-1">
               {isSale ? (
                 <>
-                  <span className="text-3xl sm:text-4xl font-black text-rose-600 dark:text-rose-400 font-serif">৳{salePrice.toLocaleString()}</span>
-                  <span className="text-sm sm:text-base text-muted-foreground line-through font-semibold">৳{basePrice.toLocaleString()}</span>
-                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                  <span className="text-2xl sm:text-3xl font-normal text-rose-600 dark:text-rose-500 font-sans tracking-tight">৳{salePrice.toLocaleString()}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground line-through font-normal">৳{basePrice.toLocaleString()}</span>
+                  <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 font-normal text-xs px-2 py-0.5 rounded border border-rose-500/20">
                     Save ৳{(basePrice - salePrice).toLocaleString()} ({discountPercent}% OFF)
                   </span>
                 </>
               ) : (
-                <span className="text-3xl sm:text-4xl font-black text-foreground font-serif">৳{price.toLocaleString()}</span>
+                <span className="text-2xl sm:text-3xl font-normal text-foreground font-sans tracking-tight">৳{price.toLocaleString()}</span>
               )}
             </div>
-
-            {isSale && product?.discountEndDate && new Date(product.discountEndDate) > new Date() && (
-              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl flex items-center justify-between text-xs text-amber-700 dark:text-amber-300 mt-2">
-                <div className="flex items-center space-x-2">
-                  <Clock size={15} className="text-amber-500 animate-pulse shrink-0" />
-                  <span className="font-extrabold">{locale === 'bn' ? 'অফারের মেয়াদ শেষ:' : 'Special Deal Ends:'}</span>
-                </div>
-                <span className="font-mono font-black text-amber-600 dark:text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                  {new Date(product.discountEndDate).toLocaleString()}
-                </span>
-              </div>
-            )}
-
-            <p className="text-[10px] text-muted-foreground font-medium pt-0.5">
+            <p className="text-[11px] text-muted-foreground font-normal pt-0.5">
               Includes all taxes. Free 7-day hassle-free replacement.
             </p>
           </div>
 
-          {/* Dynamic Variant Attributes Selection */}
+          {/* Amazon Variant Selector: Crisp High-Contrast Selected Chips */}
           {product.attributes && product.attributes.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 pt-1">
               {product.attributes.map((attr: { name: string; options: string[] }) => (
-                <div key={attr.name} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                      Select {attr.name}: <strong className="text-foreground capitalize">{selectedAttributes[attr.name]}</strong>
+                <div key={attr.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-normal">
+                      {attr.name}: <span className="font-semibold text-foreground capitalize">{selectedAttributes[attr.name] || 'Select'}</span>
                     </span>
                   </div>
 
@@ -878,10 +869,10 @@ export default function ProductDetailClient() {
                         <button
                           key={opt}
                           onClick={() => handleSelectAttributeOption(attr.name, opt)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer shadow-2xs ${
+                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-primary bg-primary text-white shadow-xs scale-105'
-                              : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted'
+                              ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
+                              : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
                           }`}
                         >
                           {opt}
@@ -893,11 +884,11 @@ export default function ProductDetailClient() {
               ))}
             </div>
           ) : (
-            <>
+            <div className="space-y-3 pt-1">
               {product.colors?.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-muted-foreground block">
-                    {locale === 'bn' ? 'রঙ:' : 'Color:'} <strong className="text-foreground capitalize">{selectedColor}</strong>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground font-normal block">
+                    Color: <span className="font-semibold text-foreground capitalize">{selectedColor || 'Select'}</span>
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {product.colors.map((color: string) => {
@@ -906,10 +897,10 @@ export default function ProductDetailClient() {
                         <button
                           key={color}
                           onClick={() => setSelectedColor(color)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 capitalize cursor-pointer shadow-2xs ${
+                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all capitalize cursor-pointer ${
                             isSelected
-                              ? 'border-primary bg-primary text-white shadow-xs scale-105'
-                              : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted'
+                              ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
+                              : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
                           }`}
                         >
                           {color}
@@ -921,9 +912,9 @@ export default function ProductDetailClient() {
               )}
 
               {product.sizes?.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-muted-foreground block">
-                    {locale === 'bn' ? 'সাইজ / দৈর্ঘ্য:' : 'Size / Length:'} <strong className="text-foreground">{selectedSize}</strong>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground font-normal block">
+                    Size / Length: <span className="font-semibold text-foreground">{selectedSize || 'Select'}</span>
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size: string) => {
@@ -932,10 +923,10 @@ export default function ProductDetailClient() {
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer shadow-2xs ${
+                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-primary bg-primary text-white shadow-xs scale-105'
-                              : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted'
+                              ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
+                              : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
                           }`}
                         >
                           {size}
@@ -945,49 +936,47 @@ export default function ProductDetailClient() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
-          {/* Quantity Selector */}
-          <div className="space-y-2 pt-1">
-            <span className="text-xs font-black uppercase tracking-wider text-muted-foreground block">
-              {t('cart.quantity')}
-            </span>
-            <div className="flex items-center border border-border rounded-xl bg-card p-1 w-36 justify-between shadow-2xs">
+          {/* Amazon Quantity Selector */}
+          <div className="flex items-center space-x-3 pt-2">
+            <span className="text-xs font-normal text-muted-foreground">Quantity:</span>
+            <div className="flex items-center border border-border rounded bg-card">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
+                className="px-2.5 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
               >
-                <Minus size={15} />
+                <Minus size={13} />
               </button>
-              <span className="w-8 text-center text-sm font-black text-foreground font-mono">{quantity}</span>
+              <span className="px-3 py-1 text-xs font-normal text-foreground font-mono border-x border-border">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
+                className="px-2.5 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
               >
-                <Plus size={15} />
+                <Plus size={13} />
               </button>
             </div>
           </div>
 
-          {/* Action CTA Buttons */}
+          {/* Distinct Action CTA Buttons */}
           <div className="space-y-2.5 pt-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Buy Now (Primary Solid Action) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Buy Now (Primary Solid Red Action) */}
               <button
                 onClick={handleBuyNow}
                 disabled={isAdding}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:shadow-rose-600/25 active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 shadow-md shadow-rose-600/20 cursor-pointer will-change-transform"
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.97] flex items-center justify-center space-x-2 shadow-md shadow-rose-600/20 cursor-pointer"
               >
                 <Zap size={18} />
                 <span>{locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now'}</span>
               </button>
 
-              {/* Add to Cart (Secondary Outline Action) */}
+              {/* Add to Cart (Secondary Distinct Outline Action) */}
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding}
-                className={`w-full border-2 border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card py-3.5 px-4 rounded-xl font-extrabold text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.96] active:duration-150 flex items-center justify-center space-x-2 cursor-pointer will-change-transform ${
+                className={`w-full border-2 border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.97] flex items-center justify-center space-x-2 cursor-pointer ${
                   isCartBouncing ? 'animate-cart-bounce' : ''
                 }`}
               >
@@ -1005,26 +994,26 @@ export default function ProductDetailClient() {
               </button>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 pt-1">
               <button
                 onClick={handleWishlistToggle}
                 disabled={isAddingToWishlist || isRemovingFromWishlist}
-                className={`flex-1 py-2.5 px-4 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-2 cursor-pointer ${
+                className={`flex-1 py-2 px-3 rounded-lg border text-xs font-normal transition flex items-center justify-center space-x-1.5 cursor-pointer ${
                   isInWishlist 
                     ? 'border-rose-300 bg-rose-500/10 text-rose-600 dark:text-rose-400' 
                     : 'border-border bg-card text-foreground hover:bg-muted'
                 }`}
               >
-                <Heart size={15} fill={isInWishlist ? "currentColor" : "none"} className={isInWishlist ? "stroke-rose-600" : "stroke-current"} />
+                <Heart size={14} fill={isInWishlist ? "currentColor" : "none"} className={isInWishlist ? "stroke-rose-600" : "stroke-current"} />
                 <span>{isInWishlist ? 'Saved in Wishlist' : 'Add to Wishlist'}</span>
               </button>
 
               <button
                 onClick={handleShareProduct}
-                className="py-2.5 px-4 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                className="py-2 px-3 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-normal transition flex items-center space-x-1 cursor-pointer"
                 title="Share Product Link"
               >
-                <Share2 size={15} />
+                <Share2 size={14} />
                 <span>Share</span>
               </button>
             </div>
@@ -1156,7 +1145,7 @@ export default function ProductDetailClient() {
 
         {activeTab === 'description' && (
           <div className="space-y-4 max-w-4xl animate-in fade-in">
-            <h3 className="text-lg font-bold text-foreground font-serif">Product Description & Heritage</h3>
+            <h3 className="text-base font-bold text-foreground font-sans">Product Description & Details</h3>
             <ProductDescription 
               html={product.description || (locale === 'bn' ? '<p>এই পণ্যের জন্য বিস্তারিত বিবরণ উপলব্ধ রয়েছে।</p>' : '<p>Premium quality Bangladeshi lifestyle product crafted with precision and care.</p>')} 
             />
@@ -1165,14 +1154,14 @@ export default function ProductDetailClient() {
 
         {activeTab === 'specifications' && (
           <div className="space-y-4 max-w-3xl animate-in fade-in">
-            <h3 className="text-lg font-bold text-foreground font-serif">Product Specifications</h3>
+            <h3 className="text-base font-bold text-foreground font-sans">Product Specifications</h3>
             <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border text-xs">
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Category</span><span className="w-2/3 font-bold text-foreground">{categoryName}</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Product SKU</span><span className="w-2/3 font-mono font-bold text-primary">{matchedVariant?.sku || product.sku}</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Available Colors</span><span className="w-2/3 font-medium text-foreground">{product.colors?.join(', ') || selectedColor || 'Standard'}</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Size / Length</span><span className="w-2/3 font-medium text-foreground">{product.sizes?.join(', ') || selectedSize || 'Standard Size'}</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Care Instructions</span><span className="w-2/3 font-medium text-foreground">Dry Clean Recommended / Gentle Hand Wash</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-extrabold uppercase">Origin</span><span className="w-2/3 font-medium text-foreground">Handcrafted in Bangladesh</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Category</span><span className="w-2/3 font-semibold text-foreground">{categoryName}</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Product SKU</span><span className="w-2/3 font-mono font-semibold text-primary">{matchedVariant?.sku || product.sku}</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Available Colors</span><span className="w-2/3 font-medium text-foreground">{product.colors?.join(', ') || selectedColor || 'Standard'}</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Size / Length</span><span className="w-2/3 font-medium text-foreground">{product.sizes?.join(', ') || selectedSize || 'Standard Size'}</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Care Instructions</span><span className="w-2/3 font-medium text-foreground">Dry Clean Recommended / Gentle Hand Wash</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Origin</span><span className="w-2/3 font-medium text-foreground">Handcrafted in Bangladesh</span></div>
             </div>
           </div>
         )}
@@ -1181,7 +1170,7 @@ export default function ProductDetailClient() {
           <div className="space-y-8 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-foreground font-serif">{t('product.reviews')}</h3>
+                <h3 className="text-base font-bold text-foreground font-sans">{t('product.reviews')}</h3>
                 <p className="text-xs text-muted-foreground">Read verified customer reviews or share your feedback.</p>
               </div>
 

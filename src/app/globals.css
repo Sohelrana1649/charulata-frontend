@@ -758,25 +758,36 @@ table thead td {
 /* Product Description Prose Typography & Custom Bullet Markers */
 .product-description-prose {
   color: var(--foreground);
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+}
+
+.product-description-prose span,
+.product-description-prose p,
+.product-description-prose li,
+.product-description-prose div {
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
 }
 
 .product-description-prose ul {
   list-style-type: disc !important;
   padding-left: 1.25rem !important;
-  margin-top: 0.5rem !important;
-  margin-bottom: 0.75rem !important;
+  margin-top: 0.4rem !important;
+  margin-bottom: 0.6rem !important;
 }
 
 .product-description-prose ol {
   list-style-type: decimal !important;
   padding-left: 1.25rem !important;
-  margin-top: 0.5rem !important;
-  margin-bottom: 0.75rem !important;
+  margin-top: 0.4rem !important;
+  margin-bottom: 0.6rem !important;
 }
 
 .product-description-prose li {
-  margin-top: 0.25rem !important;
-  margin-bottom: 0.25rem !important;
+  margin-top: 0.2rem !important;
+  margin-bottom: 0.2rem !important;
+  font-size: 0.875rem !important;
 }
 
 .product-description-prose ul li::marker {
@@ -785,27 +796,35 @@ table thead td {
 
 .product-description-prose ol li::marker {
   color: var(--primary, #E11D48) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 
-.product-description-prose h3 {
-  font-family: serif;
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--foreground);
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.35;
+.product-description-prose h1,
+.product-description-prose h1 *,
+.product-description-prose h2,
+.product-description-prose h2 *,
+.product-description-prose h3,
+.product-description-prose h3 *,
+.product-description-prose h4,
+.product-description-prose h4 * {
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+  line-height: 1.4 !important;
 }
 
-.product-description-prose p {
-  margin-top: 0.4rem;
-  margin-bottom: 0.4rem;
-}
+.product-description-prose h1, .product-description-prose h1 * { font-size: 1.05rem !important; }
+.product-description-prose h2, .product-description-prose h2 * { font-size: 0.975rem !important; }
+.product-description-prose h3, .product-description-prose h3 * { font-size: 0.925rem !important; }
+.product-description-prose h4, .product-description-prose h4 * { font-size: 0.875rem !important; }
 
 .product-description-prose strong,
-.product-description-prose b {
-  font-weight: 800;
-  color: var(--foreground);
+.product-description-prose strong *,
+.product-description-prose b,
+.product-description-prose b * {
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
 }
 
