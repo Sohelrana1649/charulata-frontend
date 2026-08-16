@@ -1135,7 +1135,7 @@ export default function CheckoutForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="pb-20 md:pb-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* Left Column: ALL-IN-ONE Master Shipping & Instructions Card */}
           <div className="lg:col-span-7 flex flex-col">
@@ -1669,16 +1669,16 @@ export default function CheckoutForm() {
                 </div>
               )}
 
-              {/* Embedded Confirm Order Button */}
-              <div className="pt-1.5">
+              {/* Embedded Confirm Order Button (Desktop Only to prevent duplicate button on mobile) */}
+              <div className="pt-1.5 hidden md:block">
                 <button
                   type="submit"
                   disabled={isPlacing || isPlacingGuest || !items.length}
-                  className="w-full bg-[var(--brand)] hover:bg-[#b0842e] text-white py-3 px-4 rounded-xl font-extrabold transition-all shadow-md shadow-[var(--brand)]/20 disabled:opacity-50 cursor-pointer text-sm sm:text-base flex items-center justify-center space-x-2 active:scale-[0.99] leading-snug"
+                  className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-4 rounded-xl font-extrabold transition-all shadow-md shadow-rose-600/20 disabled:opacity-50 cursor-pointer text-sm sm:text-base flex items-center justify-center space-x-2 active:scale-[0.99] leading-snug"
                 >
                   {isPlacing || isPlacingGuest ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       <span>{t('checkout.placingOrder')}</span>
                     </>
                   ) : (
@@ -1695,20 +1695,20 @@ export default function CheckoutForm() {
         </div>
 
         {/* Mobile Sticky Bottom CTA Bar for 1-tap Order Placement */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-3 px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.15)] flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
-          <div className="min-w-0">
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-3 px-4 shadow-[0_-4px_25px_rgba(0,0,0,0.18)] flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+          <div className="min-w-0 flex flex-col justify-center">
+            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider leading-none">
               {requireAdvancePayment && activeAdvanceAmount > 0 ? (locale === 'bn' ? 'ক্যাশ দেবেন (COD)' : 'Pay on Delivery') : (locale === 'bn' ? 'মোট বিল' : 'Total Payable')}
-            </p>
-            <p className="text-sm font-black text-primary font-mono truncate">
+            </span>
+            <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight leading-tight mt-0.5">
               ৳{(requireAdvancePayment && activeAdvanceAmount > 0 ? Math.max(0, totalAmount - activeAdvanceAmount) : totalAmount).toLocaleString()}
-            </p>
+            </span>
           </div>
 
           <button
             type="submit"
             disabled={isPlacing || isPlacingGuest || !items.length}
-            className="bg-[var(--brand)] hover:bg-[#b0842e] text-white py-2.5 px-4 rounded-xl font-black transition-all shadow-md text-xs sm:text-sm flex items-center justify-center space-x-1.5 disabled:opacity-50 cursor-pointer shrink-0 active:scale-95"
+            className="bg-rose-600 hover:bg-rose-700 text-white py-3 px-5 sm:px-6 rounded-2xl font-black transition-all shadow-lg shadow-rose-600/30 text-xs sm:text-sm flex items-center justify-center space-x-1.5 disabled:opacity-50 cursor-pointer shrink-0 active:scale-95 border border-rose-500/20"
           >
             {isPlacing || isPlacingGuest ? (
               <>
