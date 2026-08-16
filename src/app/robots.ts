@@ -15,11 +15,33 @@ export default function robots(): MetadataRoute.Robots {
           '/checkout',
           '/cart',
           '/profile',
+          '/orders',
           '/reset-password',
+          '/forgot-password',
           '/verify-otp',
+          '/login',
+          '/register',
         ],
+      },
+      // Allow specific crawlers full access to public product/category pages
+      {
+        userAgent: 'Googlebot',
+        allow: [
+          '/products/',
+          '/category/',
+          '/search',
+          '/about',
+          '/contact',
+          '/faq',
+        ],
+      },
+      {
+        userAgent: 'Googlebot-Image',
+        allow: '/',
+        disallow: ['/admin/', '/api/'],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }

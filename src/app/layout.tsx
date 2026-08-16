@@ -138,6 +138,64 @@ export default function RootLayout({
     ],
   };
 
+  // WebSite schema with SearchAction — enables Google Sitelinks Searchbox
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Charulata Lifestyle',
+    alternateName: 'চারুলতা লাইফস্টাইল',
+    url: SITE_URL,
+    inLanguage: ['bn-BD', 'en-US'],
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
+  // OnlineStore schema — Google Merchant / E-commerce rich results
+  const storeJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'OnlineStore',
+    name: 'Charulata Lifestyle',
+    alternateName: 'চারুলতা লাইফস্টাইল',
+    url: SITE_URL,
+    logo: `${SITE_URL}/logo.png`,
+    image: `${SITE_URL}/logo.png`,
+    description: 'বাংলাদেশের প্রিমিয়াম ফ্যাশন ও লাইফস্টাইল ব্র্যান্ড। Shop sarees, panjabi, sports bra, attar, perfume, jewelry & lifestyle products.',
+    telephone: '+8801620556299',
+    email: 'charulatalifestyle@gmail.com',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Shofi Complex, 1/A Outer Circular Rd',
+      addressLocality: 'Moghbazar, Dhaka',
+      addressRegion: 'Dhaka',
+      postalCode: '1217',
+      addressCountry: 'BD',
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 23.7465,
+      longitude: 90.4040,
+    },
+    priceRange: '৳৳',
+    currenciesAccepted: 'BDT',
+    paymentAccepted: 'Cash, bKash, Nagad, Card',
+    openingHoursSpecification: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday', 'Sunday'],
+      opens: '10:00',
+      closes: '21:00',
+    },
+    sameAs: [
+      'https://www.facebook.com/charulatalifestyle',
+      'https://www.instagram.com/charulatalifestyle',
+    ],
+  };
+
   return (
     <html
       lang="en"
@@ -149,6 +207,8 @@ export default function RootLayout({
         <link rel="icon" href="/logo.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <JsonLd data={organizationJsonLd} />
+        <JsonLd data={websiteJsonLd} />
+        <JsonLd data={storeJsonLd} />
       </head>
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans" suppressHydrationWarning>
         <Providers>

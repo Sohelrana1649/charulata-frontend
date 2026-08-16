@@ -55,8 +55,8 @@ export default function ContactPage() {
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
             {locale === 'bn' 
-              ? 'আমাদের ফ্ল্যাগশিপ শোরুমে আসুন অথবা নিচে বার্তা পাঠান। আমাদের টিম সার্বক্ষণিক সহায়তায় প্রস্তুত।'
-              : 'Visit our flagship Gulshan outlet or drop us a note below. Our customer care team is always here to assist you.'
+              ? 'আমাদের মগবাজার শোরুম ও হেড অফিসে আসুন অথবা নিচে বার্তা পাঠান। আমাদের টিম সার্বক্ষণিক সহায়তায় প্রস্তুত।'
+              : 'Visit our Moghbazar showroom & head office or drop us a note below. Our customer care team is always here to assist you.'
             }
           </p>
         </div>
@@ -67,17 +67,17 @@ export default function ContactPage() {
           {/* Flagship Info & Map Column */}
           <div className="space-y-6">
             <div>
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">{t('home.locateUs') || 'ফ্ল্যাগশিপ শোরুম'}</span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground font-serif mt-1">{t('home.gulshanFlagship') || 'গুলশান আউটলেট'}</h2>
+              <span className="text-xs font-bold text-primary uppercase tracking-wider">{locale === 'bn' ? 'আমাদের অবস্থান' : 'Our Location'}</span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground font-serif mt-1">{locale === 'bn' ? 'শোরুম ও হেড অফিস' : 'Showroom & Head Office'}</h2>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {t('home.flagshipExploreDesc') || 'হাতে বোনা ঐতিহ্যবাহী তাঁতবস্ত্র, প্রিমিয়াম জামদানি ও জুয়েলারির এক্সক্লুসিভ কালেকশন।' }
+                {locale === 'bn' ? 'প্রিমিয়াম ফ্যাশন ও লাইফস্টাইল প্রোডাক্টের এক্সক্লুসিভ কালেকশন দেখতে আমাদের শোরুমে আসুন।' : 'Visit our showroom to explore our exclusive collection of premium fashion & lifestyle products.'}
               </p>
             </div>
 
             {/* Embedded Google Map */}
             <div className="relative w-full h-56 sm:h-64 rounded-2xl overflow-hidden border border-border bg-card shadow-sm">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d29072.393936061097!2d88.58551768399998!3d24.379590351936542!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39fbefa96a38d031%3A0x10f93a950ed6f410!2sRajshahi!5e0!3m2!1sen!2sbd!4v1785419756667!5m2!1sen!2sbd"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3651.902!2d90.4040!3d23.7465!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjPCsDQ0JzQ3LjQiTiA5MMKwMjQnMTQuNCJF!5e0!3m2!1sen!2sbd"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -96,8 +96,13 @@ export default function ContactPage() {
                   <MapPin size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-foreground text-xs sm:text-sm leading-snug">{t('home.mainShowroom') || (locale === 'bn' ? 'মূল শোরুম ও হেড অফিস' : 'Main Showroom & Office')}</p>
-                  <p className="mt-0.5 text-muted-foreground text-xs sm:text-sm font-semibold leading-snug">{t('home.showroomAddress') || (locale === 'bn' ? 'শফী কমপ্লেক্স, ১/এ আউটার সার্কুলার রোড, মগবাজার, ঢাকা' : 'Shofi Complex, 1/A Outer Circular Rd, Moghbazar, Dhaka')}</p>
+                  <p className="font-extrabold text-foreground text-xs sm:text-sm leading-snug">{locale === 'bn' ? 'মূল শোরুম ও হেড অফিস' : 'Main Showroom & Head Office'}</p>
+                  <p className="mt-0.5 text-muted-foreground text-xs sm:text-sm font-semibold leading-snug">
+                    {locale === 'bn' 
+                      ? 'শফী কমপ্লেক্স, ১/এ আউটার সার্কুলার রোড, মগবাজার, ঢাকা'
+                      : 'Shofi Complex, 1/A Outer Circular Rd, Moghbazar, Dhaka'
+                    }
+                  </p>
                 </div>
               </div>
 

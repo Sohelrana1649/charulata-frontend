@@ -59,6 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
+      url: `${SITE_URL}/faq`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
       url: `${SITE_URL}/terms`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
@@ -76,33 +82,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
-    {
-      url: `${SITE_URL}/faq`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
   ];
 
-  // Dynamic Product routes
+  // Dynamic Product routes with image sitemap entries for Google Image Search
   const productRoutes: MetadataRoute.Sitemap = products
     .filter((product: any) => product?.slug)
-    .map((product: any) => ({
-      url: `${SITE_URL}/products/${product.slug}`,
-      lastModified: product.updatedAt ? new Date(product.updatedAt) : new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    }));
+    .map((product: any) => {
+      const entry: any = {
+        url: `${SITE_URL}/products/${product.slug}`,
+        lastModified: product.updatedAt ? new Date(product.updatedAt) : new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      };
+
+      // Add image entries for Google Image Search indexing
+      if (product.productImages && product.productImages.length > 0) {
+        entry.images = product.productImages.map((imgUrl: string) => imgUrl);
+      }
+
+      return entry;
+    });
 
   // Dynamic Category routes
   const categoryRoutes: MetadataRoute.Sitemap = categories
     .filter((category: any) => category?.slug)
-    .map((category: any) => ({
-      url: `${SITE_URL}/category/${category.slug}`,
-      lastModified: category.updatedAt ? new Date(category.updatedAt) : new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    }));
+    .map((category: any) => {
+      const entry: any = {
+        url: `${SITE_URL}/category/${category.slug}`,
+        lastModified: category.updatedAt ? new Date(category.updatedAt) : new Date(),
+        changeFrequency: 'daily',
+        priority: 0.9,
+      };
+
+      // Add category banner image
+      if (category.image) {
+        entry.images = [category.image];
+      }
+
+      return entry;
+    });
 
   return [...staticRoutes, ...categoryRoutes, ...productRoutes];
 }

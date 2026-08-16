@@ -269,8 +269,13 @@ export default function Footer() {
                   <MapPin size={16} />
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col justify-center">
-                  <span className="block text-zinc-100 text-xs sm:text-sm font-extrabold leading-snug">{t('footer.flagshipOutlet') || 'ফ্ল্যাগশিপ আউটলেট'}</span>
-                  <span className="text-zinc-300 text-xs sm:text-sm mt-0.5 block leading-snug font-medium">{t('footer.flagshipAddress') || 'গুলশান ফ্ল্যাগশিপ, ঢাকা, বাংলাদেশ'}</span>
+                  <span className="block text-zinc-100 text-xs sm:text-sm font-extrabold leading-snug">{locale === 'bn' ? 'শোরুম ও হেড অফিস' : 'Showroom & Head Office'}</span>
+                  <span className="text-zinc-300 text-xs sm:text-sm mt-0.5 block leading-snug font-medium">
+                    {locale === 'bn' 
+                      ? 'শফী কমপ্লেক্স, ১/এ আউটার সার্কুলার রোড, মগবাজার, ঢাকা' 
+                      : 'Shofi Complex, 1/A Outer Circular Rd, Moghbazar, Dhaka'
+                    }
+                  </span>
                 </div>
               </div>
               

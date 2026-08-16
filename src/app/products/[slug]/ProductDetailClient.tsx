@@ -597,7 +597,7 @@ export default function ProductDetailClient() {
                               : 'border-border hover:border-primary/50 opacity-85 hover:opacity-100'
                           }`}
                         >
-                          <Image src={img} alt={`${product.title} - Photo ${idx + 1}`} fill sizes="120px" className="object-cover" />
+                          <Image src={img} alt={`${product.title} - Image ${idx + 1} | চারুলতা লাইফস্টাইল`} fill sizes="120px" className="object-cover" />
                           <span className="absolute bottom-1.5 right-1.5 bg-black/75 text-white font-mono text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
                             #{idx + 1}
                           </span>
@@ -710,7 +710,7 @@ export default function ProductDetailClient() {
                         isActive ? 'border-primary ring-2 ring-primary scale-105' : 'border-white/20 opacity-60 hover:opacity-100'
                       }`}
                     >
-                      <Image src={img} alt={`Angle ${idx + 1}`} fill className="object-cover" />
+                      <Image src={img} alt={`${product.title} - View ${idx + 1} | Charulata Lifestyle`} fill sizes="80px" className="object-cover" />
                     </button>
                   );
                 })}

@@ -18,6 +18,20 @@ async function fetchProductBySlug(slug: string) {
   }
 }
 
+async function fetchProductReviews(productId: string) {
+  try {
+    const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=5&sort=-createdAt`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const reviews = json?.data?.reviews || json?.reviews || json?.data || [];
+    return Array.isArray(reviews) ? reviews : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -48,12 +62,11 @@ export async function generateMetadata({
       product.title,
       categoryName,
       'charulata lifestyle',
+      'চারুলতা লাইফস্টাইল',
       'bangladesh fashion',
       'online shopping bd',
-      'saree',
-      'panjabi',
-      'attar',
-      'jewelry',
+      'cash on delivery',
+      ...(product.tags || []),
     ],
     alternates: {
       canonical: `${SITE_URL}/products/${product.slug}`,
@@ -68,9 +81,11 @@ export async function generateMetadata({
       url: `${SITE_URL}/products/${product.slug}`,
       siteName: 'Charulata Lifestyle',
       locale: 'bn_BD',
-      type: 'article',
+      type: 'website',
       images: images.map((imgUrl: string) => ({
         url: imgUrl,
+        width: 1200,
+        height: 1200,
         alt: `${product.title} - চারুলতা লাইফস্টাইল`,
       })),
     },
@@ -99,18 +114,24 @@ export default async function ProductDetailPageServer({
   const categoryName = product?.category?.name || 'Collection';
   const categorySlug = product?.category?.slug || 'all';
   const effectivePrice = product.salePrice || product.price;
+  const plainDesc = product.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
 
-  const productJsonLd = {
+  // Fetch latest reviews server-side for JSON-LD schema
+  const reviews = product._id ? await fetchProductReviews(product._id) : [];
+
+  const productJsonLd: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.title,
     image: product.productImages || [],
-    description: product.description,
+    description: plainDesc || product.title,
     sku: product.sku,
+    mpn: product.sku,
     brand: {
       '@type': 'Brand',
       name: 'Charulata Lifestyle',
     },
+    category: categoryName,
     offers: {
       '@type': 'Offer',
       url: `${SITE_URL}/products/${product.slug}`,
@@ -120,20 +141,90 @@ export default async function ProductDetailPageServer({
         ? new Date(product.discountEndDate).toISOString().split('T')[0]
         : '2028-12-31',
       itemCondition: 'https://schema.org/NewCondition',
-      availability: product.stockQuantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      availability: product.stockQuantity > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
       seller: {
         '@type': 'Organization',
         name: 'Charulata Lifestyle',
       },
-    },
-    ...(product.ratings?.count > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: product.ratings.average,
-        reviewCount: product.ratings.count,
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: '60',
+          currency: 'BDT',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'BD',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 0,
+            maxValue: 1,
+            unitCode: 'DAY',
+          },
+          transitTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 1,
+            maxValue: 5,
+            unitCode: 'DAY',
+          },
+        },
       },
-    }),
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'BD',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays: 3,
+        returnMethod: 'https://schema.org/ReturnByMail',
+        returnFees: 'https://schema.org/FreeReturn',
+      },
+    },
   };
+
+  // Add highPrice for sale items
+  if (product.salePrice && product.price > product.salePrice) {
+    productJsonLd.offers.highPrice = product.price;
+  }
+
+  // Add AggregateRating if product has reviews
+  if (product.ratings?.count > 0) {
+    productJsonLd.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: product.ratings.average,
+      reviewCount: product.ratings.count,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  // Add individual Review items for rich snippet (up to 5 latest)
+  if (reviews.length > 0) {
+    productJsonLd.review = reviews
+      .filter((r: any) => r.comment && r.rating)
+      .slice(0, 5)
+      .map((r: any) => ({
+        '@type': 'Review',
+        reviewRating: {
+          '@type': 'Rating',
+          ratingValue: r.rating,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        author: {
+          '@type': 'Person',
+          name: r.customer?.name || r.name || 'Customer',
+        },
+        reviewBody: r.comment,
+        datePublished: r.createdAt
+          ? new Date(r.createdAt).toISOString().split('T')[0]
+          : undefined,
+      }));
+  }
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
