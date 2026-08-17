@@ -39,26 +39,8 @@ export default function Footer() {
   const isAdminPage = pathname?.startsWith('/admin');
   const isCheckoutPage = pathname === '/checkout';
 
-  // Do not render footer on the admin dashboard
-  if (isAdminPage) return null;
-
-  if (isCheckoutPage) {
-    return (
-      <footer className="bg-zinc-950 text-zinc-400 border-t border-zinc-800 py-6 text-center text-xs">
-        <div className="mx-auto max-w-[1536px] px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} Charulata Lifestyle. All Rights Reserved.</p>
-          <div className="flex items-center space-x-4 text-zinc-400 font-medium">
-            <span className="flex items-center space-x-1">
-              <Lock size={13} className="text-emerald-400 inline" />
-              <span>100% Secure SSL Checkout</span>
-            </span>
-            <span>•</span>
-            <span>Hotline: 01620-556299</span>
-          </div>
-        </div>
-      </footer>
-    );
-  }
+  // Do not render footer on admin dashboard or checkout page
+  if (isAdminPage || isCheckoutPage) return null;
 
   return (
     <footer className="relative bg-zinc-950 text-zinc-300 border-t border-zinc-800 overflow-hidden">

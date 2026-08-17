@@ -775,8 +775,8 @@ export default function ProductDetailClient() {
               </span>
             </div>
 
-            {/* Amazon Title Specs: 18px-22px, Regular 400 Weight */}
-            <h1 className="text-lg sm:text-xl md:text-[22px] font-normal text-foreground font-sans leading-snug tracking-normal">
+            {/* Product Title */}
+            <h1 className="text-lg sm:text-xl md:text-[22px] font-bold text-foreground font-sans leading-snug tracking-normal pt-1">
               {product.title}
             </h1>
 
@@ -939,22 +939,25 @@ export default function ProductDetailClient() {
             </div>
           )}
 
-          {/* Amazon Quantity Selector */}
+          {/* Quantity Selector */}
           <div className="flex items-center space-x-3 pt-2">
-            <span className="text-xs font-normal text-muted-foreground">Quantity:</span>
-            <div className="flex items-center border border-border rounded bg-card">
+            <span className="text-xs font-bold text-foreground">Quantity:</span>
+            <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-2.5 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                disabled={quantity <= 1}
+                className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                title="Decrease Quantity"
               >
-                <Minus size={13} />
+                <Minus size={14} strokeWidth={2.5} />
               </button>
-              <span className="px-3 py-1 text-xs font-normal text-foreground font-mono border-x border-border">{quantity}</span>
+              <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="px-2.5 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer shadow-2xs"
+                title="Increase Quantity"
               >
-                <Plus size={13} />
+                <Plus size={14} strokeWidth={2.5} />
               </button>
             </div>
           </div>

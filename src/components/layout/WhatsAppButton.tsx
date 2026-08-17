@@ -9,8 +9,18 @@ export default function WhatsAppButton() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
 
-  // Hide WhatsApp floating widget completely on Admin Dashboard routes or if user closed it
-  if (!isVisible || pathname?.startsWith('/admin')) {
+  if (!pathname || !isVisible) {
+    return null;
+  }
+
+  // Show WhatsApp floating widget ONLY on Landing page ('/'), Product Details page ('/products/...'), and Cart page ('/cart')
+  const isLandingPage = pathname === '/';
+  const isProductDetailsPage = pathname.startsWith('/products/');
+  const isCartPage = pathname === '/cart';
+
+  const shouldShow = isLandingPage || isProductDetailsPage || isCartPage;
+
+  if (!shouldShow) {
     return null;
   }
 

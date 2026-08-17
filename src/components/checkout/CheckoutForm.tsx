@@ -1002,13 +1002,12 @@ export default function CheckoutForm() {
                         placeholder={locale === 'bn' ? 'আবার পাসওয়ার্ড লিখুন' : 'Re-enter your password'}
                         value={upgradeConfirmPassword}
                         onChange={(e) => setUpgradeConfirmPassword(e.target.value)}
-                        className={`w-full pl-8 pr-9 py-2 text-xs rounded-lg border bg-card focus:outline-none font-medium text-foreground transition ${
-                          upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword
+                        className={`w-full pl-8 pr-9 py-2 text-xs rounded-lg border bg-card focus:outline-none font-medium text-foreground transition ${upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword
                             ? 'border-rose-500 focus:border-rose-500'
                             : upgradeConfirmPassword && upgradePassword === upgradeConfirmPassword
                               ? 'border-emerald-500 focus:border-emerald-500'
                               : 'border-border focus:border-primary'
-                        }`}
+                          }`}
                       />
                       <button
                         type="button"
@@ -1694,9 +1693,9 @@ export default function CheckoutForm() {
           </div>
         </div>
 
-        {/* Mobile Sticky Bottom CTA Bar for 1-tap Order Placement */}
+        {/* Amazon/Daraz Style Mobile Sticky Bottom CTA Bar for Instant 1-Tap Order Placement */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-3 px-4 shadow-[0_-4px_25px_rgba(0,0,0,0.18)] flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
-          <div className="min-w-0 flex flex-col justify-center">
+          <div className="min-w-0 flex flex-col justify-center pl-1">
             <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider leading-none">
               {requireAdvancePayment && activeAdvanceAmount > 0 ? (locale === 'bn' ? 'ক্যাশ দেবেন (COD)' : 'Pay on Delivery') : (locale === 'bn' ? 'মোট বিল' : 'Total Payable')}
             </span>
@@ -1708,7 +1707,7 @@ export default function CheckoutForm() {
           <button
             type="submit"
             disabled={isPlacing || isPlacingGuest || !items.length}
-            className="bg-rose-600 hover:bg-rose-700 text-white py-3 px-5 sm:px-6 rounded-2xl font-black transition-all shadow-lg shadow-rose-600/30 text-xs sm:text-sm flex items-center justify-center space-x-1.5 disabled:opacity-50 cursor-pointer shrink-0 active:scale-95 border border-rose-500/20"
+            className="bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-5 sm:px-6 rounded-xl font-black transition-all shadow-lg shadow-rose-600/30 text-xs sm:text-sm flex items-center justify-center space-x-1.5 disabled:opacity-50 cursor-pointer shrink-0 active:scale-95 border border-rose-500/20"
           >
             {isPlacing || isPlacingGuest ? (
               <>
@@ -1717,7 +1716,7 @@ export default function CheckoutForm() {
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-4.5 h-4.5 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{t('checkout.confirmOrder')}</span>
               </>
             )}

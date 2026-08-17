@@ -341,23 +341,23 @@ export default function CartPage() {
                 <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-8 pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0">
                   
                   {/* Quantity selector pill */}
-                  <div className="flex items-center border border-border rounded-xl bg-muted/30 p-1 shrink-0">
+                  <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs shrink-0">
                     <button
                       onClick={() => handleQuantityChange(item._id, item.quantity, -1)}
                       disabled={item.quantity <= 1 || isUpdating}
-                      className="h-7 w-7 rounded-lg text-foreground hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground flex items-center justify-center transition active:scale-95 cursor-pointer"
-                      title="Decrease Quantity"
+                      className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                      title={locale === 'bn' ? 'পরিমাণ কমান' : 'Decrease Quantity'}
                     >
-                      <Minus size={13} />
+                      <Minus size={14} strokeWidth={2.5} />
                     </button>
-                    <span className="w-8 text-center text-xs font-black text-foreground font-mono">{item.quantity}</span>
+                    <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{item.quantity}</span>
                     <button
                       onClick={() => handleQuantityChange(item._id, item.quantity, 1)}
                       disabled={isUpdating}
-                      className="h-7 w-7 rounded-lg text-foreground hover:bg-primary hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer"
-                      title="Increase Quantity"
+                      className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs"
+                      title={locale === 'bn' ? 'পরিমাণ বাড়ান' : 'Increase Quantity'}
                     >
-                      <Plus size={13} />
+                      <Plus size={14} strokeWidth={2.5} />
                     </button>
                   </div>
 
