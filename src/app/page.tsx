@@ -610,19 +610,19 @@ export default function HomePage() {
                 );
               })}
 
-              {/* Navigation Arrows (Positioned safely on outer edges with z-30) */}
+              {/* Navigation Arrows (Hidden on Mobile, Visible on Desktop Hover) */}
               {banners.length > 1 && (
                 <>
                   <button
                     onClick={handlePrevSlide}
-                    className="absolute left-2.5 sm:left-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute left-2.5 sm:left-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100"
                     aria-label="Previous banner"
                   >
                     <ChevronLeft size={18} className="stroke-[2.5]" />
                   </button>
                   <button
                     onClick={handleNextSlide}
-                    className="absolute right-2.5 sm:right-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute right-2.5 sm:right-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100"
                     aria-label="Next banner"
                   >
                     <ChevronRight size={18} className="stroke-[2.5]" />
