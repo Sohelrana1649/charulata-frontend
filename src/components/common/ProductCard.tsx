@@ -193,24 +193,47 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             </Link>
           </h3>
           
-          {/* Dynamic DB Rating or New Arrival Badge */}
-          <div className="flex items-center space-x-1.5 pt-0.5 min-h-[22px]">
+          {/* Dynamic DB Rating Bar (Shows filled stars only for rated products, empty stars for unrated) */}
+          <div className="flex items-center space-x-1.5 pt-0.5 min-h-[24px]">
             {product.ratings?.count > 0 && product.ratings?.average > 0 ? (
               <>
-                <div className="flex text-amber-400">
-                  <Star size={13} fill="currentColor" className="stroke-amber-400" />
+                <div className="flex items-center space-x-[1.5px]">
+                  {[1, 2, 3, 4, 5].map((starIdx) => {
+                    const avgRating = Number(product.ratings.average);
+                    const isStarFilled = starIdx <= Math.round(avgRating);
+                    return (
+                      <Star
+                        key={starIdx}
+                        size={14}
+                        fill={isStarFilled ? 'currentColor' : 'none'}
+                        className={isStarFilled ? 'text-amber-400 stroke-amber-400' : 'text-amber-400/30 stroke-amber-400/40'}
+                      />
+                    );
+                  })}
                 </div>
-                <span className="text-[11px] font-black text-foreground/90 font-mono">
+                <span className="text-xs font-black text-foreground/90 font-mono ml-1">
                   {Number(product.ratings.average).toFixed(1)}
                 </span>
-                <span className="text-[10px] text-muted-foreground font-semibold">
+                <span className="text-[11px] text-muted-foreground font-extrabold">
                   ({product.ratings.count})
                 </span>
               </>
             ) : (
-              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-mono tracking-tight">
-                {locale === 'bn' ? 'নতুন কালেকশন' : 'New Collection'}
-              </span>
+              <div className="flex items-center space-x-1.5">
+                <div className="flex items-center space-x-[1.5px]">
+                  {[1, 2, 3, 4, 5].map((starIdx) => (
+                    <Star
+                      key={starIdx}
+                      size={14}
+                      fill="none"
+                      className="text-amber-400/30 stroke-amber-400/40"
+                    />
+                  ))}
+                </div>
+                <span className="text-[11px] text-muted-foreground/60 font-semibold ml-1">
+                  (0)
+                </span>
+              </div>
             )}
           </div>
 
