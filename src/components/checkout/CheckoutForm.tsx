@@ -1509,20 +1509,38 @@ export default function CheckoutForm() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {/* Cart Items List - Compact scrollable container */}
-                    <div className="max-h-[125px] overflow-y-auto divide-y divide-[var(--border)] pr-1.5 text-xs sm:text-sm custom-scrollbar">
+                    {/* Cart Items List - Compact scrollable container with product thumbnails */}
+                    <div className="max-h-[160px] sm:max-h-[190px] overflow-y-auto divide-y divide-[var(--border)] pr-1.5 text-xs sm:text-sm custom-scrollbar">
                       {items.map((item: any) => {
                         const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
                         const qty = item.quantity || 1;
                         const itemTotal = effectivePrice * qty;
+                        const itemImg = item.product?.productImages?.[0] || item.product?.images?.[0] || item.product?.image || item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+
                         return (
-                          <div key={item._id} className="py-2 flex items-center justify-between">
-                            <div className="pr-2 truncate">
-                              <p className="font-bold text-[var(--foreground)] truncate text-xs sm:text-sm">{item.product?.title || 'Product'}</p>
-                              <p className="text-xs text-gray-400 font-medium mt-0.5">
-                                {t('checkout.qty')}: {qty} {item.color ? `| ${item.color}` : ''} {item.size ? `| ${item.size}` : ''}
-                              </p>
+                          <div key={item._id} className="py-2 flex items-center justify-between gap-3">
+                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                              {/* Product Left Thumbnail Image */}
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl border border-border overflow-hidden bg-muted relative shrink-0 shadow-2xs">
+                                <Image
+                                  src={itemImg}
+                                  alt={item.product?.title || 'Product'}
+                                  fill
+                                  sizes="60px"
+                                  className="object-cover"
+                                />
+                              </div>
+
+                              {/* Product Title & Specifications */}
+                              <div className="min-w-0 flex-1 pr-1">
+                                <p className="font-bold text-[var(--foreground)] truncate text-xs sm:text-sm leading-snug">{item.product?.title || 'Product'}</p>
+                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                  {t('checkout.qty')}: {qty} {item.color ? `| ${item.color}` : ''} {item.size ? `| ${item.size}` : ''}
+                                </p>
+                              </div>
                             </div>
+
+                            {/* Total Item Price */}
                             <div className="text-right shrink-0">
                               <div className="flex items-center space-x-1.5 justify-end">
                                 {isSale && (
