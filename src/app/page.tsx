@@ -1162,7 +1162,7 @@ export default function HomePage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">{t.author}</p>
                       <Link
-                        href={t.productSlug ? `/products/${t.productSlug}` : '/search'}
+                        href={t.productSlug || '/search'}
                         prefetch={false}
                         className="inline-flex items-center space-x-1 text-[10px] text-primary hover:underline font-extrabold tracking-wide mt-0.5 max-w-full group/link"
                         title={locale === 'bn' ? 'প্রোডাক্ট বিস্তারিত দেখুন' : 'View Product Details'}

@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     default: 'Charulata Lifestyle | Premium Bangladeshi Fashion & Lifestyle Store',
     template: '%s | Charulata Lifestyle',
   },
-  description: 'চারুলতা লাইফস্টাইল - বাংলাদেশের প্রিমিয়াম ফ্যাশন ব্র্যান্ড। Shop exclusive sarees, panjabi, sports bra, attar & perfume, jewelry, and ethnic lifestyle products. 1-Click Cash on Delivery across Bangladesh.',
+  description: 'চারুলতা লাইফস্টাইল - বাংলাদেশের প্রিমিয়াম ফ্যাশন ব্র্যান্ড। শাড়ি, পাঞ্জাবি, জুয়েলারি ও পারফিউম। ক্যাশ অন ডেলিভারি সারা বাংলাদেশে।',
   keywords: [
     'charulata lifestyle',
     'charulata bd',

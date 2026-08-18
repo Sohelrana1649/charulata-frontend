@@ -1081,7 +1081,7 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Grid Sections: Customer Info + Payment Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-3">
               
               {/* Customer & Shipping Information */}
               <div className="bg-muted/40 border border-border/70 p-3.5 rounded-2xl space-y-2 text-xs">
@@ -1093,9 +1093,18 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <div>
-                    <span className="text-muted-foreground text-[10px] block">Recipient Name:</span>
-                    <span className="font-extrabold text-foreground text-xs">{selectedOrder.shippingAddress?.recipientName || selectedOrder.customer?.name || 'Guest Customer'}</span>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block">Recipient Name:</span>
+                      <span className="font-extrabold text-foreground text-xs">{selectedOrder.shippingAddress?.recipientName || selectedOrder.customer?.name || 'Guest Customer'}</span>
+                    </div>
+                    <button 
+                      onClick={() => copyToClipboard(selectedOrder.shippingAddress?.recipientName || selectedOrder.customer?.name || '', 'Name')}
+                      className="p-1 text-muted-foreground hover:text-primary transition cursor-pointer"
+                      title="Copy Name"
+                    >
+                      <Copy size={12} />
+                    </button>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1119,11 +1128,20 @@ export default function AdminOrdersPage() {
                     </div>
                   )}
 
-                  <div>
-                    <span className="text-muted-foreground text-[10px] block">Delivery Address:</span>
-                    <span className="font-medium text-foreground text-xs">
-                      {selectedOrder.shippingAddress?.addressLine}, <strong className="text-primary">{selectedOrder.shippingAddress?.district}</strong>
-                    </span>
+                  <div className="flex items-start justify-between gap-1">
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block">Delivery Address:</span>
+                      <span className="font-medium text-foreground text-xs">
+                        {selectedOrder.shippingAddress?.addressLine}, <strong className="text-primary">{selectedOrder.shippingAddress?.district}</strong>
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => copyToClipboard(`${selectedOrder.shippingAddress?.addressLine || ''}, ${selectedOrder.shippingAddress?.district || ''}`, 'Address')}
+                      className="p-1 text-muted-foreground hover:text-primary transition cursor-pointer shrink-0 mt-2"
+                      title="Copy Address"
+                    >
+                      <Copy size={12} />
+                    </button>
                   </div>
 
                   {selectedOrder.deliveryNotes && (
@@ -1280,7 +1298,18 @@ export default function AdminOrdersPage() {
                         
                         <div className="min-w-0 space-y-1">
                           <p className="text-xs sm:text-sm font-bold text-foreground truncate">{itemTitle}</p>
-                          {sku && <p className="text-[10px] text-muted-foreground font-mono">SKU: {sku}</p>}
+                          {sku && (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground font-mono">SKU: {sku}</span>
+                              <button 
+                                onClick={() => copyToClipboard(sku, 'SKU')}
+                                className="p-0.5 text-muted-foreground hover:text-primary transition cursor-pointer"
+                                title="Copy SKU"
+                              >
+                                <Copy size={10} />
+                              </button>
+                            </span>
+                          )}
                           
                           {/* Prominent Attributes: Size & Color Badges */}
                           <div className="flex items-center gap-1.5 flex-wrap">
