@@ -202,6 +202,27 @@ export default function ProductDetailClient() {
   };
 
   // Find matching variant based on selected attributes / color / size
+  // Helper to naturally sort attribute options from Smallest to Largest (e.g. 6GB, 8GB, 12GB or 128GB, 256GB, 512GB, 1TB)
+  const sortAttributeOptions = React.useCallback((options: string[]): string[] => {
+    if (!options || options.length <= 1) return options;
+    const parseNum = (str: string): number => {
+      const s = str.trim().toLowerCase();
+      const numMatch = s.match(/([0-9\.]+)/);
+      if (!numMatch) return NaN;
+      let num = parseFloat(numMatch[1]);
+      if (s.includes('tb')) num *= 1024;
+      return num;
+    };
+    return [...options].sort((a, b) => {
+      const numA = parseNum(a);
+      const numB = parseNum(b);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, []);
+
   // Compile all effective attributes from product.attributes AND product.variants
   const effectiveAttributes = React.useMemo(() => {
     if (!product) return [];
@@ -253,9 +274,9 @@ export default function ProductDetailClient() {
 
     return Object.entries(attrMap).map(([name, optionsSet]) => ({
       name,
-      options: Array.from(optionsSet)
+      options: sortAttributeOptions(Array.from(optionsSet))
     }));
-  }, [product]);
+  }, [product, sortAttributeOptions]);
 
   // Find matching variant based on selected attributes / color / size
   const matchedVariant = React.useMemo(() => {

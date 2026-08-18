@@ -598,10 +598,9 @@ export default function AdminProductsPage() {
     setForm(prev => {
       const newVarIndex = prev.variants.length + 1;
       const initialAttrs: Record<string, string> = {};
-      categoryAttributes.forEach(attr => {
-        const attrOptions = prev.attributes.find(a => a.name === attr.name)?.options || [];
-        if (attrOptions.length > 0) {
-          initialAttrs[attr.name] = attrOptions[0];
+      prev.attributes.forEach(attr => {
+        if (attr.name && attr.options && attr.options.length > 0) {
+          initialAttrs[attr.name] = attr.options[0];
         }
       });
 
@@ -1621,25 +1620,14 @@ export default function AdminProductsPage() {
                       <label className="block text-xs font-black text-foreground uppercase tracking-wider">
                         Product Variants ({form.variants.length})
                       </label>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          type="button"
-                          onClick={handleGenerateVariants}
-                          className="inline-flex items-center space-x-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline transition cursor-pointer"
-                          title="Generate all combinations from selected attribute options"
-                        >
-                          <Zap size={13} />
-                          <span>Auto-Generate</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddVariant}
-                          className="inline-flex items-center space-x-1 text-xs font-bold text-primary hover:underline transition cursor-pointer"
-                        >
-                          <Plus size={14} />
-                          <span>Add Variant</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddVariant}
+                        className="inline-flex items-center space-x-1.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+                      >
+                        <Plus size={14} />
+                        <span>Add Variant</span>
+                      </button>
                     </div>
 
                     {form.variants.length > 0 ? (
@@ -1728,10 +1716,11 @@ export default function AdminProductsPage() {
                               </div>
                             </div>
 
-                            {/* Attribute Choices for Variant */}
+                            {/* Attribute Choices for Variant (Only display attributes defined for THIS product) */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-muted/30 p-2 rounded-xl border border-border/40">
-                              {categoryAttributes.map(attr => {
-                                const selectedOptions = form.attributes.find(a => a.name === attr.name)?.options || attr.values;
+                              {(form.attributes.length > 0 ? form.attributes : categoryAttributes).map((attr: any) => {
+                                const selectedOptions = (attr.options || attr.values || []) as string[];
+                                if (!selectedOptions || selectedOptions.length === 0) return null;
                                 const currentAttrVal = v.attributes?.[attr.name] || selectedOptions[0] || '';
                                 return (
                                   <div key={attr.name}>
