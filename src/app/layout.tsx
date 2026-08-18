@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer';
 import WhatsAppButton from '@/components/layout/WhatsAppButton';
 import ThemeScript from '@/components/ThemeScript';
 import FacebookPixel from '@/components/analytics/FacebookPixel';
+import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
 import JsonLd from '@/components/common/JsonLd';
 
 const poppins = Poppins({
@@ -216,6 +217,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans" suppressHydrationWarning>
         <Providers>
           <FacebookPixel />
+          <GoogleAnalytics />
           <Header />
           <div className="flex-1 flex flex-col">
             {children}
