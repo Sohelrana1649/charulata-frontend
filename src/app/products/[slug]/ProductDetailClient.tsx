@@ -202,31 +202,112 @@ export default function ProductDetailClient() {
   };
 
   // Find matching variant based on selected attributes / color / size
+  // Compile all effective attributes from product.attributes AND product.variants
+  const effectiveAttributes = React.useMemo(() => {
+    if (!product) return [];
+
+    const attrMap: Record<string, Set<string>> = {};
+
+    // 1. From product.attributes
+    if (Array.isArray(product.attributes) && product.attributes.length > 0) {
+      product.attributes.forEach((attr: any) => {
+        if (attr.name && Array.isArray(attr.options)) {
+          if (!attrMap[attr.name]) attrMap[attr.name] = new Set();
+          attr.options.forEach((opt: string) => {
+            if (opt) attrMap[attr.name].add(String(opt));
+          });
+        }
+      });
+    }
+
+    // 2. From product.variants
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      product.variants.forEach((v: any) => {
+        if (v.color) {
+          if (!attrMap['Color']) attrMap['Color'] = new Set();
+          attrMap['Color'].add(v.color);
+        }
+        if (v.size) {
+          if (!attrMap['Size']) attrMap['Size'] = new Set();
+          attrMap['Size'].add(v.size);
+        }
+        const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
+        if (vAttrs && typeof vAttrs === 'object') {
+          Object.entries(vAttrs).forEach(([k, val]) => {
+            if (k && val) {
+              if (!attrMap[k]) attrMap[k] = new Set();
+              attrMap[k].add(String(val));
+            }
+          });
+        }
+      });
+    }
+
+    // 3. Fallback for legacy colors / sizes
+    if (!attrMap['Color'] && Array.isArray(product.colors) && product.colors.length > 0) {
+      attrMap['Color'] = new Set(product.colors);
+    }
+    if (!attrMap['Size'] && Array.isArray(product.sizes) && product.sizes.length > 0) {
+      attrMap['Size'] = new Set(product.sizes);
+    }
+
+    return Object.entries(attrMap).map(([name, optionsSet]) => ({
+      name,
+      options: Array.from(optionsSet)
+    }));
+  }, [product]);
+
+  // Find matching variant based on selected attributes / color / size
   const matchedVariant = React.useMemo(() => {
     if (!product?.variants || product.variants.length === 0) return null;
 
-    return product.variants.find((v: any) => {
+    const targetAttrs = { ...selectedAttributes };
+    if (selectedColor && !targetAttrs['Color']) targetAttrs['Color'] = selectedColor;
+    if (selectedSize && !targetAttrs['Size']) targetAttrs['Size'] = selectedSize;
+
+    // Helper to evaluate how closely a variant matches selectedAttributes
+    const getMatchScore = (v: any) => {
       const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
-      
-      // Match custom attributes if present
-      if (Object.keys(selectedAttributes).length > 0 && Object.keys(vAttrs).length > 0) {
-        const matchesAll = Object.entries(selectedAttributes).every(([key, val]) => vAttrs[key] === val);
-        if (matchesAll) return true;
+      let score = 0;
+      const keys = Object.keys(targetAttrs);
+      if (keys.length === 0) return 0;
+
+      for (const [key, val] of Object.entries(targetAttrs)) {
+        const kLower = key.toLowerCase();
+        let matched = false;
+
+        if (kLower === 'color') {
+          if (v.color === val || vAttrs[key] === val || vAttrs['Color'] === val || vAttrs['color'] === val) matched = true;
+        } else if (kLower === 'size') {
+          if (v.size === val || vAttrs[key] === val || vAttrs['Size'] === val || vAttrs['size'] === val) matched = true;
+        } else {
+          if (vAttrs[key] === val || vAttrs[kLower] === val) matched = true;
+        }
+
+        if (matched) score++;
       }
 
-      // Match legacy color/size
-      const matchColor = !selectedColor || v.color === selectedColor || vAttrs['Color'] === selectedColor;
-      const matchSize = !selectedSize || v.size === selectedSize || vAttrs['Size'] === selectedSize;
-      return matchColor && matchSize;
-    });
+      return score === keys.length ? 1000 + score : score;
+    };
+
+    let bestVariant: any = null;
+    let maxScore = -1;
+
+    for (const v of product.variants) {
+      const score = getMatchScore(v);
+      if (score >= 1000) return v; // Exact match!
+    }
+
+    return null;
   }, [product, selectedAttributes, selectedColor, selectedSize]);
 
   // Initialize selected values once product loads
   React.useEffect(() => {
     if (product) {
       const initialAttrs: Record<string, string> = {};
-      if (product.attributes && product.attributes.length > 0) {
-        product.attributes.forEach((attr: any) => {
+      
+      if (effectiveAttributes.length > 0) {
+        effectiveAttributes.forEach((attr: any) => {
           if (attr.options && attr.options.length > 0) {
             initialAttrs[attr.name] = attr.options[0];
           }
@@ -254,7 +335,6 @@ export default function ProductDetailClient() {
         setActiveMediaType('video');
       }
 
-      // Track Meta Pixel ViewContent event
       if (product._id) {
         fbEvent('track', 'ViewContent', {
           content_ids: [product._id],
@@ -265,9 +345,9 @@ export default function ProductDetailClient() {
         });
       }
     }
-  }, [product]);
+  }, [product, effectiveAttributes]);
 
-  // Update variant image if variant has a custom image
+  // Update active image if matching variant has a custom image
   React.useEffect(() => {
     if (matchedVariant?.image) {
       setActiveImage(matchedVariant.image);
@@ -287,8 +367,8 @@ export default function ProductDetailClient() {
       triggerFlyToCartAnimation(e.currentTarget as HTMLElement, product?.productImages?.[0]);
     }
 
-    if (product.attributes && product.attributes.length > 0) {
-      for (const attr of product.attributes) {
+    if (effectiveAttributes.length > 0) {
+      for (const attr of effectiveAttributes) {
         if (!selectedAttributes[attr.name]) {
           toast.error(`Please select a ${attr.name}.`);
           return false;
@@ -309,8 +389,11 @@ export default function ProductDetailClient() {
     const chosenSize = selectedSize || selectedAttributes['Size'] || undefined;
     const chosenAttrs = Object.keys(selectedAttributes).length > 0 ? selectedAttributes : undefined;
 
+    const basePrice = Number(product?.price) || 0;
+    const finalUnitPrice = matchedVariant?.price !== undefined && matchedVariant.price > 0 ? matchedVariant.price : basePrice;
+
     if (!isAuthenticated) {
-      addToGuestCart(product, quantity, chosenColor, chosenSize, chosenAttrs);
+      addToGuestCart(product, quantity, chosenColor, chosenSize, chosenAttrs, finalUnitPrice);
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Successfully added to your cart!');
       return true;
     }
@@ -327,13 +410,12 @@ export default function ProductDetailClient() {
       await addToCart(payload).unwrap();
       toast.success('Successfully added to your cart!');
       
-      // Track Meta Pixel AddToCart event
       if (product._id) {
         fbEvent('track', 'AddToCart', {
           content_ids: [product._id],
           content_type: 'product',
           content_name: product.title,
-          value: (matchedVariant?.price || product.price) * quantity,
+          value: finalUnitPrice * quantity,
           currency: 'BDT',
           quantity: quantity
         });
@@ -379,11 +461,15 @@ export default function ProductDetailClient() {
   }
 
   const basePrice = Number(product?.price) || 0;
-  const price = matchedVariant?.price !== undefined ? matchedVariant.price : basePrice;
-  const salePrice = Number(product?.salePrice) || 0;
+  const currentRegularPrice = matchedVariant?.price !== undefined && matchedVariant.price > 0 ? matchedVariant.price : basePrice;
+  const baseSalePrice = Number(product?.salePrice) || 0;
+  const currentSalePrice = matchedVariant?.salePrice !== undefined && matchedVariant.salePrice > 0 ? matchedVariant.salePrice : baseSalePrice;
   const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
-  const isSale = !isDiscountExpired && salePrice > 0 && basePrice > 0 && salePrice < basePrice && !matchedVariant?.price;
-  const discountPercent = isSale ? Math.floor(((basePrice - salePrice) / basePrice) * 100) : 0;
+  const isSale = !isDiscountExpired && currentSalePrice > 0 && currentRegularPrice > 0 && currentSalePrice < currentRegularPrice;
+  const discountPercent = isSale ? Math.floor(((currentRegularPrice - currentSalePrice) / currentRegularPrice) * 100) : 0;
+  const finalUnitPrice = isSale ? currentSalePrice : currentRegularPrice;
+  const price = currentRegularPrice;
+  const salePrice = currentSalePrice;
   const mainImage = activeImage || matchedVariant?.image || product?.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
   const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Collection');
 
@@ -836,14 +922,14 @@ export default function ProductDetailClient() {
             <div className="flex items-baseline space-x-2.5 flex-wrap gap-y-1">
               {isSale ? (
                 <>
-                  <span className="text-2xl sm:text-3xl font-normal text-rose-600 dark:text-rose-500 font-sans tracking-tight">৳{salePrice.toLocaleString()}</span>
-                  <span className="text-xs sm:text-sm text-muted-foreground line-through font-normal">৳{basePrice.toLocaleString()}</span>
-                  <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 font-normal text-xs px-2 py-0.5 rounded border border-rose-500/20">
-                    Save ৳{(basePrice - salePrice).toLocaleString()} ({discountPercent}% OFF)
+                  <span className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-500 font-sans tracking-tight">৳{salePrice.toLocaleString('en-IN')}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground line-through font-normal">৳{currentRegularPrice.toLocaleString('en-IN')}</span>
+                  <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 font-extrabold text-xs px-2 py-0.5 rounded border border-rose-500/20">
+                    -{discountPercent}% (Save ৳{(currentRegularPrice - salePrice).toLocaleString('en-IN')})
                   </span>
                 </>
               ) : (
-                <span className="text-2xl sm:text-3xl font-normal text-foreground font-sans tracking-tight">৳{price.toLocaleString()}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-foreground font-sans tracking-tight">৳{currentRegularPrice.toLocaleString('en-IN')}</span>
               )}
             </div>
             <p className="text-[11px] text-muted-foreground font-normal pt-0.5">
@@ -851,37 +937,73 @@ export default function ProductDetailClient() {
             </p>
           </div>
 
-          {/* Amazon Variant Selector: Crisp High-Contrast Selected Chips */}
-          {product.attributes && product.attributes.length > 0 ? (
-            <div className="space-y-3 pt-1">
-              {product.attributes.map((attr: { name: string; options: string[] }) => (
-                <div key={attr.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground font-normal">
-                      {attr.name}: <span className="font-semibold text-foreground capitalize">{selectedAttributes[attr.name] || 'Select'}</span>
-                    </span>
-                  </div>
+          {/* User-Friendly Variant Selector: Compact Card Container with Color Swatches */}
+          {effectiveAttributes && effectiveAttributes.length > 0 ? (
+            <div className="bg-muted/20 dark:bg-card/70 border border-border/70 p-3.5 sm:p-4 rounded-xl space-y-3.5">
+              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Sparkles size={12} className="text-rose-500" />
+                  <span>Select Product Specifications & Options</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {Object.keys(selectedAttributes).length} option(s) selected
+                </span>
+              </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {attr.options.map((opt: string) => {
-                      const isSelected = selectedAttributes[attr.name] === opt;
-                      return (
-                        <button
-                          key={opt}
-                          onClick={() => handleSelectAttributeOption(attr.name, opt)}
-                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
-                              : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {effectiveAttributes.map((attr: { name: string; options: string[] }) => {
+                  const isColor = attr.name.toLowerCase() === 'color';
+                  const getColorHex = (name: string) => {
+                    const l = name.toLowerCase().trim();
+                    const map: Record<string, string> = {
+                      black: '#1a1a1a', white: '#ffffff', blue: '#2563eb', red: '#dc2626',
+                      green: '#16a34a', yellow: '#eab308', grey: '#6b7280', gray: '#6b7280',
+                      brown: '#78350f', navy: '#1e3a8a', pink: '#ec4899', purple: '#9333ea',
+                      orange: '#ea580c', golden: '#d97706', gold: '#d97706', silver: '#cbd5e1',
+                      maroon: '#800000', ash: '#9ca3af', coffee: '#451a03', cream: '#fef3c7', olive: '#65a30d'
+                    };
+                    return map[l] || null;
+                  };
+
+                  return (
+                    <div key={attr.name} className="space-y-1.5 bg-card/80 p-2.5 rounded-lg border border-border/50">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium text-[11px]">
+                          {attr.name}: <strong className="font-extrabold text-foreground capitalize">{selectedAttributes[attr.name] || 'Select'}</strong>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {attr.options.map((opt: string) => {
+                          const isSelected = selectedAttributes[attr.name] === opt;
+                          const hex = isColor ? getColorHex(opt) : null;
+
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => handleSelectAttributeOption(attr.name, opt)}
+                              className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isSelected
+                                  ? 'border-2 border-rose-600 bg-rose-600 text-white font-extrabold shadow-xs scale-[1.02]'
+                                  : 'border border-border bg-card text-foreground hover:border-rose-400 font-medium hover:bg-muted/40'
+                              }`}
+                            >
+                              {hex && (
+                                <span 
+                                  className={`w-3 h-3 rounded-full border shrink-0 ${isSelected ? 'border-white' : 'border-black/20'}`} 
+                                  style={{ backgroundColor: hex }} 
+                                />
+                              )}
+                              <span>{opt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="space-y-3 pt-1">

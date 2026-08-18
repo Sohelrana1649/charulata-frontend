@@ -49,6 +49,7 @@ import { useGetAttributesQuery, useGetCategoryAttributesQuery } from '@/store/ap
 export interface ProductFormVariant {
   sku: string;
   price?: number;
+  salePrice?: number;
   stockQuantity: number;
   image?: string;
   attributes: Record<string, string>;
@@ -236,6 +237,7 @@ export default function AdminProductsPage() {
     const parsedVariants = (prod.variants || []).map((v: any) => ({
       sku: v.sku || '',
       price: v.price !== undefined ? v.price : undefined,
+      salePrice: v.salePrice !== undefined ? v.salePrice : undefined,
       stockQuantity: v.stockQuantity || 0,
       image: v.image || '',
       color: v.color || '',
@@ -406,20 +408,52 @@ export default function AdminProductsPage() {
     }
 
     // Clean up variants and attributes
-    const cleanedAttributes = (form.attributes || []).filter(a => a.options && a.options.length > 0);
+    const attrMap: Record<string, Set<string>> = {};
+    (form.attributes || []).forEach(a => {
+      if (a.name && Array.isArray(a.options) && a.options.length > 0) {
+        if (!attrMap[a.name]) attrMap[a.name] = new Set();
+        a.options.forEach(opt => {
+          if (opt) attrMap[a.name].add(String(opt));
+        });
+      }
+    });
+
     const cleanedVariants = (form.variants || []).map(v => {
       const colorVal = v.attributes?.['Color'] || v.color;
       const sizeVal = v.attributes?.['Size'] || v.size;
+      const vAttrs = v.attributes || {};
+
+      if (colorVal) {
+        if (!attrMap['Color']) attrMap['Color'] = new Set();
+        attrMap['Color'].add(colorVal);
+      }
+      if (sizeVal) {
+        if (!attrMap['Size']) attrMap['Size'] = new Set();
+        attrMap['Size'].add(sizeVal);
+      }
+      Object.entries(vAttrs).forEach(([k, val]) => {
+        if (k && val) {
+          if (!attrMap[k]) attrMap[k] = new Set();
+          attrMap[k].add(String(val));
+        }
+      });
+
       return {
         sku: v.sku || `${form.sku}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
         price: v.price ? Number(v.price) : undefined,
+        salePrice: v.salePrice ? Number(v.salePrice) : undefined,
         stockQuantity: Number(v.stockQuantity || 0),
         image: v.image ? v.image.trim() : undefined,
         color: colorVal,
         size: sizeVal,
-        attributes: v.attributes || {}
+        attributes: vAttrs
       };
     });
+
+    const cleanedAttributes = Object.entries(attrMap).map(([name, optionsSet]) => ({
+      name,
+      options: Array.from(optionsSet)
+    }));
 
     // Auto calculate colors and sizes arrays from selected attributes or variants for backward compatibility
     const sizeAttr = cleanedAttributes.find(a => a.name === 'Size');
@@ -1626,7 +1660,7 @@ export default function AdminProductsPage() {
                               </button>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                               {/* SKU */}
                               <div>
                                 <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">SKU</label>
@@ -1639,17 +1673,31 @@ export default function AdminProductsPage() {
                                 />
                               </div>
 
-                              {/* Price Override */}
+                              {/* Old / Base Price Override */}
                               <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">Price (BDT)</label>
+                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">Old Price (BDT)</label>
                                 <input
                                   type="number"
                                   min="0"
-                                  placeholder={`e.g. ${form.price || 3800}`}
+                                  placeholder={`e.g. ${form.price || 50000}`}
                                   value={v.price !== undefined ? v.price : ''}
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => handleUpdateVariant(vIdx, 'price', e.target.value ? parseFloat(e.target.value) : undefined)}
                                   className="w-full bg-muted/60 border border-border rounded-lg px-2 py-1 text-[10px] text-foreground font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </div>
+
+                              {/* Sale / Offer Price Override */}
+                              <div>
+                                <label className="block text-[9px] font-extrabold uppercase text-rose-500 mb-0.5">Sale Price (BDT)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder={`e.g. ${form.salePrice || 40000}`}
+                                  value={v.salePrice !== undefined ? v.salePrice : ''}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => handleUpdateVariant(vIdx, 'salePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                  className="w-full bg-rose-500/10 border border-rose-500/30 rounded-lg px-2 py-1 text-[10px] text-rose-600 dark:text-rose-400 font-mono font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </div>
 

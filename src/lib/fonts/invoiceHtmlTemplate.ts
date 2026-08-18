@@ -205,7 +205,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
         <span>৳${data.deliveryCharge.toLocaleString('bn-BD')}</span>
       </div>
       <div class="grand-total">
-        <span>সর্বমোট (Grand Total):</span>
+        <span>ডেলিভারিম্যানকে মোট ক্যাশ দেবেন (Full COD):</span>
         <span>৳${data.total.toLocaleString('bn-BD')}</span>
       </div>
     </div>

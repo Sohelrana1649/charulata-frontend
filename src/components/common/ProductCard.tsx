@@ -242,10 +242,10 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             {isSale ? (
               <>
                 <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-                  ৳{salePrice.toLocaleString()}
+                  ৳{salePrice.toLocaleString('en-IN')}
                 </span>
                 <span className="text-xs text-muted-foreground/80 line-through decoration-rose-500/50 font-semibold font-mono">
-                  ৳{price.toLocaleString()}
+                  ৳{price.toLocaleString('en-IN')}
                 </span>
                 <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-md font-mono">
                   -{discountPercent}%
@@ -253,7 +253,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
               </>
             ) : (
               <span className="text-base sm:text-lg font-black text-foreground font-mono tracking-tight">
-                ৳{price.toLocaleString()}
+                ৳{price.toLocaleString('en-IN')}
               </span>
             )}
           </div>

@@ -33,7 +33,8 @@ export const addToGuestCart = (
   quantity: number = 1, 
   color?: string, 
   size?: string, 
-  selectedAttributes?: Record<string, string>
+  selectedAttributes?: Record<string, string>,
+  customPrice?: number
 ) => {
   const currentCart = getGuestCart();
   const productId = product._id || product.id || product;
@@ -42,13 +43,14 @@ export const addToGuestCart = (
   const salePrice = (!isDiscountExpired && product?.salePrice !== undefined && product?.salePrice !== null && Number(product.salePrice) > 0)
     ? Number(product.salePrice)
     : 0;
-  const regularPrice = Number(product.price) || 0;
-  const unitPrice = (salePrice > 0 && salePrice < regularPrice) ? salePrice : regularPrice;
+  const basePrice = customPrice !== undefined && customPrice > 0 ? customPrice : (Number(product.price) || 0);
+  const unitPrice = (salePrice > 0 && salePrice < basePrice && customPrice === undefined) ? salePrice : basePrice;
 
   const existingIndex = currentCart.findIndex(
     item => (item.product?._id === productId || item.product === productId) &&
             item.color === color &&
-            item.size === size
+            item.size === size &&
+            JSON.stringify(item.selectedAttributes || {}) === JSON.stringify(selectedAttributes || {})
   );
 
   if (existingIndex > -1) {

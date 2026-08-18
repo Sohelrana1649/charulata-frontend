@@ -288,7 +288,7 @@ export const downloadInvoicePdf = (order: any) => {
           : ''
       }
       <div class="totals-row grand">
-        <span>${advancePaid > 0 ? 'ডেলিভারিতে দেয় অবশিষ্ট (Due COD):' : 'সর্বমোট দেয় (Grand Total):'}</span>
+        <span>${advancePaid > 0 ? 'ডেলিভারিম্যানকে ক্যাশ দেবেন (Due COD):' : 'ডেলিভারিম্যানকে মোট ক্যাশ দেবেন (Full COD):'}</span>
         <span>৳${(advancePaid > 0 ? dueCOD : totalAmount).toLocaleString('bn-BD')}</span>
       </div>
     </div>

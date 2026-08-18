@@ -366,14 +366,14 @@ export default function CartPage() {
                     <div className="flex items-center space-x-1.5 justify-end">
                       {isSale && (
                         <span className="text-xs text-muted-foreground line-through font-mono">
-                          ৳{(regularPrice * item.quantity).toLocaleString()}
+                          ৳{(regularPrice * item.quantity).toLocaleString('en-IN')}
                         </span>
                       )}
                       <span className="text-sm font-extrabold text-foreground font-serif">
-                        ৳{(effectivePrice * item.quantity).toLocaleString()}
+                        ৳{(effectivePrice * item.quantity).toLocaleString('en-IN')}
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">৳{effectivePrice.toLocaleString()} {locale === 'bn' ? 'প্রতিটি' : 'each'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">৳{effectivePrice.toLocaleString('en-IN')} {locale === 'bn' ? 'প্রতিটি' : 'each'}</p>
                   </div>
 
                   {/* Trash Delete button */}
@@ -401,18 +401,18 @@ export default function CartPage() {
             {productOfferDiscount > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>{locale === 'bn' ? 'মূল দাম' : 'Regular Total'}</span>
-                <span className="font-bold text-foreground font-mono">৳{regularSubTotal.toLocaleString()}</span>
+                <span className="font-bold text-foreground font-mono">৳{regularSubTotal.toLocaleString('en-IN')}</span>
               </div>
             )}
             {productOfferDiscount > 0 && (
               <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
                 <span>{locale === 'bn' ? 'অফার ছাড়' : 'Offer Discount'}</span>
-                <span className="font-mono">-৳{productOfferDiscount.toLocaleString()}</span>
+                <span className="font-mono">-৳{productOfferDiscount.toLocaleString('en-IN')}</span>
               </div>
             )}
             <div className="flex justify-between text-muted-foreground">
               <span>{t('cart.subtotal')}</span>
-              <span className="font-bold text-foreground font-serif">৳{subTotal.toLocaleString()}</span>
+              <span className="font-bold text-foreground font-serif">৳{subTotal.toLocaleString('en-IN')}</span>
             </div>
             
             <div className="flex justify-between text-muted-foreground">

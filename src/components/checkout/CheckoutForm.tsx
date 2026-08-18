@@ -910,7 +910,7 @@ export default function CheckoutForm() {
 
                     <div className="flex justify-between items-center text-foreground font-bold pt-2 border-t border-border/60">
                       <span>{locale === 'bn' ? 'মোট অর্ডার মূল্য:' : 'Total:'}</span>
-                      <span className="font-black text-foreground font-mono">৳{finalTotal.toLocaleString()}</span>
+                      <span className="font-black text-foreground font-mono">৳{finalTotal.toLocaleString('en-IN')}</span>
                     </div>
 
                     {finalAdvance > 0 && (
@@ -919,7 +919,7 @@ export default function CheckoutForm() {
                           <BadgeCheck size={11} />
                           <span className="font-medium">{locale === 'bn' ? 'অগ্রিম পরিশোধ:' : 'Advance Paid:'}</span>
                         </div>
-                        <span className="font-bold font-mono">-৳{finalAdvance.toLocaleString()}</span>
+                        <span className="font-bold font-mono">-৳{finalAdvance.toLocaleString('en-IN')}</span>
                       </div>
                     )}
                   </div>
@@ -929,12 +929,12 @@ export default function CheckoutForm() {
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-wider text-primary/70">
                         {finalAdvance > 0
-                          ? (locale === 'bn' ? 'ডেলিভারিতে বাকি দেবেন' : 'Cash Due on Delivery')
-                          : (locale === 'bn' ? 'ডেলিভারিতে সম্পূর্ণ দেবেন' : 'Pay on Delivery')}
+                          ? (locale === 'bn' ? 'ডেলিভারিম্যানকে ক্যাশ দেবেন' : 'Cash Due on Delivery')
+                          : (locale === 'bn' ? 'ডেলিভারিম্যানকে মোট ক্যাশ দেবেন (Full COD)' : 'Pay Cash on Delivery (Full COD)')}
                       </p>
-                      <p className="text-[11px] text-muted-foreground font-medium">{locale === 'bn' ? 'পণ্য হাতে পেলে দিন' : 'Pay when you receive'}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">{locale === 'bn' ? 'পণ্য হাতে পেয়ে টাকা দিন' : 'Pay when you receive'}</p>
                     </div>
-                    <span className="text-2xl font-black text-primary font-mono">৳{remainingDue.toLocaleString()}</span>
+                    <span className="text-2xl font-black text-primary font-mono">৳{remainingDue.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               );
@@ -1269,17 +1269,22 @@ export default function CheckoutForm() {
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
-                      {t('checkout.deliveryNotes')}
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-rose-500" />
+                        <span>{t('checkout.deliveryNotes')}</span>
+                      </label>
+                      <span className="text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/50">
+                        {locale === 'bn' ? 'ঐচ্ছিক' : 'Optional'}
+                      </span>
+                    </div>
                     <div className="relative">
-                      <FileText className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder={t('checkout.notesPlaceholder')}
+                      <textarea
+                        rows={2.5}
+                        placeholder={locale === 'bn' ? 'যেমন: কল করে গেটের কাছে আসবেন / বাসা ২য় তলা / সন্ধ্যা ৬টার পর দেবেন...' : 'e.g. Please call before delivery / Leave at security gate...'}
                         value={deliveryNotes}
                         onChange={(e) => setDeliveryNotes(e.target.value)}
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 transition-all min-h-[44px]"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-xs sm:text-sm font-medium focus:outline-none focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20 transition-all resize-none shadow-2xs placeholder:text-muted-foreground/60 leading-relaxed"
                       />
                     </div>
                   </div>
@@ -1545,11 +1550,11 @@ export default function CheckoutForm() {
                               <div className="flex items-center space-x-1.5 justify-end">
                                 {isSale && (
                                   <span className="text-[11px] text-gray-400 line-through font-mono">
-                                    ৳{(regularPrice * qty).toLocaleString()}
+                                    ৳{(regularPrice * qty).toLocaleString('en-IN')}
                                   </span>
                                 )}
                                 <span className="font-extrabold text-[var(--foreground)] shrink-0 text-xs sm:text-sm font-mono">
-                                  ৳{itemTotal.toLocaleString()}
+                                  ৳{itemTotal.toLocaleString('en-IN')}
                                 </span>
                               </div>
                             </div>
@@ -1613,20 +1618,20 @@ export default function CheckoutForm() {
                       {productOfferDiscount > 0 && (
                         <div className="flex justify-between text-[var(--foreground)] font-medium opacity-80">
                           <span>{locale === 'bn' ? 'পণ্যের গায়ের দাম (Regular Price)' : 'Regular Price'}</span>
-                          <span className="font-bold text-[var(--foreground)] font-mono">৳{regularSubTotal.toLocaleString()}</span>
+                          <span className="font-bold text-[var(--foreground)] font-mono">৳{regularSubTotal.toLocaleString('en-IN')}</span>
                         </div>
                       )}
 
                       {productOfferDiscount > 0 && (
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
                           <span>{locale === 'bn' ? 'অফার ছাড় (Product Offer Discount)' : 'Product Discount'}</span>
-                          <span className="font-mono">-৳{productOfferDiscount.toLocaleString()}</span>
+                          <span className="font-mono">-৳{productOfferDiscount.toLocaleString('en-IN')}</span>
                         </div>
                       )}
 
                       <div className="flex justify-between text-[var(--foreground)] font-semibold">
                         <span>{locale === 'bn' ? 'অফার সাবটোটাল (Subtotal)' : 'Subtotal'}</span>
-                        <span className="font-bold text-[var(--foreground)] font-mono">৳{subTotal.toLocaleString()}</span>
+                        <span className="font-bold text-[var(--foreground)] font-mono">৳{subTotal.toLocaleString('en-IN')}</span>
                       </div>
 
                       <div className="flex justify-between text-[var(--foreground)] font-medium opacity-85">
@@ -1636,7 +1641,7 @@ export default function CheckoutForm() {
                             {shippingAddress.district ? shippingAddress.district : (locale === 'bn' ? 'জেলা ভিত্তিক' : 'Standard')}
                           </span>
                         </span>
-                        <span className="font-bold text-[var(--foreground)] font-mono">+৳{shippingCharge.toLocaleString()}</span>
+                        <span className="font-bold text-[var(--foreground)] font-mono">+৳{shippingCharge.toLocaleString('en-IN')}</span>
                       </div>
 
                       {discount > 0 && (
@@ -1658,31 +1663,51 @@ export default function CheckoutForm() {
               {/* Dynamic Payment Breakdown Box (Advance vs Remaining COD) */}
               {requireAdvancePayment && activeAdvanceAmount > 0 ? (
                 <div className="bg-[var(--brand)]/5 border border-[var(--brand)]/20 rounded-xl p-3 sm:p-3.5 space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400">
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-border/40 pb-1.5">
+                    <span>{locale === 'bn' ? 'পণ্যের মোট মূল্য:' : 'Product Subtotal:'}</span>
+                    <span className="font-mono font-bold text-foreground">৳{subTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-border/40 pb-1.5">
+                    <span>{locale === 'bn' ? 'ডেলিভারি চার্জ:' : 'Delivery Fee:'}</span>
+                    <span className="font-mono font-bold text-foreground">+৳{shippingCharge.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 pt-0.5">
                     <span className="flex items-center space-x-1.5">
                       <Sparkles size={14} className="shrink-0" />
-                      <span>{locale === 'bn' ? '১. এখন বিকাশ/নগদ/রকেটে অগ্রিম দেবেন:' : '1. Advance Payment Now (bKash/Nagad/Rocket):'}</span>
+                      <span>{locale === 'bn' ? '১. এখন বিকাশ/নগদ/রকেটে অগ্রিম দেবেন:' : '1. Advance Payment Now:'}</span>
                     </span>
-                    <span className="font-mono font-extrabold text-sm">৳{activeAdvanceAmount.toLocaleString()}</span>
+                    <span className="font-mono font-extrabold text-sm">৳{activeAdvanceAmount.toLocaleString('en-IN')}</span>
                   </div>
 
                   <div className="border-t border-[var(--brand)]/15 pt-2 flex justify-between items-center font-black text-[var(--brand)]">
                     <span className="flex items-center space-x-1.5">
                       <Truck size={15} className="shrink-0" />
-                      <span>{locale === 'bn' ? '২. পণ্য হাতে পেয়ে ক্যাশ দেবেন (COD):' : '2. Remaining Pay on Delivery (COD):'}</span>
+                      <span>{locale === 'bn' ? '২. ডেলিভারিম্যানকে ক্যাশ দেবেন (COD):' : '2. Remaining Pay on Delivery (COD):'}</span>
                     </span>
                     <span className="font-mono text-base font-black">
-                      ৳{Math.max(0, totalAmount - activeAdvanceAmount).toLocaleString()}
+                      ৳{Math.max(0, totalAmount - activeAdvanceAmount).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 sm:p-3.5 flex justify-between items-center text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
-                  <span className="flex items-center space-x-1.5">
-                    <Truck size={16} className="shrink-0" />
-                    <span>{locale === 'bn' ? 'ডেলিভারিম্যানকে মোট ক্যাশ দেবেন (Full COD):' : 'Pay Cash on Delivery (Full COD):'}</span>
-                  </span>
-                  <span className="font-mono text-base font-black">৳{totalAmount.toLocaleString()}</span>
+                <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 sm:p-3.5 space-y-2 text-xs sm:text-sm">
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-emerald-500/20 pb-1.5">
+                    <span>{locale === 'bn' ? 'পণ্যের মোট মূল্য (Product Price):' : 'Product Price:'}</span>
+                    <span className="font-mono font-bold text-foreground">৳{subTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-emerald-500/20 pb-1.5">
+                    <span>{locale === 'bn' ? 'ডেলিভারি চার্জ (Delivery Charge):' : 'Delivery Charge:'}</span>
+                    <span className="font-mono font-bold text-foreground">+৳{shippingCharge.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
+                    <span className="flex items-center space-x-1.5">
+                      <Truck size={16} className="shrink-0" />
+                      <span>{locale === 'bn' ? 'ডেলিভারিম্যানকে মোট ক্যাশ দেবেন (Full COD):' : 'Pay Cash on Delivery (Full COD):'}</span>
+                    </span>
+                    <span className="font-mono text-base font-black">৳{totalAmount.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
               )}
 
