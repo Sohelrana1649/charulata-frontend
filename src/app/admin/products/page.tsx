@@ -212,14 +212,30 @@ export default function AdminProductsPage() {
     }
   };
 
-  // Auto-generate slug from title
+  // Auto-generate slug and clean standard parent SKU from title
   useEffect(() => {
     if (!editId && form.title) {
       const generatedSlug = form.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '');
-      setForm(prev => ({ ...prev, slug: generatedSlug }));
+
+      // Generate clean concise E-Commerce Parent SKU (e.g. PUNJABI-101)
+      const cleanTitleWords = form.title.trim().split(/\s+/).filter(Boolean);
+      let autoSku = '';
+      if (cleanTitleWords.length > 0) {
+        const primaryWord = cleanTitleWords[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const secWord = cleanTitleWords.length > 1 ? cleanTitleWords[1].toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+        const prefix = secWord ? `${primaryWord.substring(0, 4)}-${secWord.substring(0, 4)}` : primaryWord.substring(0, 8);
+        const randomNum = Math.floor(100 + Math.random() * 900);
+        autoSku = `${prefix}-${randomNum}`;
+      }
+
+      setForm(prev => ({
+        ...prev,
+        slug: generatedSlug,
+        sku: !prev.sku || prev.sku === prev.slug ? autoSku : prev.sku
+      }));
     }
   }, [form.title, editId]);
 
@@ -564,6 +580,40 @@ export default function AdminProductsPage() {
     const attrOptions = selectedAttrs.map(a => a.options);
     const combinations = cartesian(attrOptions);
 
+    const getShortOptionCode = (val: string): string => {
+      if (!val) return '';
+      const clean = val.trim();
+      const lower = clean.toLowerCase();
+      
+      const colorMap: Record<string, string> = {
+        'black': 'BLK',
+        'white': 'WHT',
+        'red': 'RED',
+        'blue': 'BLU',
+        'navy': 'NVY',
+        'green': 'GRN',
+        'yellow': 'YLW',
+        'gold': 'GLD',
+        'silver': 'SLV',
+        'pink': 'PNK',
+        'purple': 'PRP',
+        'magenta': 'MAG',
+        'orange': 'ORG',
+        'brown': 'BRN',
+        'grey': 'GRY',
+        'gray': 'GRY',
+        'maroon': 'MRN',
+        'olive': 'OLV',
+        'beige': 'BGE'
+      };
+
+      if (colorMap[lower]) return colorMap[lower];
+      
+      const alphaNum = clean.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (alphaNum.length <= 6) return alphaNum;
+      return alphaNum.substring(0, 5);
+    };
+
     const newVariants: ProductFormVariant[] = combinations.map((combo) => {
       const attrMap: Record<string, string> = {};
       const skuParts: string[] = [];
@@ -571,7 +621,7 @@ export default function AdminProductsPage() {
       combo.forEach((val, i) => {
         const name = attrNames[i];
         attrMap[name] = val;
-        skuParts.push(val.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+        skuParts.push(getShortOptionCode(val));
       });
 
       const colorVal = attrMap['Color'];

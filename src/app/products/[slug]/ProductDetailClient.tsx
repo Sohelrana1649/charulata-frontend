@@ -951,10 +951,10 @@ export default function ProductDetailClient() {
               )}
 
               <div className="flex items-center space-x-1.5 text-muted-foreground font-mono text-[11px]">
-                <span>SKU: <strong className="text-foreground font-normal">{matchedVariant?.sku || product.sku}</strong></span>
+                <span>SKU: <strong className="text-foreground font-normal">{product.sku}</strong></span>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(matchedVariant?.sku || product.sku);
+                    navigator.clipboard.writeText(product.sku);
                     toast.success('SKU copied!');
                   }}
                   className="p-1 hover:text-primary transition cursor-pointer"
