@@ -282,44 +282,73 @@ export default function ProductDetailClient() {
   const matchedVariant = React.useMemo(() => {
     if (!product?.variants || product.variants.length === 0) return null;
 
-    const targetAttrs = { ...selectedAttributes };
+    const targetAttrs: Record<string, string> = { ...selectedAttributes };
     if (selectedColor && !targetAttrs['Color']) targetAttrs['Color'] = selectedColor;
     if (selectedSize && !targetAttrs['Size']) targetAttrs['Size'] = selectedSize;
 
-    // Helper to evaluate how closely a variant matches selectedAttributes
-    const getMatchScore = (v: any) => {
-      const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
-      let score = 0;
-      const keys = Object.keys(targetAttrs);
-      if (keys.length === 0) return 0;
-
-      for (const [key, val] of Object.entries(targetAttrs)) {
-        const kLower = key.toLowerCase();
-        let matched = false;
-
-        if (kLower === 'color') {
-          if (v.color === val || vAttrs[key] === val || vAttrs['Color'] === val || vAttrs['color'] === val) matched = true;
-        } else if (kLower === 'size') {
-          if (v.size === val || vAttrs[key] === val || vAttrs['Size'] === val || vAttrs['size'] === val) matched = true;
-        } else {
-          if (vAttrs[key] === val || vAttrs[kLower] === val) matched = true;
-        }
-
-        if (matched) score++;
-      }
-
-      return score === keys.length ? 1000 + score : score;
-    };
+    const targetEntries = Object.entries(targetAttrs).filter(([_, v]) => Boolean(v));
+    if (targetEntries.length === 0) return product.variants[0] || null;
 
     let bestVariant: any = null;
     let maxScore = -1;
 
     for (const v of product.variants) {
-      const score = getMatchScore(v);
-      if (score >= 1000) return v; // Exact match!
+      const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
+      let matchCount = 0;
+      let nonColorMatchCount = 0;
+      let nonColorTotal = 0;
+      let hasColorMismatch = false;
+
+      for (const [key, val] of targetEntries) {
+        const kLower = key.toLowerCase();
+        let matched = false;
+
+        if (kLower === 'color') {
+          const vColor = v.color || vAttrs['Color'] || vAttrs['color'];
+          if (vColor === val) {
+            matched = true;
+          } else if (vColor) {
+            hasColorMismatch = true;
+          }
+        } else if (kLower === 'size') {
+          nonColorTotal++;
+          const vSize = v.size || vAttrs['Size'] || vAttrs['size'];
+          if (vSize === val) {
+            matched = true;
+            nonColorMatchCount++;
+          }
+        } else {
+          nonColorTotal++;
+          if (vAttrs[key] === val || vAttrs[kLower] === val) {
+            matched = true;
+            nonColorMatchCount++;
+          }
+        }
+
+        if (matched) matchCount++;
+      }
+
+      // 1. Perfect exact match on all attributes
+      if (matchCount === targetEntries.length) {
+        return v;
+      }
+
+      // 2. Score based on matching attributes (prefer exact non-color matches even if color differs)
+      let score = matchCount * 10;
+      if (nonColorTotal > 0 && nonColorMatchCount === nonColorTotal) {
+        score += 50; // Huge boost if all non-color attributes (RAM, Storage, Size) match perfectly!
+      }
+      if (hasColorMismatch) {
+        score -= 2;
+      }
+
+      if (score > maxScore && score > 0) {
+        maxScore = score;
+        bestVariant = v;
+      }
     }
 
-    return null;
+    return bestVariant;
   }, [product, selectedAttributes, selectedColor, selectedSize]);
 
   // Initialize selected values once product loads

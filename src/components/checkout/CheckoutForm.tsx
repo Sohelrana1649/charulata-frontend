@@ -293,11 +293,91 @@ export default function CheckoutForm() {
     const product = typeof item?.product === 'object' ? item.product : item;
     const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
 
-    const rawSalePrice = Number(product?.salePrice);
-    const rawPrice = Number(product?.price);
+    // --- Match variant pricing (mirrors backend logic) ---
+    let variantRegularPrice: number | null = null;
+    let variantSalePrice: number | null = null;
+    const selColor = item?.color;
+    const selSize = item?.size;
+    const selAttrs = item?.selectedAttributes
+      ? (item.selectedAttributes instanceof Map ? Object.fromEntries(item.selectedAttributes) : item.selectedAttributes)
+      : undefined;
+
+    if (Array.isArray(product?.variants) && product.variants.length > 0) {
+      const targetAttrs: Record<string, string> = { ...(selAttrs || {}) };
+      if (selColor && !targetAttrs['Color']) targetAttrs['Color'] = selColor;
+      if (selSize && !targetAttrs['Size']) targetAttrs['Size'] = selSize;
+
+      const targetEntries = Object.entries(targetAttrs).filter(([_, v]) => Boolean(v));
+      
+      let matched: any = null;
+      let maxScore = -1;
+
+      for (const v of product.variants) {
+        const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
+        let matchCount = 0;
+        let nonColorMatchCount = 0;
+        let nonColorTotal = 0;
+        let hasColorMismatch = false;
+
+        for (const [key, val] of targetEntries) {
+          const kLower = key.toLowerCase();
+          let itemMatched = false;
+
+          if (kLower === 'color') {
+            const vColor = v.color || vAttrs['Color'] || vAttrs['color'];
+            if (vColor === val) {
+              itemMatched = true;
+            } else if (vColor) {
+              hasColorMismatch = true;
+            }
+          } else if (kLower === 'size') {
+            nonColorTotal++;
+            const vSize = v.size || vAttrs['Size'] || vAttrs['size'];
+            if (vSize === val) {
+              itemMatched = true;
+              nonColorMatchCount++;
+            }
+          } else {
+            nonColorTotal++;
+            if (vAttrs[key] === val || vAttrs[kLower] === val) {
+              itemMatched = true;
+              nonColorMatchCount++;
+            }
+          }
+
+          if (itemMatched) matchCount++;
+        }
+
+        if (targetEntries.length > 0 && matchCount === targetEntries.length) {
+          matched = v;
+          break;
+        }
+
+        let score = matchCount * 10;
+        if (nonColorTotal > 0 && nonColorMatchCount === nonColorTotal) {
+          score += 50;
+        }
+        if (hasColorMismatch) {
+          score -= 2;
+        }
+
+        if (score > maxScore && score > 0) {
+          maxScore = score;
+          matched = v;
+        }
+      }
+
+      if (matched) {
+        if (typeof matched.price === 'number' && matched.price > 0) variantRegularPrice = matched.price;
+        if (typeof matched.salePrice === 'number' && matched.salePrice > 0) variantSalePrice = matched.salePrice;
+      }
+    }
+
+    const rawPrice = variantRegularPrice !== null ? variantRegularPrice : Number(product?.price);
+    const rawSalePrice = variantSalePrice !== null ? variantSalePrice : Number(product?.salePrice);
     const rawItemPrice = Number(item?.price);
 
-    // Regular price is product price or item price
+    // Regular price is variant/product price or item price
     const regularPrice = (!isNaN(rawPrice) && rawPrice > 0)
       ? rawPrice
       : ((!isNaN(rawItemPrice) && rawItemPrice > 0) ? rawItemPrice : 0);
@@ -1522,6 +1602,19 @@ export default function CheckoutForm() {
                         const itemTotal = effectivePrice * qty;
                         const itemImg = item.product?.productImages?.[0] || item.product?.images?.[0] || item.product?.image || item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
 
+                        const selAttrsMap = item.selectedAttributes
+                          ? (item.selectedAttributes instanceof Map ? Object.fromEntries(item.selectedAttributes) : item.selectedAttributes)
+                          : {};
+                        const attrParts: string[] = [];
+                        if (item.color || selAttrsMap['Color']) attrParts.push(item.color || selAttrsMap['Color']);
+                        if (item.size || selAttrsMap['Size']) attrParts.push(item.size || selAttrsMap['Size']);
+                        Object.entries(selAttrsMap).forEach(([k, v]) => {
+                          if (k !== 'Color' && k !== 'Size' && v) {
+                            attrParts.push(`${k}: ${v}`);
+                          }
+                        });
+                        const specsSummary = attrParts.length > 0 ? `| ${attrParts.join(', ')}` : '';
+
                         return (
                           <div key={item._id} className="py-2 flex items-center justify-between gap-3">
                             <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -1540,7 +1633,7 @@ export default function CheckoutForm() {
                               <div className="min-w-0 flex-1 pr-1">
                                 <p className="font-bold text-[var(--foreground)] truncate text-xs sm:text-sm leading-snug">{item.product?.title || 'Product'}</p>
                                 <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                  {t('checkout.qty')}: {qty} {item.color ? `| ${item.color}` : ''} {item.size ? `| ${item.size}` : ''}
+                                  {t('checkout.qty')}: {qty} {specsSummary}
                                 </p>
                               </div>
                             </div>

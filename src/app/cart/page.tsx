@@ -144,16 +144,101 @@ export default function CartPage() {
   const getItemPriceInfo = (item: any) => {
     const product = item?.product || item;
     const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
-    const salePrice = (!isDiscountExpired && product?.salePrice !== undefined && product?.salePrice !== null && Number(product.salePrice) > 0)
-      ? Number(product.salePrice)
+
+    // --- Match variant pricing (mirrors backend logic) ---
+    let variantRegularPrice: number | null = null;
+    let variantSalePrice: number | null = null;
+    const selColor = item?.color;
+    const selSize = item?.size;
+    const selAttrs = item?.selectedAttributes
+      ? (item.selectedAttributes instanceof Map ? Object.fromEntries(item.selectedAttributes) : item.selectedAttributes)
+      : undefined;
+
+    if (Array.isArray(product?.variants) && product.variants.length > 0) {
+      const targetAttrs: Record<string, string> = { ...(selAttrs || {}) };
+      if (selColor && !targetAttrs['Color']) targetAttrs['Color'] = selColor;
+      if (selSize && !targetAttrs['Size']) targetAttrs['Size'] = selSize;
+
+      const targetEntries = Object.entries(targetAttrs).filter(([_, v]) => Boolean(v));
+      
+      let matched: any = null;
+      let maxScore = -1;
+
+      for (const v of product.variants) {
+        const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
+        let matchCount = 0;
+        let nonColorMatchCount = 0;
+        let nonColorTotal = 0;
+        let hasColorMismatch = false;
+
+        for (const [key, val] of targetEntries) {
+          const kLower = key.toLowerCase();
+          let itemMatched = false;
+
+          if (kLower === 'color') {
+            const vColor = v.color || vAttrs['Color'] || vAttrs['color'];
+            if (vColor === val) {
+              itemMatched = true;
+            } else if (vColor) {
+              hasColorMismatch = true;
+            }
+          } else if (kLower === 'size') {
+            nonColorTotal++;
+            const vSize = v.size || vAttrs['Size'] || vAttrs['size'];
+            if (vSize === val) {
+              itemMatched = true;
+              nonColorMatchCount++;
+            }
+          } else {
+            nonColorTotal++;
+            if (vAttrs[key] === val || vAttrs[kLower] === val) {
+              itemMatched = true;
+              nonColorMatchCount++;
+            }
+          }
+
+          if (itemMatched) matchCount++;
+        }
+
+        if (targetEntries.length > 0 && matchCount === targetEntries.length) {
+          matched = v;
+          break;
+        }
+
+        let score = matchCount * 10;
+        if (nonColorTotal > 0 && nonColorMatchCount === nonColorTotal) {
+          score += 50;
+        }
+        if (hasColorMismatch) {
+          score -= 2;
+        }
+
+        if (score > maxScore && score > 0) {
+          maxScore = score;
+          matched = v;
+        }
+      }
+
+      if (matched) {
+        if (typeof matched.price === 'number' && matched.price > 0) variantRegularPrice = matched.price;
+        if (typeof matched.salePrice === 'number' && matched.salePrice > 0) variantSalePrice = matched.salePrice;
+      }
+    }
+
+    const rawSalePrice = variantSalePrice !== null ? variantSalePrice : Number(product?.salePrice);
+    const rawPrice = variantRegularPrice !== null ? variantRegularPrice : Number(product?.price);
+
+    const salePrice = (!isDiscountExpired && !isNaN(rawSalePrice) && rawSalePrice > 0)
+      ? rawSalePrice
       : 0;
 
-    const regularPrice = Number(product?.price) || Number(item?.price) || 0;
+    const regularPrice = (!isNaN(rawPrice) && rawPrice > 0) ? rawPrice : (Number(item?.price) || 0);
 
     let effectivePrice = regularPrice;
     if (salePrice > 0 && salePrice < regularPrice) {
       effectivePrice = salePrice;
-    } else if (Number(item?.price) > 0) {
+    } else if (Number(item?.price) > 0 && variantRegularPrice === null && variantSalePrice === null) {
+      // Only use item.price as fallback when no variant was matched
       effectivePrice = Number(item.price);
     }
 
