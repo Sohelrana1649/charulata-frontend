@@ -13,6 +13,7 @@ import { useAddToCartMutation } from '@/store/api/cartApi';
 import { addToGuestCart } from '@/utils/guestCart';
 import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
 import ProductDescription from '@/components/common/ProductDescription';
+import ProductImageMagnifier from '@/components/common/ProductImageMagnifier';
 import { useAppSelector } from '@/store/hooks';
 import { 
   ShoppingBag, 
@@ -47,16 +48,28 @@ import { toast } from 'react-toastify';
 import { fbEvent } from '@/components/analytics/FacebookPixel';
 import { useTranslation } from '@/i18n/LanguageContext';
 
-export default function ProductDetailClient() {
+interface ProductDetailClientProps {
+  slug?: string;
+  initialProduct?: any;
+  initialRelatedProducts?: any[];
+  initialReviews?: any[];
+}
+
+export default function ProductDetailClient({
+  slug: propSlug,
+  initialProduct,
+  initialRelatedProducts = [],
+  initialReviews = [],
+}: ProductDetailClientProps = {}) {
   const params = useParams();
   const router = useRouter();
-  const slug = params?.slug as string;
+  const slug = (params?.slug as string) || propSlug || initialProduct?.slug;
   const { t, locale } = useTranslation();
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const { data: productResponse, isLoading, error } = useGetProductBySlugQuery(slug, {
-    skip: !slug,
+    skip: !slug || !!initialProduct,
   });
 
   const [addToCart, { isLoading: isAdding }] = useAddToCartMutation();
@@ -64,22 +77,26 @@ export default function ProductDetailClient() {
   const [addToWishlist, { isLoading: isAddingToWishlist }] = useAddToWishlistMutation();
   const [removeFromWishlist, { isLoading: isRemovingFromWishlist }] = useRemoveFromWishlistMutation();
 
-  const product = productResponse?.data?.product || productResponse?.data || productResponse;
+  const product = productResponse?.data?.product || productResponse?.data || productResponse || initialProduct;
 
   // Related products query based on category
   const categoryId = product?.category?._id || product?.category;
   const { data: relatedResponse } = useGetProductsQuery(
     { category: categoryId, limit: 5 },
-    { skip: !categoryId }
+    { skip: !categoryId || (initialRelatedProducts && initialRelatedProducts.length > 0) }
   );
 
-  const relatedProducts = (relatedResponse?.data?.products || relatedResponse?.products || relatedResponse?.data || [])
-    .filter((p: any) => p._id !== product?._id)
-    .slice(0, 4);
+  const relatedProducts = (
+    relatedResponse?.data?.products || 
+    relatedResponse?.products || 
+    relatedResponse?.data || 
+    initialRelatedProducts || 
+    []
+  ).filter((p: any) => p._id !== product?._id).slice(0, 4);
 
   // Reviews hooks & state
   const { data: reviewsResponse } = useGetProductReviewsQuery(product?._id, {
-    skip: !product?._id,
+    skip: !product?._id || (initialReviews && initialReviews.length > 0),
   });
   const [submitReview, { isLoading: isSubmittingReview }] = useSubmitReviewMutation();
 
@@ -89,14 +106,18 @@ export default function ProductDetailClient() {
   const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [isCartBouncing, setIsCartBouncing] = useState<boolean>(false);
+  const [localSubmittedReviews, setLocalSubmittedReviews] = useState<any[]>([]);
 
-  const reviewsList = Array.isArray(reviewsResponse?.data?.reviews)
-    ? reviewsResponse.data.reviews
-    : Array.isArray(reviewsResponse?.reviews)
-      ? reviewsResponse.reviews
-      : Array.isArray(reviewsResponse?.data)
-        ? reviewsResponse.data
-        : [];
+  const reviewsList = [
+    ...localSubmittedReviews,
+    ...(Array.isArray(reviewsResponse?.data?.reviews)
+      ? reviewsResponse.data.reviews
+      : Array.isArray(reviewsResponse?.reviews)
+        ? reviewsResponse.reviews
+        : Array.isArray(reviewsResponse?.data)
+          ? reviewsResponse.data
+          : (initialReviews || []))
+  ];
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +136,14 @@ export default function ProductDetailClient() {
           ? 'ধন্যবাদ! আপনার মূল্যবান মতামত ও রিভিউটি সফলভাবে জমা হয়েছে। ✨' 
           : 'Thank you! Your valuable feedback & review has been submitted successfully. ✨'
       );
+      const newReviewItem = {
+        _id: 'local-' + Date.now(),
+        rating: newRating,
+        comment: newComment.trim(),
+        customer: { name: 'Customer' },
+        createdAt: new Date().toISOString(),
+      };
+      setLocalSubmittedReviews((prev) => [newReviewItem, ...prev]);
       setNewComment('');
       setNewRating(5);
       setShowReviewForm(false);
@@ -151,6 +180,17 @@ export default function ProductDetailClient() {
     const handleUpdate = () => setGuestWishlist(getGuestWishlist());
     window.addEventListener('guest_wishlist_updated', handleUpdate);
     return () => window.removeEventListener('guest_wishlist_updated', handleUpdate);
+  }, []);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsLightboxOpen(false);
+        setIsVideoModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const wishlistArray = React.useMemo(() => {
@@ -485,7 +525,7 @@ export default function ProductDetailClient() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !product) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[70vh]">
         <Loader2 className="h-9 w-9 animate-spin text-primary mr-2" />
@@ -494,7 +534,7 @@ export default function ProductDetailClient() {
     );
   }
 
-  if (error || !product) {
+  if ((error || !product) && !initialProduct) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[60vh] max-w-md mx-auto">
         <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 text-rose-500">
@@ -567,13 +607,8 @@ export default function ProductDetailClient() {
         
         {/* Left Gallery Column (lg:col-span-5 xl:col-span-5) */}
         <div className="lg:col-span-5 xl:col-span-5 space-y-3.5 lg:sticky lg:top-24 max-w-md mx-auto lg:max-w-none w-full">
-          <div 
-            className="aspect-square sm:aspect-[4/5] max-h-[500px] sm:max-h-[550px] w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-card border border-border/80 shadow-xs relative group cursor-pointer"
-            onClick={() => {
-              if (activeMediaType === 'image') setIsZoomed(!isZoomed);
-            }}
-          >
-            {activeMediaType === 'video' && product.videoUrl ? (
+          {activeMediaType === 'video' && product.videoUrl ? (
+            <div className="aspect-square sm:aspect-[4/5] max-h-[500px] sm:max-h-[550px] w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-card border border-border/80 shadow-xs relative group">
               <div className="relative w-full h-full bg-black flex items-center justify-center rounded-2xl overflow-hidden">
                 <video
                   src={product.videoUrl}
@@ -601,97 +636,28 @@ export default function ProductDetailClient() {
                   <span>{locale === 'bn' ? 'ছবিতে ফিরে যান' : 'Back to Photos'}</span>
                 </button>
               </div>
-            ) : (
-              <>
-                <Image 
-                  src={mainImage} 
-                  alt={`${product.title} - চারুলতা লাইফস্টাইল`} 
-                  fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className={`object-cover transition-transform duration-500 ease-out ${isZoomed ? 'scale-125' : 'group-hover:scale-105'}`} 
-                />
-
-                {/* Badges Overlay */}
-                <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex flex-col gap-1.5 z-10">
-                  {isSale && discountPercent > 0 && (
-                    <span className="bg-rose-600 text-white font-mono font-black text-[10px] sm:text-xs uppercase tracking-wider px-2.5 sm:px-3 py-1 rounded-full shadow-md">
-                      -{discountPercent}% OFF
-                    </span>
-                  )}
-                  {product.stockQuantity <= 5 && product.stockQuantity > 0 && (
-                    <span className="bg-amber-500 text-white font-extrabold text-[10px] uppercase px-2.5 py-0.5 rounded-full shadow-xs">
-                      Only {product.stockQuantity} Left!
-                    </span>
-                  )}
-                </div>
-
-                {/* Angle Counter Badge */}
-                {galleryImages.length > 1 && (
-                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-black/60 backdrop-blur-md text-white font-mono text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-white/20 z-10 shadow-xs">
-                    {activeImageIndex >= 0 ? activeImageIndex + 1 : 1} / {galleryImages.length}
-                  </div>
-                )}
-
-                {/* Next / Prev Navigation Arrows Overlay */}
-                {galleryImages.length > 1 && (
-                  <>
-                    <button
-                      onClick={handlePrevImage}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-primary text-white p-2 sm:p-2.5 rounded-full backdrop-blur-md transition-all shadow-md z-20 cursor-pointer active:scale-95 border border-white/20"
-                      aria-label="Previous angle photo"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-
-                    <button
-                      onClick={handleNextImage}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-primary text-white p-2 sm:p-2.5 rounded-full backdrop-blur-md transition-all shadow-md z-20 cursor-pointer active:scale-95 border border-white/20"
-                      aria-label="Next angle photo"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </>
-                )}
-
-                {/* Bottom Actions Bar (Zoom, Video Demo & Lightbox) */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between z-10 pointer-events-none gap-2">
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsZoomed(!isZoomed); }}
-                      className="pointer-events-auto bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-xl backdrop-blur-md text-[10px] font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-md border border-white/20 active:scale-95"
-                    >
-                      <Sparkles size={13} className="text-amber-400 shrink-0" />
-                      <span>{isZoomed ? (locale === 'bn' ? 'জুম আউট' : 'Zoom Out') : (locale === 'bn' ? 'জুম করতে ক্লিক করুন' : 'Hover / Click to Zoom')}</span>
-                    </button>
-
-                    {product.videoUrl && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMediaType('video');
-                          setIsVideoModalOpen(true);
-                        }}
-                        className="pointer-events-auto bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white px-3.5 py-1.5 rounded-xl backdrop-blur-md text-[10px] font-black transition flex items-center gap-1.5 cursor-pointer shadow-md border border-white/20 active:scale-95"
-                      >
-                        <Video size={13} className="fill-white text-white shrink-0" />
-                        <span>{locale === 'bn' ? 'ভিডিও ডেমো দেখুন' : 'Watch Video Demo'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(true); }}
-                    className="pointer-events-auto bg-black/70 hover:bg-primary text-white p-2 rounded-xl backdrop-blur-md text-[10px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-md border border-white/20 active:scale-95"
-                    title={locale === 'bn' ? 'ফুলস্ক্রিন গ্যালারি খুলুন' : 'Open Fullscreen Gallery'}
-                  >
-                    <Maximize2 size={14} />
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+            </div>
+          ) : (
+            <ProductImageMagnifier
+              src={mainImage}
+              alt={`${product.title} - চারুলতা লাইফস্টাইল`}
+              zoomLevel={2.5}
+              isSale={isSale}
+              discountPercent={discountPercent}
+              stockQuantity={product.stockQuantity}
+              galleryImages={galleryImages}
+              activeImageIndex={activeImageIndex}
+              onPrevImage={handlePrevImage}
+              onNextImage={handleNextImage}
+              onOpenLightbox={() => setIsLightboxOpen(true)}
+              hasVideo={Boolean(product.videoUrl)}
+              onOpenVideo={() => {
+                setActiveMediaType('video');
+                setIsVideoModalOpen(true);
+              }}
+              locale={locale}
+            />
+          )}
 
           {/* Interactive Multi-Angle Thumbnails & Video Carousel */}
           {(galleryImages.length > 1 || product.videoUrl) && (

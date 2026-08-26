@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Image from '@/components/SafeImage';
-import { useGetProductsQuery, useGetCategoriesQuery } from '@/store/api/productApi';
 import ProductCard from '@/components/common/ProductCard';
-import { Loader2, ArrowLeft, ChevronRight, Package, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Package, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import { useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
@@ -16,11 +15,17 @@ import { translateCategoryName } from '@/utils/categoryTranslator';
 
 interface CategoryClientViewProps {
   initialCategory?: any;
+  initialProducts?: any[];
+  slug?: string;
 }
 
-export default function CategoryClientView({ initialCategory }: CategoryClientViewProps) {
+export default function CategoryClientView({ 
+  initialCategory, 
+  initialProducts = [], 
+  slug: propSlug 
+}: CategoryClientViewProps) {
   const params = useParams();
-  const slug = (params?.slug as string) || initialCategory?.slug;
+  const slug = (params?.slug as string) || propSlug || initialCategory?.slug;
   const { locale, t } = useTranslation();
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -31,21 +36,6 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
 
   const [sortOption, setSortOption] = useState<string>('newest');
 
-  const { data: categoriesResponse } = useGetCategoriesQuery({});
-  const categories = categoriesResponse?.data?.categories || categoriesResponse?.categories || [];
-  
-  const currentCategory = categories.find(
-    (c: any) => c.slug === slug || c.name.toLowerCase().replace(/\s+/g, '-') === slug
-  ) || initialCategory;
-
-  const { data: productsResponse, isLoading } = useGetProductsQuery({
-    category: slug,
-    sort: sortOption,
-    limit: 40,
-  });
-
-  const productsList = productsResponse?.data?.products || productsResponse?.products || productsResponse?.data || [];
-
   useEffect(() => {
     setGuestWishlist(getGuestWishlist());
     const handleUpdate = () => setGuestWishlist(getGuestWishlist());
@@ -53,7 +43,7 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
     return () => window.removeEventListener('guest_wishlist_updated', handleUpdate);
   }, []);
 
-  const wishlistArray = React.useMemo(() => {
+  const wishlistArray = useMemo(() => {
     if (!isAuthenticated) return guestWishlist;
     const serverArray = Array.isArray(wishlistResponse?.data?.products)
       ? wishlistResponse.data.products
@@ -94,7 +84,35 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
     }
   };
 
-  const catName = currentCategory ? translateCategoryName(currentCategory, locale) : (slug ? slug.replace(/-/g, ' ') : 'Category');
+  // Sort products client-side based on the selected sortOption
+  const sortedProducts = useMemo(() => {
+    const list = [...initialProducts];
+    if (sortOption === 'price-asc') {
+      return list.sort((a, b) => {
+        const priceA = a.salePrice || a.price || 0;
+        const priceB = b.salePrice || b.price || 0;
+        return priceA - priceB;
+      });
+    }
+    if (sortOption === 'price-desc') {
+      return list.sort((a, b) => {
+        const priceA = a.salePrice || a.price || 0;
+        const priceB = b.salePrice || b.price || 0;
+        return priceB - priceA;
+      });
+    }
+    if (sortOption === 'popular') {
+      return list.sort((a, b) => {
+        const popA = a.soldCount || a.ratings?.count || 0;
+        const popB = b.soldCount || b.ratings?.count || 0;
+        return popB - popA;
+      });
+    }
+    // Default 'newest'
+    return list;
+  }, [initialProducts, sortOption]);
+
+  const catName = initialCategory ? translateCategoryName(initialCategory, locale) : (slug ? slug.replace(/-/g, ' ') : 'Category');
 
   return (
     <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full py-6 flex-1 space-y-6">
@@ -123,16 +141,16 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
             {catName}
           </h1>
           <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
-            {currentCategory?.description || (locale === 'bn' 
+            {initialCategory?.description || (locale === 'bn' 
               ? `চারুলতা লাইফস্টাইলের সেরা ${catName} কালেকশন এক্সপ্লোর করুন। আকর্ষণীয় দাম ও ১-ক্লিক ক্যাশ অন ডেলিভারি।` 
               : `Explore our top-tier ${catName} collection at Charulata Lifestyle. Premium quality with 1-Click Cash on Delivery.`)}
           </p>
         </div>
 
-        {currentCategory?.image && (
+        {initialCategory?.image && (
           <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden relative border-2 border-white/30 shadow-xl shrink-0">
             <Image
-              src={currentCategory.image}
+              src={initialCategory.image}
               alt={`${catName} - চারুলতা লাইফস্টাইল`}
               fill
               className="object-cover"
@@ -144,7 +162,7 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
       {/* Toolbar & Sort Controls */}
       <div className="flex items-center justify-between gap-4 border-b border-border pb-4 flex-wrap">
         <p className="text-xs sm:text-sm text-muted-foreground font-semibold">
-          {locale === 'bn' ? `মোট ${productsList.length} টি পণ্য পাওয়া গেছে` : `Showing ${productsList.length} products`}
+          {locale === 'bn' ? `মোট ${sortedProducts.length} টি পণ্য পাওয়া গেছে` : `Showing ${sortedProducts.length} products`}
         </p>
 
         <div className="flex items-center space-x-2">
@@ -163,12 +181,7 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
       </div>
 
       {/* Products Grid */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-          <span className="text-sm font-bold text-muted-foreground">{locale === 'bn' ? 'পণ্যসমূহ লোড হচ্ছে...' : 'Loading products...'}</span>
-        </div>
-      ) : productsList.length === 0 ? (
+      {sortedProducts.length === 0 ? (
         <div className="text-center py-20 bg-card border border-dashed border-border rounded-3xl p-8 max-w-md mx-auto">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-60" />
           <h3 className="text-lg font-bold text-foreground font-serif">{locale === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Found'}</h3>
@@ -180,7 +193,7 @@ export default function CategoryClientView({ initialCategory }: CategoryClientVi
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-5">
-          {productsList.map((product: any) => (
+          {sortedProducts.map((product: any) => (
             <ProductCard
               key={product._id}
               product={product}

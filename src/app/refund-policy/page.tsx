@@ -1,5 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Shield, Package, Search, Camera, Phone, CheckCircle, ArrowLeft } from 'lucide-react';
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Refund & Return Policy | Charulata Lifestyle',
+  description: 'Refund, return, and exchange policy for Charulata Lifestyle in Bangladesh.',
+};
 
 const steps = [
   { icon: Package, label: 'Receive Product', desc: 'Accept your delivery' },

@@ -1,5 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Eye, Lock, FileText } from 'lucide-react';
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Charulata Lifestyle',
+  description: 'Privacy Policy for Charulata Lifestyle - how we collect, protect, and handle your data.',
+};
 
 const sections = [
   {

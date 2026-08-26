@@ -5,10 +5,30 @@ import JsonLd from '@/components/common/JsonLd';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://charulatalifestyle.com';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
+export const dynamicParams = true;
+export const revalidate = 300; // 5 minutes ISR revalidation
+
+export async function generateStaticParams() {
+  try {
+    const res = await fetch(`${API_URL}/categories`, {
+      next: { revalidate: 300, tags: ['categories'] },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const categories = json?.data?.categories || json?.categories || json?.data || [];
+    if (!Array.isArray(categories)) return [];
+    return categories
+      .filter((c: any) => c?.slug)
+      .map((c: any) => ({ slug: c.slug }));
+  } catch {
+    return [];
+  }
+}
+
 async function fetchCategoryBySlug(slug: string) {
   try {
     const res = await fetch(`${API_URL}/categories/${slug}`, {
-      next: { revalidate: 300 },
+      next: { revalidate: 300, tags: ['categories', `category-${slug}`] },
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -20,12 +40,13 @@ async function fetchCategoryBySlug(slug: string) {
 
 async function fetchCategoryProducts(slug: string) {
   try {
-    const res = await fetch(`${API_URL}/products?category=${slug}&limit=20`, {
-      next: { revalidate: 120 },
+    const res = await fetch(`${API_URL}/products?category=${slug}&limit=40`, {
+      next: { revalidate: 300, tags: ['products', `category-${slug}`] },
     });
     if (!res.ok) return [];
     const json = await res.json();
-    return json?.data?.products || json?.products || json?.data || [];
+    const products = json?.data?.products || json?.products || json?.data || [];
+    return Array.isArray(products) ? products : [];
   } catch {
     return [];
   }
@@ -40,7 +61,7 @@ export async function generateMetadata({
   const slug = resolvedParams?.slug;
   const category = await fetchCategoryBySlug(slug);
 
-  const categoryName = category?.name || slug.replace(/-/g, ' ');
+  const categoryName = category?.name || slug?.replace(/-/g, ' ') || 'Collection';
   const categoryNameBn = category?.nameBn || '';
   const title = `${categoryName} ${categoryNameBn ? `(${categoryNameBn})` : ''} Collection | Charulata Lifestyle`;
   const description = category?.description || `Shop exclusive ${categoryName} online at Charulata Lifestyle BD. Best prices, premium quality & 1-Click Cash on Delivery in Bangladesh.`;
@@ -97,10 +118,12 @@ export default async function CategoryPageServer({
 }) {
   const resolvedParams = await params;
   const slug = resolvedParams?.slug;
-  const category = await fetchCategoryBySlug(slug);
-  const products = await fetchCategoryProducts(slug);
+  const [category, products] = await Promise.all([
+    fetchCategoryBySlug(slug),
+    fetchCategoryProducts(slug),
+  ]);
 
-  const categoryName = category?.name || slug.replace(/-/g, ' ');
+  const categoryName = category?.name || slug?.replace(/-/g, ' ') || 'Category';
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -145,7 +168,11 @@ export default async function CategoryPageServer({
     <>
       <JsonLd data={breadcrumbJsonLd} />
       {products.length > 0 && <JsonLd data={itemListJsonLd} />}
-      <CategoryClientView initialCategory={category} />
+      <CategoryClientView 
+        initialCategory={category} 
+        initialProducts={products} 
+        slug={slug} 
+      />
     </>
   );
 }

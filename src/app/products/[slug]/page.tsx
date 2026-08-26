@@ -5,10 +5,30 @@ import JsonLd from '@/components/common/JsonLd';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://charulatalifestyle.com';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
+export const dynamicParams = true;
+export const revalidate = 120; // 2 minutes ISR revalidation
+
+export async function generateStaticParams() {
+  try {
+    const res = await fetch(`${API_URL}/products?limit=100`, {
+      next: { revalidate: 120, tags: ['products'] },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const products = json?.data?.products || json?.products || json?.data || [];
+    if (!Array.isArray(products)) return [];
+    return products
+      .filter((p: any) => p?.slug)
+      .map((p: any) => ({ slug: p.slug }));
+  } catch {
+    return [];
+  }
+}
+
 async function fetchProductBySlug(slug: string) {
   try {
     const res = await fetch(`${API_URL}/products/${slug}`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 120, tags: ['product', 'products', `product-${slug}`] },
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -18,10 +38,26 @@ async function fetchProductBySlug(slug: string) {
   }
 }
 
+async function fetchRelatedProducts(categoryId: string, currentProductId?: string) {
+  if (!categoryId) return [];
+  try {
+    const res = await fetch(`${API_URL}/products?category=${categoryId}&limit=6`, {
+      next: { revalidate: 120, tags: ['products'] },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const products = json?.data?.products || json?.products || json?.data || [];
+    if (!Array.isArray(products)) return [];
+    return products.filter((p: any) => p._id !== currentProductId).slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
 async function fetchProductReviews(productId: string) {
   try {
-    const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=5&sort=-createdAt`, {
-      next: { revalidate: 300 },
+    const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=10&sort=-createdAt`, {
+      next: { revalidate: 120, tags: ['reviews', `product-reviews-${productId}`] },
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -108,16 +144,20 @@ export default async function ProductDetailPageServer({
   const product = await fetchProductBySlug(slug);
 
   if (!product) {
-    return <ProductDetailClient />;
+    return <ProductDetailClient slug={slug} />;
   }
 
   const categoryName = product?.category?.name || 'Collection';
   const categorySlug = product?.category?.slug || 'all';
+  const categoryId = product?.category?._id || product?.category;
   const effectivePrice = product.salePrice || product.price;
   const plainDesc = product.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
 
-  // Fetch latest reviews server-side for JSON-LD schema
-  const reviews = product._id ? await fetchProductReviews(product._id) : [];
+  // Fetch related products and reviews server-side for ISR pre-rendering
+  const [relatedProducts, reviews] = await Promise.all([
+    categoryId ? fetchRelatedProducts(categoryId, product._id) : Promise.resolve([]),
+    product._id ? fetchProductReviews(product._id) : Promise.resolve([]),
+  ]);
 
   const productJsonLd: Record<string, any> = {
     '@context': 'https://schema.org',
@@ -255,7 +295,12 @@ export default async function ProductDetailPageServer({
     <>
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
-      <ProductDetailClient />
+      <ProductDetailClient 
+        slug={slug}
+        initialProduct={product}
+        initialRelatedProducts={relatedProducts}
+        initialReviews={reviews}
+      />
     </>
   );
 }

@@ -1,5 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Scale, HelpCircle } from 'lucide-react';
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Terms & Conditions | Charulata Lifestyle',
+  description: 'Terms and Conditions for Charulata Lifestyle - orders, payments, delivery, and services across Bangladesh.',
+};
 
 const sections = [
   {
