@@ -29,7 +29,10 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
   const isSale = !isDiscountExpired && salePrice > 0 && price > 0 && salePrice < price;
   const discountPercent = isSale ? Math.floor(((price - salePrice) / price) * 100) : 0;
-  const img = product?.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+  const img = (Array.isArray(product?.productImages) ? product.productImages : [])
+    .concat(Array.isArray(product?.images) ? product.images : [])
+    .concat(product?.image ? [product.image] : [])
+    .find((src: any) => typeof src === 'string' && src.trim() !== '') || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
 
   // Individual Product Flash Sale Time Remaining Helper
   const getProductTimeLeftText = (endDateStr?: string) => {

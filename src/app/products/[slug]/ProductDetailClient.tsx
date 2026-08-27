@@ -417,8 +417,14 @@ export default function ProductDetailClient({
         setSelectedSize(initialAttrs['Size']);
       }
 
-      if (product.productImages?.length > 0) {
-        setActiveImage(product.productImages[0]);
+      const initialImages = [
+        ...(Array.isArray(product.productImages) ? product.productImages : []),
+        ...(Array.isArray(product.images) ? product.images : []),
+        product.image,
+      ].filter((img): img is string => typeof img === 'string' && img.trim() !== '');
+
+      if (initialImages.length > 0) {
+        setActiveImage(initialImages[0]);
       }
 
       if (product.videoUrl) {
@@ -560,12 +566,25 @@ export default function ProductDetailClient({
   const finalUnitPrice = isSale ? currentSalePrice : currentRegularPrice;
   const price = currentRegularPrice;
   const salePrice = currentSalePrice;
-  const mainImage = activeImage || matchedVariant?.image || product?.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
-  const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Collection');
+  const fallbackPlaceholder = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
+  const rawImages = [
+    ...(Array.isArray(product?.productImages) ? product.productImages : []),
+    ...(Array.isArray(product?.images) ? product.images : []),
+    product?.image,
+    matchedVariant?.image,
+  ].filter((img): img is string => typeof img === 'string' && img.trim() !== '');
 
-  const galleryImages = (product?.productImages && product.productImages.length > 0)
-    ? product.productImages
-    : [mainImage];
+  const galleryImages = rawImages.length > 0
+    ? Array.from(new Set(rawImages))
+    : [fallbackPlaceholder];
+
+  const mainImage = (activeImage && activeImage.trim() !== '')
+    ? activeImage
+    : (matchedVariant?.image && matchedVariant.image.trim() !== '')
+      ? matchedVariant.image
+      : galleryImages[0];
+
+  const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Collection');
   const activeImageIndex = galleryImages.findIndex((img: string) => img === mainImage);
 
   const handlePrevImage = (e?: React.MouseEvent) => {

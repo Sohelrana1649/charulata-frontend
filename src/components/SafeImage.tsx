@@ -1,34 +1,46 @@
 import Image, { ImageProps } from "next/image";
 import React, { useState } from "react";
 
-const ALLOWED_DOMAINS = [
-  "localhost",
-  "127.0.0.1",
-  "images.unsplash.com",
-  "plus.unsplash.com",
-  "res.cloudinary.com",
-];
+const FALLBACK_PLACEHOLDER = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600";
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL;
-let apiHostname: string | null = null;
+let backendBaseUrl = "http://localhost:5000";
 if (apiURL) {
   try {
-    apiHostname = new URL(apiURL).hostname;
+    const url = new URL(apiURL);
+    backendBaseUrl = `${url.protocol}//${url.host}`;
   } catch (e) {
     // Ignore invalid URL
   }
 }
 
 /**
- * Extracts the real image URL from Google Images search results if applicable,
- * otherwise returns the original URL.
+ * Normalizes and cleans image URLs for production and local environments
  */
-export function cleanImageUrl(src: string): string {
-  if (!src) return src;
-  let cleaned = src;
+export function cleanImageUrl(src?: string | null): string {
+  if (!src || typeof src !== 'string' || !src.trim()) {
+    return FALLBACK_PLACEHOLDER;
+  }
+  let cleaned = src.trim();
+
+  // 1. Handle relative upload paths (e.g. /uploads/image.jpg)
+  if (cleaned.startsWith('/uploads/')) {
+    cleaned = `${backendBaseUrl}${cleaned}`;
+  }
+
+  // 2. If stored in database as localhost:5000 / 127.0.0.1:5000, map to real backend URL in production
+  if (backendBaseUrl !== 'http://localhost:5000') {
+    if (cleaned.startsWith('http://localhost:5000') || cleaned.startsWith('http://127.0.0.1:5000')) {
+      cleaned = cleaned
+        .replace('http://localhost:5000', backendBaseUrl)
+        .replace('http://127.0.0.1:5000', backendBaseUrl);
+    }
+  }
+
+  // 3. Extract real image URL from Google Images search results if applicable
   try {
-    if (src.includes("google.com/imgres")) {
-      const url = new URL(src);
+    if (cleaned.includes("google.com/imgres")) {
+      const url = new URL(cleaned);
       const imgurl = url.searchParams.get("imgurl");
       if (imgurl) {
         cleaned = decodeURIComponent(imgurl);
@@ -38,13 +50,8 @@ export function cleanImageUrl(src: string): string {
     // Ignore URL parsing errors
   }
 
-  // Support local network / mobile browser testing by replacing localhost with actual host
-  if (typeof window !== 'undefined' && cleaned.includes('localhost')) {
-    cleaned = cleaned.replace('localhost', window.location.hostname);
-  }
-
-  // Auto-optimize Cloudinary image delivery (WebP/AVIF format & smart compression without downscaling resolution)
-  if (typeof cleaned === 'string' && cleaned.includes('res.cloudinary.com') && cleaned.includes('/upload/') && !cleaned.includes('f_auto')) {
+  // 4. Auto-optimize Cloudinary image delivery
+  if (cleaned.includes('res.cloudinary.com') && cleaned.includes('/upload/') && !cleaned.includes('f_auto')) {
     cleaned = cleaned.replace('/upload/', '/upload/f_auto,q_auto/');
   }
 
@@ -53,25 +60,7 @@ export function cleanImageUrl(src: string): string {
 
 export function isAllowedDomain(src: string): boolean {
   if (!src) return false;
-  // If it's a relative path or local import, Next.js handles it without validation
-  if (
-    src.startsWith("/") ||
-    src.startsWith("./") ||
-    src.startsWith("../") ||
-    !src.includes("://")
-  ) {
-    return true;
-  }
-  try {
-    const url = new URL(src);
-    const hostname = url.hostname;
-    if (ALLOWED_DOMAINS.includes(hostname) || hostname === apiHostname) {
-      return true;
-    }
-  } catch (e) {
-    // Ignore parsing errors
-  }
-  return false;
+  return true; // We enabled wildcard remote patterns in next.config.ts
 }
 
 export default function SafeImage({
@@ -88,16 +77,22 @@ export default function SafeImage({
   blurDataURL,
   unoptimized,
   onLoad,
+  onError,
   ...props
 }: ImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const isStringSrc = typeof src === "string";
-  const cleanedSrc = isStringSrc ? cleanImageUrl(src) : src;
-  const allowed = !isStringSrc || isAllowedDomain(cleanedSrc as string);
+  const initialCleaned = isStringSrc ? cleanImageUrl(src) : src;
+  const currentSrc = hasError ? FALLBACK_PLACEHOLDER : initialCleaned;
 
-  const isLocalUpload = typeof cleanedSrc === 'string' && cleanedSrc.includes('/uploads/');
-  const finalUnoptimized = unoptimized || isLocalUpload;
+  const isExternal = typeof currentSrc === 'string' && (
+    currentSrc.startsWith('http://') || 
+    currentSrc.startsWith('https://')
+  );
+  const isLocalUpload = typeof currentSrc === 'string' && currentSrc.includes('/uploads/');
+  const finalUnoptimized = unoptimized !== undefined ? unoptimized : (isExternal || isLocalUpload);
 
   const combinedClassName = `${className || ""} image-transition ${isLoaded ? "image-loaded" : ""}`.trim();
 
@@ -108,54 +103,32 @@ export default function SafeImage({
     }
   };
 
-  if (allowed) {
-    return (
-      <Image
-        src={cleanedSrc}
-        alt={alt}
-        fill={fill}
-        style={style}
-        className={combinedClassName}
-        width={width}
-        height={height}
-        priority={priority}
-        quality={quality}
-        placeholder={placeholder}
-        blurDataURL={blurDataURL}
-        unoptimized={finalUnoptimized}
-        onLoad={handleLoad}
-        {...props}
-      />
-    );
-  }
-
-  // Fallback to standard img tag if not allowed in next.config.ts remotePatterns
-  const fillStyle: React.CSSProperties = fill
-    ? {
-        position: "absolute",
-        height: "100%",
-        width: "100%",
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        objectFit: "cover",
-      }
-    : {};
-
-  const combinedStyle = { ...fillStyle, ...style };
+  const handleError = (e: any) => {
+    if (!hasError) {
+      setHasError(true);
+    }
+    if (onError) {
+      onError(e);
+    }
+  };
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={cleanedSrc as string}
-      alt={alt}
-      style={combinedStyle}
+    <Image
+      src={currentSrc}
+      alt={alt || "Product image"}
+      fill={fill}
+      style={style}
       className={combinedClassName}
       width={width}
       height={height}
+      priority={priority}
+      quality={quality}
+      placeholder={placeholder}
+      blurDataURL={blurDataURL}
+      unoptimized={finalUnoptimized}
       onLoad={handleLoad}
-      {...(props as React.ImgHTMLAttributes<HTMLImageElement>)}
+      onError={handleError}
+      {...props}
     />
   );
 }

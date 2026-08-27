@@ -318,7 +318,12 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
   ], []);
 
   const banners = useMemo(() => {
-    const raw = landingData?.banners || [];
+    const raw = (Array.isArray(landingData?.banners) ? landingData.banners : [])
+      .filter((b: any) => b && typeof b === 'object' && b.isActive !== false && (
+        (typeof b.image === 'string' && b.image.trim() !== '') ||
+        (typeof b.imageUrl === 'string' && b.imageUrl.trim() !== '') ||
+        (typeof b.img === 'string' && b.img.trim() !== '')
+      ));
     return raw.length > 0 ? raw : DEFAULT_BANNERS;
   }, [landingData?.banners, DEFAULT_BANNERS]);
 
@@ -500,10 +505,11 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
                   >
                     <Link href={bannerLink} className="block w-full h-full relative cursor-pointer group/banner">
                       <Image
-                        src={banner.image || "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=1600"}
-                        alt={displayTitle || "Banner"}
+                        src={banner.image || banner.imageUrl || banner.img || DEFAULT_BANNERS[0].image}
+                        alt={displayTitle || "Charulata Banner"}
                         fill
                         priority={idx === 0}
+                        unoptimized
                         sizes="100vw"
                         quality={95}
                         className="object-contain sm:object-cover object-center transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
