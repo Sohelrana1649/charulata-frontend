@@ -47,9 +47,9 @@ async function fetchRelatedProducts(categoryId: string, currentProductId?: strin
     });
     if (!res.ok) return [];
     const json = await res.json();
-    const products = json?.data?.products || json?.products || json?.data || [];
+    const products = Array.isArray(json?.data) ? json.data : (json?.data?.products || json?.products || []);
     if (!Array.isArray(products)) return [];
-    return products.filter((p: any) => p._id !== currentProductId).slice(0, 4);
+    return products.filter((p: any) => (p._id || p.id)?.toString() !== currentProductId?.toString()).slice(0, 4);
   } catch {
     return [];
   }

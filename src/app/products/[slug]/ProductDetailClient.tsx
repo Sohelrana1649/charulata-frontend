@@ -88,12 +88,12 @@ export default function ProductDetailClient({
   );
 
   const relatedProducts = (
-    relatedResponse?.data?.products || 
-    relatedResponse?.products || 
-    relatedResponse?.data || 
+    (Array.isArray(relatedResponse?.data)
+      ? relatedResponse.data
+      : (relatedResponse?.data?.products || relatedResponse?.products)) || 
     initialRelatedProducts || 
     []
-  ).filter((p: any) => p._id !== product?._id).slice(0, 4);
+  ).filter((p: any) => (p._id || p.id)?.toString() !== (product?._id || product?.id)?.toString()).slice(0, 4);
 
   // Reviews hooks & state
   const { data: reviewsResponse } = useGetProductReviewsQuery(product?._id, {
