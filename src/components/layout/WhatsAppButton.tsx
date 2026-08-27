@@ -54,11 +54,11 @@ export default function WhatsAppButton() {
 
         {/* WhatsApp Button Image */}
         <Image
-          src="/auth/whatsapp.png"
+          src="/auth/whatsapp.svg"
           alt="Order via WhatsApp"
-          width={280}
-          height={60}
-          className="h-10 sm:h-12 w-auto object-contain drop-shadow-lg relative z-10 transition-transform duration-300 group-hover:brightness-105"
+          width={48}
+          height={48}
+          className="h-11 sm:h-12 w-11 sm:w-12 object-contain drop-shadow-lg relative z-10 transition-transform duration-300 group-hover:scale-110"
           priority
         />
       </a>

@@ -1203,7 +1203,7 @@ export default function ProductDetailClient({
                 <div className="flex items-center space-x-3">
                   <div className="relative w-10 h-10 shrink-0 flex items-center justify-center">
                     <Image 
-                      src="/auth/whatsapp.png" 
+                      src="/auth/whatsapp.svg" 
                       alt="WhatsApp Order" 
                       width={40} 
                       height={40} 
