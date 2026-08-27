@@ -12,7 +12,25 @@ export const getGuestCart = (): IGuestCartItem[] => {
   if (typeof window === 'undefined') return [];
   try {
     const data = localStorage.getItem('charulata_guest_cart');
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+
+    // Filter out corrupted/ghost items (e.g. deleted products with no title, or mock 'Charulata Product' with 0 price)
+    const validItems = parsed.filter((item: any) => {
+      if (!item || !item.product) return false;
+      const p = item.product;
+      const title = p.title || p.name;
+      if (!title || title === 'Charulata Product' || !p.slug || p.slug === 'undefined') {
+        return false;
+      }
+      return true;
+    });
+
+    if (validItems.length !== parsed.length) {
+      localStorage.setItem('charulata_guest_cart', JSON.stringify(validItems));
+    }
+    return validItems;
   } catch (err) {
     return [];
   }

@@ -21,7 +21,12 @@ export const getGuestWishlistItems = (): IGuestWishlistItem[] => {
   if (typeof window === 'undefined') return [];
   try {
     const data = localStorage.getItem('charulata_guest_wishlist_details');
-    if (data) return JSON.parse(data);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => item && item.title && item.title !== 'Charulata Product' && item.slug && item.slug !== 'undefined');
+      }
+    }
     
     // Fallback if only IDs exist
     const ids = getGuestWishlist();
@@ -34,8 +39,9 @@ export const getGuestWishlistItems = (): IGuestWishlistItem[] => {
 export const saveGuestWishlistItems = (items: IGuestWishlistItem[]) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem('charulata_guest_wishlist_details', JSON.stringify(items));
-    const ids = items.map(i => i._id);
+    const cleanItems = items.filter(item => item && item.title && item.title !== 'Charulata Product' && item.slug && item.slug !== 'undefined');
+    localStorage.setItem('charulata_guest_wishlist_details', JSON.stringify(cleanItems));
+    const ids = cleanItems.map(i => i._id);
     localStorage.setItem('charulata_guest_wishlist', JSON.stringify(ids));
     window.dispatchEvent(new Event('guest_wishlist_updated'));
   } catch (err) {
@@ -56,11 +62,11 @@ export const toggleGuestWishlist = (productOrId: any): boolean => {
   } else {
     currentItems.push({
       _id: productId,
-      title: productObj.title || 'Charulata Product',
+      title: productObj.title || '',
       slug: productObj.slug || productId,
       price: Number(productObj.price) || 0,
       salePrice: Number(productObj.salePrice) || 0,
-      image: productObj.productImages?.[0] || productObj.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400'
+      image: productObj.productImages?.[0] || productObj.image || ''
     });
     isAdded = true;
   }

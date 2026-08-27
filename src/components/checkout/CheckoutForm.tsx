@@ -7,7 +7,7 @@ import { useGetDistrictsQuery, useCompleteProfileMutation } from '@/store/api/us
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/authSlice';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fbEvent } from '@/components/analytics/FacebookPixel';
@@ -137,17 +137,27 @@ export default function CheckoutForm() {
     if (!rawItems.length) return [];
 
     // Dynamically sync cart items with fresh MongoDB product prices if available
-    return rawItems.map((item: any) => {
-      const prodId = typeof item.product === 'object' ? (item.product?._id || item.product?.id) : item.product;
-      const dbProd = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id || p.id) === String(prodId)) : null;
-      if (dbProd) {
-        return {
-          ...item,
-          product: dbProd
-        };
-      }
-      return item;
-    });
+    return rawItems
+      .map((item: any) => {
+        const prodId = typeof item.product === 'object' ? (item.product?._id || item.product?.id) : item.product;
+        const dbProd = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id || p.id) === String(prodId)) : null;
+        if (dbProd) {
+          return {
+            ...item,
+            product: dbProd
+          };
+        }
+        return item;
+      })
+      .filter((item: any) => {
+        const p = item?.product;
+        if (!p || typeof p !== 'object') return false;
+        const title = p.title || p.name;
+        if (!title || title === 'Charulata Product' || !p.slug || p.slug === 'undefined') {
+          return false;
+        }
+        return true;
+      });
   }, [isAuthenticated, cartData, guestCartItems, dbProductsList]);
 
   const districtsList = useMemo(() => districtsResponse?.data || districtsResponse || [], [districtsResponse]);
@@ -778,7 +788,7 @@ export default function CheckoutForm() {
     </thead>
     <tbody>
       ${orderItemsList.map((item: any) => {
-        const prodTitle = item.product?.title || item.title || 'Charulata Product';
+        const prodTitle = item.product?.title || item.product?.name || item.title || 'Product';
         const itemPrice = item.price || item.product?.salePrice || item.product?.price || 0;
         const qty = item.quantity || 1;
         const rawSku = item.product?.sku || (typeof item.product === 'object' && item.product?.sku) || '';
@@ -922,7 +932,7 @@ export default function CheckoutForm() {
 
               <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border/60">
                 {orderItemsList.map((item: any, idx: number) => {
-                  const prodTitle = item.product?.title || item.title || 'Charulata Product';
+                  const prodTitle = item.product?.title || item.product?.name || item.title || 'Product';
                   const prodImg = item.product?.productImages?.[0] || item.product?.images?.[0] || item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
                   const itemPrice = item.price || item.product?.salePrice || item.product?.price || 0;
                   const qty = item.quantity || 1;

@@ -58,30 +58,35 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
 
   const items = React.useMemo(() => {
     if (!isAuthenticated) {
-      return guestItems.map((g: any) => {
-        const idStr = (g._id || g.id || g).toString();
-        const matched = allProductsList.find((p: any) => (p._id || p.id)?.toString() === idStr);
-        if (matched) {
-          return {
-            _id: matched._id || matched.id,
-            title: matched.title || matched.name || 'Charulata Product',
-            slug: matched.slug || idStr,
-            price: Number(matched.price) || Number(g.price) || 0,
-            salePrice: Number(matched.salePrice) || Number(g.salePrice) || 0,
-            image: matched.productImages?.[0] || matched.image || g.image,
-            rawProduct: matched
-          };
-        }
-        return {
-          _id: idStr,
-          title: g.title || 'Charulata Product',
-          slug: g.slug || idStr,
-          price: Number(g.price) || 0,
-          salePrice: Number(g.salePrice) || 0,
-          image: g.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
-          rawProduct: g
-        };
-      });
+      return guestItems
+        .map((g: any) => {
+          const idStr = (g._id || g.id || g).toString();
+          const matched = allProductsList.find((p: any) => (p._id || p.id)?.toString() === idStr);
+          if (matched) {
+            return {
+              _id: matched._id || matched.id,
+              title: matched.title || matched.name,
+              slug: matched.slug || idStr,
+              price: Number(matched.price) || Number(g.price) || 0,
+              salePrice: Number(matched.salePrice) || Number(g.salePrice) || 0,
+              image: matched.productImages?.[0] || matched.image || g.image,
+              rawProduct: matched
+            };
+          }
+          if (g.title && g.title !== 'Charulata Product' && g.slug && g.slug !== 'undefined') {
+            return {
+              _id: idStr,
+              title: g.title,
+              slug: g.slug,
+              price: Number(g.price) || 0,
+              salePrice: Number(g.salePrice) || 0,
+              image: g.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
+              rawProduct: g
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
     }
 
     const serverProducts = Array.isArray(wishlistResponse?.data?.products)
@@ -275,7 +280,7 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
                         onClick={onClose}
                         className="font-bold text-xs text-foreground hover:text-primary transition line-clamp-1 block"
                       >
-                        {item.title || 'Charulata Product'}
+                        {item.title || item.name || 'Product'}
                       </Link>
 
                       <div className="flex items-baseline space-x-1.5 font-mono text-xs">

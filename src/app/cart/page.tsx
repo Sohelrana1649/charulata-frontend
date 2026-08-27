@@ -69,17 +69,27 @@ export default function CartPage() {
     const rawItems = isAuthenticated ? (cartData?.items || []) : guestCartItems;
     if (!rawItems.length) return [];
 
-    return rawItems.map((item: any) => {
-      const prodId = typeof item.product === 'object' ? item.product?._id : item.product;
-      const dbProd = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id) === String(prodId)) : null;
-      if (dbProd) {
-        return {
-          ...item,
-          product: dbProd
-        };
-      }
-      return item;
-    });
+    return rawItems
+      .map((item: any) => {
+        const prodId = typeof item.product === 'object' ? item.product?._id : item.product;
+        const dbProd = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id) === String(prodId)) : null;
+        if (dbProd) {
+          return {
+            ...item,
+            product: dbProd
+          };
+        }
+        return item;
+      })
+      .filter((item: any) => {
+        const p = item?.product;
+        if (!p || typeof p !== 'object') return false;
+        const title = p.title || p.name;
+        if (!title || title === 'Charulata Product' || !p.slug || p.slug === 'undefined') {
+          return false;
+        }
+        return true;
+      });
   }, [isAuthenticated, cartData, guestCartItems, dbProductsList]);
 
   if (!mounted) {
@@ -394,7 +404,7 @@ export default function CartPage() {
 
                   <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
                     <Link href={`/products/${product.slug || product._id}`} className="font-extrabold text-foreground font-serif text-sm sm:text-base hover:text-primary transition line-clamp-1">
-                      {product.title || 'Charulata Product'}
+                      {product.title || product.name || 'Product'}
                     </Link>
                     
                     {/* Attributes Badges */}
