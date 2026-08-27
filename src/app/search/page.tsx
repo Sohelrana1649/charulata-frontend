@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from '@/components/SafeImage';
 import { useGetProductsQuery, useGetCategoriesQuery } from '@/store/api/productApi';
 import ProductCard from '@/components/common/ProductCard';
-import { Search, Loader2, ArrowLeft, Star, ShoppingBag, Grid, List, Heart, Eye, Share2, Check, ArrowUpDown, ChevronDown, SlidersHorizontal, X, Filter } from 'lucide-react';
+import { Search, Loader2, ArrowLeft, Star, ShoppingBag, Grid, List, Heart, Eye, Share2, Check, ArrowUpDown, ChevronDown, SlidersHorizontal, X, Filter, PackageOpen, SearchX, RotateCcw, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
@@ -13,6 +13,143 @@ import { toast } from 'react-toastify';
 import { useAppSelector } from '@/store/hooks';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { translateCategoryName } from '@/utils/categoryTranslator';
+
+// ─── Reusable Empty State Component ───────────────────────────────────────
+interface EmptyProductStateProps {
+  variant: 'empty-category' | 'no-results';
+  onReset?: () => void;
+  onViewAll?: () => void;
+  locale?: string;
+}
+
+const EmptyProductState: React.FC<EmptyProductStateProps> = ({
+  variant,
+  onReset,
+  onViewAll,
+  locale = 'bn',
+}) => {
+  const isCategoryEmpty = variant === 'empty-category';
+
+  return (
+    <div className="bg-card border border-border/80 rounded-3xl p-10 sm:p-16 text-center max-w-xl mx-auto my-8 shadow-xs animate-fadeIn flex flex-col items-center">
+      {/* Visual Icon Badge */}
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-muted/60 dark:bg-muted/30 border border-border/60 flex items-center justify-center mb-6 text-muted-foreground/70 shadow-inner">
+        {isCategoryEmpty ? (
+          <PackageOpen size={48} className="stroke-[1.5]" />
+        ) : (
+          <SearchX size={48} className="stroke-[1.5]" />
+        )}
+      </div>
+
+      {/* Heading Text */}
+      <h3 className="text-lg sm:text-xl font-extrabold text-foreground font-serif tracking-tight mb-2">
+        {isCategoryEmpty
+          ? (locale === 'bn' ? 'এই ক্যাটাগরিতে এখনো কোনো পণ্য নেই' : 'No products in this category yet')
+          : (locale === 'bn' ? 'এই ফিল্টারে কোনো পণ্য পাওয়া যায়নি' : 'No products match your filters')}
+      </h3>
+
+      {/* Subtext */}
+      <p className="text-xs sm:text-sm text-muted-foreground font-medium max-w-sm mb-6 leading-relaxed">
+        {isCategoryEmpty
+          ? (locale === 'bn' ? 'শীঘ্রই নতুন পণ্য যুক্ত হবে' : 'New products will be added to this category soon')
+          : (locale === 'bn' ? 'ফিল্টার পরিবর্তন করে আবার চেষ্টা করুন' : 'Try adjusting or clearing your active filters to see more results')}
+      </p>
+
+      {/* Action Button */}
+      {isCategoryEmpty ? (
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95"
+        >
+          <span>{locale === 'bn' ? 'সব পণ্য দেখুন' : 'View All Products'}</span>
+          <ArrowRight size={14} className="stroke-[2.5]" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95"
+        >
+          <RotateCcw size={14} className="stroke-[2.5]" />
+          <span>{locale === 'bn' ? 'ফিল্টার রিসেট করুন' : 'Reset Filters'}</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ─── Skeleton Components for Search / Product Listing ──────────────────────
+const ProductGridSkeleton = ({ count = 12 }: { count?: number }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5 animate-fadeIn">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="flex flex-col bg-card border border-border/70 rounded-2xl overflow-hidden shadow-2xs">
+        <div className="aspect-square shimmer-bg" />
+        <div className="p-3.5 space-y-2.5">
+          <div className="h-3 shimmer-bg rounded-md w-1/3" />
+          <div className="h-4 shimmer-bg rounded-md w-4/5" />
+          <div className="h-3 shimmer-bg rounded-md w-1/2" />
+          <div className="flex items-center justify-between pt-2 border-t border-border/60">
+            <div className="h-5 shimmer-bg rounded-md w-16" />
+            <div className="h-8 w-20 shimmer-bg rounded-xl" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const ProductListSkeleton = ({ count = 6 }: { count?: number }) => (
+  <div className="flex flex-col space-y-4 animate-fadeIn">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="flex flex-col sm:flex-row bg-card border border-border/70 rounded-2xl p-4 gap-5 items-center sm:items-start">
+        <div className="w-full sm:w-48 aspect-[4/3] sm:aspect-square rounded-xl shimmer-bg shrink-0" />
+        <div className="flex-1 space-y-3 w-full py-1">
+          <div className="h-3 shimmer-bg rounded-md w-24" />
+          <div className="h-5 shimmer-bg rounded-md w-2/3" />
+          <div className="h-3 shimmer-bg rounded-md w-1/2" />
+          <div className="h-5 shimmer-bg rounded-md w-28 pt-2" />
+          <div className="flex gap-2.5 pt-2">
+            <div className="h-9 w-28 shimmer-bg rounded-xl" />
+            <div className="h-9 w-20 shimmer-bg rounded-xl" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const SearchPageSkeleton = () => (
+  <div className="bg-background min-h-screen pb-16">
+    <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 py-6">
+      {/* Breadcrumb Skeleton */}
+      <div className="h-4 w-48 shimmer-bg rounded-md mb-6" />
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar Skeleton */}
+        <aside className="w-full lg:w-72 shrink-0 hidden lg:block space-y-6">
+          <div className="bg-card border border-border/70 rounded-2xl p-5 space-y-4">
+            <div className="h-5 w-32 shimmer-bg rounded-md" />
+            <div className="space-y-2 pt-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-8 shimmer-bg rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content Skeleton */}
+        <main className="flex-1 space-y-6">
+          <div className="bg-card border border-border/70 rounded-2xl p-4 flex justify-between items-center">
+            <div className="h-5 w-40 shimmer-bg rounded-md" />
+            <div className="h-9 w-32 shimmer-bg rounded-xl" />
+          </div>
+          <ProductGridSkeleton count={12} />
+        </main>
+      </div>
+    </div>
+  </div>
+);
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -256,6 +393,28 @@ function SearchResults() {
     if (sortBy === 'popular') return (b.views || 0) - (a.views || 0);
     return 0;
   });
+
+  const isAnyFilterActive = Boolean(searchText.trim()) || (Boolean(selectedColor) && selectedColor.trim() !== '') || priceRange < 40000;
+
+  const handleResetOnlyFilters = () => {
+    setSearchText('');
+    setSelectedColor('');
+    setPriceRange(40000);
+    const params = new URLSearchParams();
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category', selectedCategory);
+    }
+    const qs = params.toString();
+    router.push(qs ? `/search?${qs}` : '/search');
+  };
+
+  const handleViewAllProducts = () => {
+    setSearchText('');
+    setSelectedCategory('all');
+    setSelectedColor('');
+    setPriceRange(40000);
+    router.push('/search');
+  };
 
   const handleResetFilters = () => {
     setSearchText('');
@@ -614,21 +773,19 @@ function SearchResults() {
             )}
           </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center py-24">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-              <span className="text-sm text-muted-foreground">{t('search.searchingInventory')}</span>
-            </div>
+          {isLoading && accumulatedProducts.length === 0 ? (
+            viewMode === 'grid' ? (
+              <ProductGridSkeleton count={12} />
+            ) : (
+              <ProductListSkeleton count={6} />
+            )
           ) : sortedProducts.length === 0 ? (
-            <div className="bg-card border border-border p-12 text-center rounded-2xl">
-              <p className="text-sm text-muted-foreground mb-4">{t('search.noProducts')}</p>
-              <button
-                onClick={handleResetFilters}
-                className="inline-flex items-center space-x-1.5 rounded-lg bg-primary px-4.5 py-2 text-xs font-bold text-white hover:opacity-90 transition cursor-pointer"
-              >
-                <span>{t('search.clearFilters')}</span>
-              </button>
-            </div>
+            <EmptyProductState
+              variant={isAnyFilterActive ? 'no-results' : 'empty-category'}
+              onReset={handleResetOnlyFilters}
+              onViewAll={handleViewAllProducts}
+              locale={locale}
+            />
           ) : (
             <>
               {viewMode === 'grid' ? (
@@ -775,44 +932,45 @@ function SearchResults() {
 
               {/* Load More Pagination Section */}
               {totalProducts > 0 && (
-                <div className="mt-12 pt-8 border-t border-border/80 flex flex-col items-center justify-center space-y-4">
-                  {/* Visual Progress Bar */}
-                  <div className="w-full max-w-xs sm:max-w-sm space-y-2 text-center">
-                    <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <div className="w-full max-w-5xl mx-auto mt-12 pt-8 border-t border-border/50 flex flex-col items-center justify-center space-y-4">
+                  {/* Subtle Supporting Progress Bar */}
+                  <div className="w-full max-w-xs sm:max-w-sm space-y-1.5 text-center px-4">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
-                        {locale === 'bn' ? 'প্রদর্শিত হচ্ছে' : 'Showing'} {Math.min(sortedProducts.length, totalProducts)} / {totalProducts} {locale === 'bn' ? 'পণ্য' : 'Products'}
+                        {locale === 'bn' ? 'প্রদর্শিত হচ্ছে' : 'Showing'} {Math.min(sortedProducts.length, totalProducts)} / {totalProducts} {locale === 'bn' ? 'পণ্য' : 'products'}
                       </span>
-                      <span className="font-mono text-primary font-black">
+                      <span className="font-mono text-xs font-semibold text-muted-foreground">
                         {Math.min(100, Math.round((Math.min(sortedProducts.length, totalProducts) / Math.max(totalProducts, 1)) * 100))}%
                       </span>
                     </div>
 
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted/60 dark:bg-muted/30 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary transition-all duration-500 ease-out rounded-full"
+                        className="h-full bg-primary/75 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min(100, (Math.min(sortedProducts.length, totalProducts) / Math.max(totalProducts, 1)) * 100)}%` }}
                       />
                     </div>
                   </div>
 
-                  {/* Load More Button */}
+                  {/* Primary Focus Load More Button */}
                   {currentPage < totalPages ? (
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={handleLoadMore}
                         disabled={isLoading || isFetchingMore}
-                        className="inline-flex items-center space-x-2.5 px-8 py-3.5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-extrabold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-300 transform active:scale-95 cursor-pointer disabled:opacity-60"
+                        className="group min-w-[230px] sm:min-w-[250px] inline-flex items-center justify-center space-x-2 px-8 py-3.5 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-primary/20 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:transform-none"
                       >
                         {(isLoading || isFetchingMore) ? (
                           <>
-                            <Loader2 size={16} className="animate-spin" />
-                            <span>{locale === 'bn' ? 'আরও পণ্য লোড হচ্ছে...' : 'Loading More Products...'}</span>
+                            <Loader2 size={17} className="animate-spin text-white" />
+                            <span>{locale === 'bn' ? 'আরও পণ্য লোড হচ্ছে...' : 'Loading more products...'}</span>
                           </>
                         ) : (
                           <>
-                            <span>{locale === 'bn' ? 'আরও পণ্য দেখুন (Load More)' : 'Load More Products'}</span>
-                            <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-mono">
+                            <ChevronDown size={17} className="transition-transform duration-200 group-hover:translate-y-0.5 stroke-[2.5]" />
+                            <span>{locale === 'bn' ? 'আরও পণ্য দেখুন' : 'Load more products'}</span>
+                            <span className="inline-flex items-center justify-center bg-white/20 text-white px-2 py-0.5 rounded-full text-[11px] font-medium font-mono">
                               +{Math.min(itemsPerPage, Math.max(0, totalProducts - sortedProducts.length))}
                             </span>
                           </>
@@ -820,10 +978,10 @@ function SearchResults() {
                       </button>
                     </div>
                   ) : (
-                    <div className="pt-4 text-center">
-                      <div className="inline-flex items-center space-x-2 bg-muted/60 border border-border/80 px-5 py-2.5 rounded-full text-xs font-bold text-muted-foreground">
-                        <Check size={14} className="text-emerald-500 stroke-[2.5]" />
-                        <span>{locale === 'bn' ? 'আপনি এই কালেকশনের সব পণ্য দেখেছেন 🎉' : 'All products loaded 🎉'}</span>
+                    <div className="pt-3 text-center">
+                      <div className="inline-flex items-center space-x-2 bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 px-5 py-2.5 rounded-full text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-xs backdrop-blur-xs">
+                        <Check size={15} className="text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                        <span>{locale === 'bn' ? 'আপনি এই কালেকশনের সব পণ্য দেখেছেন 🎉' : 'You have viewed all products in this collection 🎉'}</span>
                       </div>
                     </div>
                   )}
@@ -870,12 +1028,7 @@ function SearchResults() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="flex-1 flex items-center justify-center min-h-[60vh] bg-background text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-        <span className="text-sm">Loading search and refine interface...</span>
-      </div>
-    }>
+    <Suspense fallback={<SearchPageSkeleton />}>
       <SearchResults />
     </Suspense>
   );
