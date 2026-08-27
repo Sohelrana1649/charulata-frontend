@@ -14,6 +14,7 @@ import { addToGuestCart } from '@/utils/guestCart';
 import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
 import ProductDescription from '@/components/common/ProductDescription';
 import ProductImageMagnifier from '@/components/common/ProductImageMagnifier';
+import ProductLightboxModal from '@/components/common/ProductLightboxModal';
 import { useAppSelector } from '@/store/hooks';
 import { 
   ShoppingBag, 
@@ -1486,6 +1487,16 @@ export default function ProductDetailClient({
           </div>
         </div>
       )}
+
+      {/* ─── Ultra-HD Fullscreen Zoom & Swipe Lightbox Modal (Mobile & Desktop) ─── */}
+      <ProductLightboxModal
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={galleryImages}
+        initialIndex={activeImageIndex >= 0 ? activeImageIndex : 0}
+        productTitle={product?.title || 'Product'}
+        locale={locale}
+      />
     </div>
   );
 }
