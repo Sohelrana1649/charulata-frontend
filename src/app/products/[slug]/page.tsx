@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import ProductDetailClient from './ProductDetailClient';
 import JsonLd from '@/components/common/JsonLd';
 
@@ -7,11 +8,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1
 
 export const dynamicParams = true;
 export const revalidate = 120; // 2 minutes ISR revalidation
+export const maxDuration = 60; // Up to 60s serverless timeout
 
 export async function generateStaticParams() {
   try {
     const res = await fetch(`${API_URL}/products?limit=100`, {
       next: { revalidate: 120, tags: ['products'] },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -25,11 +28,12 @@ export async function generateStaticParams() {
   }
 }
 
-async function fetchProductBySlug(slug: string) {
+const fetchProductBySlug = cache(async (slug: string) => {
   try {
     const cleanSlug = encodeURIComponent(decodeURIComponent(slug));
     const res = await fetch(`${API_URL}/products/${cleanSlug}`, {
       next: { revalidate: 120, tags: ['product', 'products', `product-${cleanSlug}`] },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -37,13 +41,14 @@ async function fetchProductBySlug(slug: string) {
   } catch {
     return null;
   }
-}
+});
 
-async function fetchRelatedProducts(categoryId: string, currentProductId?: string) {
+const fetchRelatedProducts = cache(async (categoryId: string, currentProductId?: string) => {
   if (!categoryId) return [];
   try {
     const res = await fetch(`${API_URL}/products?category=${categoryId}&limit=6`, {
       next: { revalidate: 120, tags: ['products'] },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -53,12 +58,13 @@ async function fetchRelatedProducts(categoryId: string, currentProductId?: strin
   } catch {
     return [];
   }
-}
+});
 
-async function fetchProductReviews(productId: string) {
+const fetchProductReviews = cache(async (productId: string) => {
   try {
     const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=10&sort=-createdAt`, {
       next: { revalidate: 120, tags: ['reviews', `product-reviews-${productId}`] },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -67,7 +73,7 @@ async function fetchProductReviews(productId: string) {
   } catch {
     return [];
   }
-}
+});
 
 const safeIsoDate = (val?: any): string | undefined => {
   if (!val) return undefined;

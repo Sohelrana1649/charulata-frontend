@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVerifyOtpMutation, useForgotPasswordMutation } from '@/store/api/authApi';
-import { ArrowLeft, ArrowRight, Loader2, KeyRound, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -36,16 +36,13 @@ function VerifyOtpForm() {
 
   // Handle digit input
   const handleChange = (index: number, value: string) => {
-    // Only allow numbers
     if (value && !/^\d+$/.test(value)) return;
 
     const newOtp = [...otp];
-    // Take the last character typed (in case of double inputs)
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
     setErrorMsg('');
 
-    // Automatically focus next field if a digit is entered
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -55,13 +52,11 @@ function VerifyOtpForm() {
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (!otp[index] && index > 0) {
-        // If current box is empty, delete previous and focus it
         const newOtp = [...otp];
         newOtp[index - 1] = '';
         setOtp(newOtp);
         inputRefs.current[index - 1]?.focus();
       } else {
-        // Clear current box
         const newOtp = [...otp];
         newOtp[index] = '';
         setOtp(newOtp);
@@ -81,8 +76,6 @@ function VerifyOtpForm() {
     const digits = pastedData.split('');
     setOtp(digits);
     setErrorMsg('');
-
-    // Focus the last input field after pasting
     inputRefs.current[5]?.focus();
   };
 
@@ -94,13 +87,13 @@ function VerifyOtpForm() {
     try {
       const result = await resendOtp({ email }).unwrap();
       if (result.success || result.status === 'success') {
-        toast.success('New OTP verification code sent to your email.');
-        setSuccessMsg('OTP code has been resent.');
-        setTimer(60); // Reset countdown timer to 60 seconds
-        setOtp(Array(6).fill('')); // Clear inputs
+        toast.success(locale === 'bn' ? 'নতুন ওটিপি কোড পাঠানো হয়েছে।' : 'New OTP code sent.');
+        setSuccessMsg(locale === 'bn' ? 'নতুন ওটিপি পাঠানো হয়েছে।' : 'OTP code has been resent.');
+        setTimer(60);
+        setOtp(Array(6).fill(''));
         inputRefs.current[0]?.focus();
       } else {
-        setErrorMsg('Failed to resend verification code. Please try again.');
+        setErrorMsg(locale === 'bn' ? 'ওটিপি পাঠাতে ব্যর্থ হয়েছে।' : 'Failed to resend code.');
       }
     } catch (err: any) {
       console.error('Resend OTP error:', err);
@@ -116,128 +109,163 @@ function VerifyOtpForm() {
 
     const otpCode = otp.join('');
     if (otpCode.length !== 6) {
-      setErrorMsg('Please enter all 6 digits of the verification code.');
+      setErrorMsg(locale === 'bn' ? 'সবগুলো ৬টি সংখ্যা লিখুন।' : 'Please enter all 6 digits.');
       return;
     }
 
     try {
-      const result = await verifyOtp({ email, otp: otpCode }).unwrap();
+      const result = await verifyOtp({ email: email.trim().toLowerCase(), otp: otpCode.trim() }).unwrap();
       if (result.success || result.status === 'success') {
-        toast.success('OTP code verified successfully!');
-        setSuccessMsg('OTP code verified! Redirecting to setup new password...');
+        toast.success(locale === 'bn' ? 'ওটিপি কোড সফলভাবে যাচাই হয়েছে!' : 'OTP code verified successfully!');
+        setSuccessMsg(locale === 'bn' ? 'ওটিপি যাচাই হয়েছে! পাসওয়ার্ড সেট করার পেজে নিয়ে যাওয়া হচ্ছে...' : 'OTP verified! Redirecting to setup password...');
         setTimeout(() => {
-          router.push(`/reset-password?email=${encodeURIComponent(email)}&otp=${otpCode}`);
-        }, 1500);
+          router.push(`/reset-password?email=${encodeURIComponent(email.trim().toLowerCase())}&otp=${otpCode.trim()}`);
+        }, 1200);
       } else {
-        setErrorMsg('Verification failed. Please double check the OTP.');
+        setErrorMsg(locale === 'bn' ? 'যাচাইকরণ ব্যর্থ হয়েছে। ওটিপি চেক করুন।' : 'Verification failed.');
       }
     } catch (err: any) {
       console.error('OTP Verification error:', err);
-      setErrorMsg(err?.data?.message || 'Invalid or expired OTP. Please try again.');
+      setErrorMsg(err?.data?.message || (locale === 'bn' ? 'ভুল বা মেয়াদোত্তীর্ণ ওটিপি।' : 'Invalid or expired OTP.'));
     }
   };
 
   return (
-    <div className="flex min-h-[75vh] flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link href="/forgot-password" className="inline-flex items-center space-x-1 text-xs font-semibold text-muted-foreground hover:text-secondary transition-colors mb-6">
-          <ArrowLeft size={14} />
-          <span>{locale === 'bn' ? 'পাসওয়ার্ড ভুলে গেছেন এ ফিরে যান' : 'Back to Forgot Password'}</span>
-        </Link>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground font-serif">
-          {t('auth.otpTitle')}
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {locale === 'bn' ? 'আমরা একটি ৬-সংখ্যার ওয়ান-টাইম পাসওয়ার্ড (ওটিপি) পাঠিয়েছি ' : 'We have sent a 6-digit One-Time Password (OTP) to '}<span className="font-semibold text-foreground">{email || 'your email'}</span>.
-        </p>
+    <div className="relative flex min-h-[85vh] items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-background selection:bg-primary selection:text-white">
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-card px-4 py-8 shadow-sm sm:rounded-xl sm:px-10 border border-border">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                {locale === 'bn' ? '৬-সংখ্যার যাচাইকরণ কোড (ওটিপি)' : '6-Digit Verification Code (OTP)'}
-              </label>
-              
-              {/* 6 Digit Input Group */}
-              <div className="flex justify-between gap-2.5">
-                {otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    type="text"
-                    pattern="\d*"
-                    maxLength={1}
-                    value={digit}
-                    ref={(el) => {
-                      inputRefs.current[idx] = el;
-                    }}
-                    onChange={(e) => handleChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(idx, e)}
-                    onPaste={idx === 0 ? handlePaste : undefined}
-                    className="w-12 h-14 text-center text-lg font-bold border border-border rounded-xl focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all text-foreground bg-muted"
-                  />
-                ))}
-              </div>
+      <div className="relative z-10 w-full max-w-md mx-auto">
+        <div className="bg-card px-6 py-7 sm:px-8 sm:py-8 rounded-2xl border border-border/80 shadow-sm flex flex-col justify-between">
+          <div>
+            {/* Back Link */}
+            <div className="mb-4">
+              <Link
+                href="/forgot-password"
+                className="inline-flex items-center space-x-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors group"
+              >
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                <span>{locale === 'bn' ? 'ইমেইল পরিবর্তন করুন' : 'Back to Forgot Password'}</span>
+              </Link>
             </div>
 
-            {/* Timer and Resend Action */}
-            <div className="flex items-center justify-between text-xs font-medium">
-              {timer > 0 ? (
-                <span className="text-muted-foreground">
-                  {locale === 'bn' ? `${timer} সেকেন্ড পর কোড পুনরায় পাঠান` : `Resend code in ${timer}s`}
-                </span>
-              ) : (
+            {/* Header */}
+            <div className="text-left mb-6">
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold tracking-wide uppercase mb-2.5">
+                <Sparkles className="w-3 h-3" />
+                <span>Charulata Security</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-serif">
+                {locale === 'bn' ? 'ওটিপি যাচাইকরণ' : 'Verify Code'}
+              </h1>
+              <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {locale === 'bn' ? 'আমরা একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি ' : 'We have sent a 6-digit OTP code to '}
+                <span className="font-semibold text-foreground">{email || 'your email'}</span>.
+              </p>
+            </div>
+
+            {/* Form */}
+            <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+              <div>
+                <label className="block text-xs font-semibold text-foreground/80 mb-2">
+                  {locale === 'bn' ? '৬-সংখ্যার যাচাইকরণ কোড' : '6-Digit Verification Code (OTP)'} <span className="text-destructive">*</span>
+                </label>
+                
+                {/* 6 Digit Input Boxes */}
+                <div className="flex justify-between gap-1.5 sm:gap-2" onPaste={handlePaste}>
+                  {otp.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => {
+                        inputRefs.current[idx] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(idx, e)}
+                      className={`h-12 w-full text-center text-lg sm:text-xl font-bold rounded-xl border bg-background text-foreground transition-all duration-200 outline-none ${
+                        digit
+                          ? 'border-primary ring-2 ring-primary/20 font-mono'
+                          : 'border-border focus:border-primary focus:ring-2 focus:ring-primary/20'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Error Message Display */}
+              {errorMsg && (
+                <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs font-medium text-destructive animate-fade-in">
+                  {errorMsg}
+                </div>
+              )}
+
+              {/* Success Message Display */}
+              {successMsg && (
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs font-medium text-emerald-600 dark:text-emerald-400 animate-fade-in">
+                  ✓ {successMsg}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div>
                 <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={isResending}
-                  className="inline-flex items-center space-x-1 text-secondary hover:opacity-90 transition font-bold"
+                  type="submit"
+                  disabled={isVerifying || otp.join('').length !== 6}
+                  className="group flex w-full justify-center items-center space-x-2 rounded-xl bg-primary py-3 px-4 text-sm font-semibold text-white hover:bg-primary/90 active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all duration-200 cursor-pointer min-h-[44px]"
                 >
-                  {isResending ? (
+                  {isVerifying ? (
                     <>
-                      <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1" />
-                      <span>{locale === 'bn' ? 'পুনরায় পাঠানো হচ্ছে...' : 'Resending...'}</span>
+                      <Loader2 className="animate-spin h-4 w-4" />
+                      <span>{locale === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
                     </>
                   ) : (
-                    <span>{t('auth.resendOtp')}</span>
+                    <>
+                      <span>{locale === 'bn' ? 'কোড যাচাই করুন' : 'Verify Code'}</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </>
                   )}
                 </button>
-              )}
-            </div>
-
-            {errorMsg && (
-              <div className="rounded-lg bg-red-50 p-3.5 text-xs font-medium text-red-600">
-                {errorMsg}
               </div>
-            )}
 
-            {successMsg && (
-              <div className="rounded-lg bg-green-50 p-3.5 text-xs font-medium text-green-700">
-                {successMsg}
-              </div>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                disabled={isVerifying}
-                className="flex w-full justify-center items-center space-x-2 rounded-lg bg-primary py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 transition"
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="animate-spin h-4 w-4" />
-                    <span>{locale === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
-                  </>
+              {/* Resend OTP Section */}
+              <div className="text-center pt-2">
+                {timer > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {locale === 'bn' ? 'পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন: ' : 'Resend code in: '}
+                    <span className="font-bold text-primary font-mono">{timer}s</span>
+                  </p>
                 ) : (
-                  <>
-                    <span>{t('auth.verifyOtp')}</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
+                  <button
+                    type="button"
+                    disabled={isResending}
+                    onClick={handleResend}
+                    className="inline-flex items-center space-x-1.5 text-xs font-semibold text-primary hover:underline underline-offset-4 transition cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
+                    <span>{locale === 'bn' ? 'নতুন ওটিপি কোড পাঠান' : 'Resend OTP Code'}</span>
+                  </button>
                 )}
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
+          </div>
+
+          {/* Bottom Link */}
+          <div className="mt-6 text-center border-t border-border/60 pt-4">
+            <p className="text-sm text-muted-foreground">
+              {locale === 'bn' ? 'লগইন পেজে ফিরতে চান?' : 'Already have access?'}{' '}
+              <Link
+                href="/login"
+                className="font-semibold text-primary hover:underline underline-offset-4 transition-colors ml-1"
+              >
+                {locale === 'bn' ? 'লগইন করুন' : 'Sign in'}
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -246,11 +274,13 @@ function VerifyOtpForm() {
 
 export default function VerifyOtpPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[75vh] items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-secondary" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[85vh] items-center justify-center bg-background">
+          <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        </div>
+      }
+    >
       <VerifyOtpForm />
     </Suspense>
   );

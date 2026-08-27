@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import CategoryClientView from './CategoryClientView';
 import JsonLd from '@/components/common/JsonLd';
 
@@ -7,11 +8,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1
 
 export const dynamicParams = true;
 export const revalidate = 300; // 5 minutes ISR revalidation
+export const maxDuration = 60; // Up to 60s serverless timeout
 
 export async function generateStaticParams() {
   try {
     const res = await fetch(`${API_URL}/categories`, {
       next: { revalidate: 300, tags: ['categories'] },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -25,10 +28,11 @@ export async function generateStaticParams() {
   }
 }
 
-async function fetchCategoryBySlug(slug: string) {
+const fetchCategoryBySlug = cache(async (slug: string) => {
   try {
     const res = await fetch(`${API_URL}/categories/${slug}`, {
       next: { revalidate: 300, tags: ['categories', `category-${slug}`] },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -36,12 +40,13 @@ async function fetchCategoryBySlug(slug: string) {
   } catch {
     return null;
   }
-}
+});
 
-async function fetchCategoryProducts(slug: string) {
+const fetchCategoryProducts = cache(async (slug: string) => {
   try {
     const res = await fetch(`${API_URL}/products?category=${slug}&limit=40`, {
       next: { revalidate: 300, tags: ['products', `category-${slug}`] },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -50,7 +55,7 @@ async function fetchCategoryProducts(slug: string) {
   } catch {
     return [];
   }
-}
+});
 
 export async function generateMetadata({
   params,
