@@ -480,7 +480,6 @@ export default function Header() {
                 width={160}
                 height={48}
                 priority
-                style={{ width: 'auto', height: 'auto' }}
                 className="h-10 sm:h-14 w-auto max-w-[140px] sm:max-w-[190px] object-contain"
               />
             </div>
@@ -569,7 +568,6 @@ export default function Header() {
                 width={160}
                 height={48}
                 priority
-                style={{ width: 'auto', height: 'auto' }}
                 className="h-10 sm:h-14 w-auto max-w-[130px] sm:max-w-[190px] object-contain hover:opacity-95 transition-opacity"
               />
             </div>
