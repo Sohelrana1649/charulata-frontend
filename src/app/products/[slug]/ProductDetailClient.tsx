@@ -1183,8 +1183,9 @@ export default function ProductDetailClient({
           {(() => {
             const productName = product?.title || product?.name || 'N/A';
             const productSku = product?.sku || 'N/A';
-            const productPrice = product?.salePrice || product?.price || 'N/A';
-            const pageLink = typeof window !== 'undefined' ? window.location.href : '';
+            const productPrice = finalUnitPrice || product?.salePrice || product?.price || 'N/A';
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.charulatalifestyle.com';
+            const pageLink = `${siteUrl}/products/${product?.slug || slug || ''}`;
 
             const whatsappMessage = locale === 'bn'
               ? `হ্যালো চারুলতা, আমি এই প্রোডাক্টটি অর্ডার করতে চাই:\nপ্রোডাক্ট: ${productName}\nSKU: ${productSku}\nমূল্য: ৳${productPrice}\nলিংক: ${pageLink}`
