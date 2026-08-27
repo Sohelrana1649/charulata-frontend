@@ -80,19 +80,21 @@ export default function ProductDetailClient({
 
   const product = productResponse?.data?.product || productResponse?.data || productResponse || initialProduct;
 
-  // Related products query based on category
+  // Related products query based on category (always fetches live to reflect deletions/additions)
   const categoryId = product?.category?._id || product?.category;
   const { data: relatedResponse } = useGetProductsQuery(
-    { category: categoryId, limit: 5 },
-    { skip: !categoryId || (initialRelatedProducts && initialRelatedProducts.length > 0) }
+    { category: categoryId, limit: 6 },
+    { skip: !categoryId }
+  );
+
+  const liveRelated = (
+    Array.isArray(relatedResponse?.data)
+      ? relatedResponse.data
+      : (relatedResponse?.data?.products || relatedResponse?.products)
   );
 
   const relatedProducts = (
-    (Array.isArray(relatedResponse?.data)
-      ? relatedResponse.data
-      : (relatedResponse?.data?.products || relatedResponse?.products)) || 
-    initialRelatedProducts || 
-    []
+    (Array.isArray(liveRelated) ? liveRelated : initialRelatedProducts) || []
   ).filter((p: any) => (p._id || p.id)?.toString() !== (product?._id || product?.id)?.toString()).slice(0, 4);
 
   // Reviews hooks & state

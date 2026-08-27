@@ -136,6 +136,10 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState<ProductForm>(initialForm);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
+  // Modern Delete Confirmation Modal States
+  const [deleteModalProduct, setDeleteModalProduct] = useState<{ id: string; title: string; image?: string; sku?: string; price?: number } | null>(null);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
   const productsList = productsRes?.data?.products || productsRes?.data || productsRes?.products || [];
   const categoriesList = categoriesRes?.data?.categories || categoriesRes?.data || categoriesRes?.categories || [];
 
@@ -199,12 +203,17 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedProductIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedProductIds.length} selected product(s)?`)) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedProductIds.length === 0) return;
     try {
       await bulkDeleteProducts({ productIds: selectedProductIds }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) deleted successfully!`);
+      setIsBulkDeleteModalOpen(false);
       setSelectedProductIds([]);
       refetch();
     } catch (err: any) {
@@ -515,11 +524,22 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+  const handleDelete = (product: any) => {
+    setDeleteModalProduct({
+      id: product._id,
+      title: product.title,
+      image: product.productImages?.[0] || product.image,
+      sku: product.sku,
+      price: product.salePrice || product.price,
+    });
+  };
+
+  const confirmSingleDelete = async () => {
+    if (!deleteModalProduct) return;
     try {
-      await deleteProduct(id).unwrap();
+      await deleteProduct(deleteModalProduct.id).unwrap();
       toast.success('Product deleted successfully!');
+      setDeleteModalProduct(null);
       refetch();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to delete product.');
@@ -1168,7 +1188,7 @@ export default function AdminProductsPage() {
                     </button>
                     
                     <button
-                      onClick={() => handleDelete(prod._id)}
+                      onClick={() => handleDelete(prod)}
                       className="p-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white rounded-xl text-xs transition cursor-pointer border border-rose-500/20"
                       title="Delete Product"
                     >
@@ -1270,7 +1290,7 @@ export default function AdminProductsPage() {
                           <Edit3 size={14} />
                         </button>
                         <button
-                          onClick={() => handleDelete(prod._id)}
+                          onClick={() => handleDelete(prod)}
                           className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
                           title="Delete Product"
                         >
@@ -2084,6 +2104,110 @@ export default function AdminProductsPage() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Single Product Delete Confirmation Modal ── */}
+      {deleteModalProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-in fade-in">
+          <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shadow-inner">
+                <Trash2 size={26} className="stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-foreground font-serif tracking-tight">
+                  Delete Product?
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+                  Are you sure you want to permanently remove this product from your inventory? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Product Summary Preview Card */}
+            <div className="bg-muted/50 border border-border/80 rounded-2xl p-3.5 flex items-center space-x-3">
+              <div className="w-14 h-14 rounded-xl bg-card border border-border/60 overflow-hidden relative shrink-0">
+                {deleteModalProduct.image ? (
+                  <Image src={deleteModalProduct.image} alt={deleteModalProduct.title} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                    <ImageIcon size={20} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xs sm:text-sm text-foreground truncate font-serif">{deleteModalProduct.title}</p>
+                <div className="flex items-center space-x-2 mt-1 text-[11px] text-muted-foreground font-mono">
+                  {deleteModalProduct.sku && <span className="bg-muted px-1.5 py-0.5 rounded border border-border">SKU: {deleteModalProduct.sku}</span>}
+                  {deleteModalProduct.price ? <span className="text-emerald-600 dark:text-emerald-400 font-bold">৳{deleteModalProduct.price.toLocaleString()}</span> : null}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteModalProduct(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-border hover:bg-muted text-foreground font-bold text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSingleDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs transition shadow-md shadow-rose-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-1.5 active:scale-95"
+              >
+                {isDeleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                <span>{isDeleting ? 'Deleting...' : 'Delete Product'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Delete Confirmation Modal ── */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-in fade-in">
+          <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="h-14 w-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shadow-inner">
+                <AlertTriangle size={26} className="stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-foreground font-serif tracking-tight">
+                  Delete {selectedProductIds.length} Selected Products?
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+                  You are about to permanently delete <strong className="text-rose-600 font-bold">{selectedProductIds.length} products</strong> in bulk. This action is irreversible.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                disabled={isBulkDeleting}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-border hover:bg-muted text-foreground font-bold text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmBulkDelete}
+                disabled={isBulkDeleting}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs transition shadow-md shadow-rose-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-1.5 active:scale-95"
+              >
+                {isBulkDeleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                <span>{isBulkDeleting ? 'Deleting...' : `Delete All (${selectedProductIds.length})`}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import ProductCard from '@/components/common/ProductCard';
 import { ArrowLeft, ChevronRight, Package, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import { useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
+import { useGetProductsQuery } from '@/store/api/productApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { toast } from 'react-toastify';
 import { useAppSelector } from '@/store/hooks';
@@ -27,6 +28,12 @@ export default function CategoryClientView({
   const params = useParams();
   const slug = (params?.slug as string) || propSlug || initialCategory?.slug;
   const { locale, t } = useTranslation();
+
+  const categoryId = initialCategory?._id || slug;
+  const { data: categoryProductsRes } = useGetProductsQuery(
+    { category: categoryId, limit: 100 },
+    { skip: !categoryId }
+  );
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { data: wishlistResponse } = useGetWishlistQuery({}, { skip: !isAuthenticated });
@@ -84,9 +91,14 @@ export default function CategoryClientView({
     }
   };
 
-  // Sort products client-side based on the selected sortOption
+  // Sort products client-side based on the selected sortOption (prefer live products when available)
   const sortedProducts = useMemo(() => {
-    const list = [...initialProducts];
+    const liveList = (
+      Array.isArray(categoryProductsRes?.data)
+        ? categoryProductsRes.data
+        : (categoryProductsRes?.data?.products || categoryProductsRes?.products)
+    );
+    const list = [...(Array.isArray(liveList) ? liveList : initialProducts)];
     if (sortOption === 'price-asc') {
       return list.sort((a, b) => {
         const priceA = a.salePrice || a.price || 0;
@@ -110,7 +122,7 @@ export default function CategoryClientView({
     }
     // Default 'newest'
     return list;
-  }, [initialProducts, sortOption]);
+  }, [categoryProductsRes, initialProducts, sortOption]);
 
   const catName = initialCategory ? translateCategoryName(initialCategory, locale) : (slug ? slug.replace(/-/g, ' ') : 'Category');
 
