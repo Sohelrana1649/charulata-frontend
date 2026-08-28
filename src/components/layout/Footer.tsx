@@ -284,39 +284,42 @@ export default function Footer() {
               </a>
             </div>
 
-            {/* Newsletter Subscription Box on the Right side - Sleek Compact Input & Button */}
-            <div className="mt-3.5 max-w-sm">
-              <form onSubmit={handleSubscribe} className="flex items-stretch w-full h-9">
+            {/* Newsletter Subscription Box on the Right side - Ergonomic & User-friendly */}
+            <div className="mt-4 max-w-md w-full">
+              <form onSubmit={handleSubscribe} className="flex items-stretch w-full h-11 sm:h-12 shadow-sm group">
                 <div className="relative flex-1 flex items-center">
-                  <Mail size={14} className="absolute left-3 text-zinc-400 pointer-events-none" />
+                  <Mail size={18} className="absolute left-3.5 text-zinc-400 pointer-events-none group-focus-within:text-primary transition-colors" />
                   <input
                     type="email"
                     required
+                    name="footerNewsletterEmail"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     placeholder={locale === 'bn' ? 'আপনার ইমেইল দিন...' : 'Enter your email...'}
                     style={{ backgroundColor: '#18181b', color: '#ffffff' }}
-                    className="w-full h-full rounded-l-lg rounded-r-none border border-zinc-700/80 bg-[#18181b] pl-8.5 pr-2.5 text-xs text-white placeholder-zinc-400 focus:border-primary focus:outline-none transition-all"
+                    className="w-full h-full rounded-l-xl rounded-r-none border border-zinc-700/80 bg-[#18181b] pl-11 pr-3 text-xs sm:text-sm text-white placeholder-zinc-400/80 focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isSubscribing}
-                  className="bg-primary hover:bg-[#b0842e] text-white text-xs font-extrabold px-3.5 rounded-r-lg border border-l-0 border-zinc-700/80 transition-all flex items-center space-x-1 shrink-0 disabled:opacity-60 cursor-pointer active:scale-95 h-full"
+                  className="bg-primary hover:bg-primary/90 hover:shadow-md text-white text-xs sm:text-sm font-bold px-4 sm:px-6 rounded-r-xl border border-l-0 border-primary transition-all flex items-center justify-center space-x-1.5 shrink-0 disabled:opacity-60 cursor-pointer active:scale-95 h-full shadow-xs"
                 >
                   <span>{isSubscribing ? '...' : (locale === 'bn' ? 'যুক্ত হন' : 'Subscribe')}</span>
-                  {!isSubscribing && <Send size={11} className="stroke-[2.5]" />}
+                  {!isSubscribing && <Send size={13} className="stroke-[2.5]" />}
                 </button>
               </form>
 
               {subscriptionSuccess && (
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-400 pt-1.5">
-                  <CheckCircle2 size={14} />
+                <div className="flex items-center space-x-1.5 text-xs sm:text-sm font-bold text-emerald-400 pt-2">
+                  <CheckCircle2 size={15} />
                   <span>{locale === 'bn' ? 'সফলভাবে সাবস্ক্রাইব করা হয়েছে!' : 'Successfully subscribed!'}</span>
                 </div>
               )}
               {subscriptionErrorMsg && (
-                <div className="text-xs font-semibold text-rose-400 pt-1.5">
+                <div className="text-xs sm:text-sm font-semibold text-rose-400 pt-2">
                   {subscriptionErrorMsg}
                 </div>
               )}
@@ -325,26 +328,26 @@ export default function Footer() {
         </div>
 
         {/* Bottom Banner */}
-        <div className="border-t border-zinc-800 pt-8 flex flex-col lg:flex-row justify-between items-center text-xs sm:text-sm font-bold text-zinc-400 gap-4">
-          {/* Left: Copyright & Developer Attribution */}
-          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 text-center md:text-left">
-            <p>&copy; {new Date().getFullYear()} {t('footer.copyright')}</p>
-            <span className="hidden sm:inline text-zinc-700">|</span>
-            <p className="text-xs text-zinc-400 font-medium">
-              Developed by{' '}
-              <a
-                href="https://www.linkedin.com/in/shipon-chowdhury/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary font-bold hover:underline transition-all"
-              >
-                Shipon Chowdhury
-              </a>
-            </p>
+        <div className="border-t border-zinc-800 pt-8 flex flex-col lg:flex-row justify-between items-center text-xs sm:text-sm font-bold text-zinc-400 gap-5 lg:gap-4">
+          
+          {/* Policy Links (Order 1 on mobile, Order 3 on Desktop) */}
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 order-1 lg:order-3">
+            <Link href="/privacy-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.privacyPolicy')}
+            </Link>
+            <Link href="/terms" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.termsConditions')}
+            </Link>
+            <Link href="/refund-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.refundPolicy')}
+            </Link>
+            <Link href="/faq" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.faq') || 'FAQ'}
+            </Link>
           </div>
 
-          {/* Middle: Payment Method Badges (bKash, Nagad, Rocket, Visa, Mastercard) */}
-          <div className="flex items-center justify-center gap-2 sm:gap-3 my-1.5 lg:my-0 flex-wrap">
+          {/* Payment Method Badges (Order 2 on mobile, Order 2 on Desktop) */}
+          <div className="flex items-center justify-center gap-2 sm:gap-3 my-1 lg:my-0 flex-wrap order-2 lg:order-2">
             {/* bKash */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
               <img src="/bKash-logo.svg" alt="bKash" className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
@@ -371,21 +374,23 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Right: Policy Links */}
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-            <Link href="/privacy-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.privacyPolicy')}
-            </Link>
-            <Link href="/terms" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.termsConditions')}
-            </Link>
-            <Link href="/refund-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.refundPolicy')}
-            </Link>
-            <Link href="/faq" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.faq') || 'FAQ'}
-            </Link>
+          {/* Left / Bottom-most on Mobile: Copyright & Developer Attribution (Order 3 on mobile, Order 1 on Desktop) */}
+          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 text-center md:text-left order-3 lg:order-1 pt-2 lg:pt-0">
+            <p>&copy; {new Date().getFullYear()} {t('footer.copyright')}</p>
+            <span className="hidden sm:inline text-zinc-700">|</span>
+            <p className="text-xs text-zinc-400 font-medium">
+              Developed by{' '}
+              <a
+                href="https://www.linkedin.com/in/shipon-chowdhury/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-bold hover:underline transition-all"
+              >
+                Shipon Chowdhury
+              </a>
+            </p>
           </div>
+
         </div>
       </div>
     </footer>

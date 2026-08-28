@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Poppins, Inter, Hind_Siliguri } from 'next/font/google';
+import { Poppins, Inter, Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
 import Providers from '@/components/Providers';
 import Header from '@/components/layout/Header';
@@ -24,10 +24,10 @@ const inter = Inter({
   display: 'swap',
 });
 
-const hindSiliguri = Hind_Siliguri({
+const notoSansBengali = Noto_Sans_Bengali({
   subsets: ['bengali', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-hind-siliguri',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-noto-bengali',
   display: 'swap',
 });
 
@@ -203,7 +203,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} ${inter.variable} ${hindSiliguri.variable} h-full antialiased`}
+      className={`${poppins.variable} ${inter.variable} ${notoSansBengali.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
