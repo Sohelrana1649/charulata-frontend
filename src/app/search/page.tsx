@@ -301,7 +301,7 @@ function SearchResults() {
     queryParams.color = selectedColor;
   }
 
-  const { data: productsResponse, isLoading } = useGetProductsQuery(queryParams);
+  const { data: productsResponse, isLoading, isFetching } = useGetProductsQuery(queryParams);
   const { data: categoriesResponse } = useGetCategoriesQuery({});
   const { data: allProductsResponse } = useGetProductsQuery({ limit: 500 });
 
@@ -655,7 +655,11 @@ function SearchResults() {
                   {selectedCategory && selectedCategory !== 'all' ? t(`nav.${selectedCategory.toLowerCase()}`) : t('search.allPieces')}
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground font-semibold mt-1">
-                  {filteredProducts.length} {t('search.pieces')} · {t('search.curatedBy')}
+                  {(isLoading || isFetching) && accumulatedProducts.length === 0 ? (
+                    <span className="inline-block h-4 w-28 shimmer-bg rounded-md" />
+                  ) : (
+                    `${filteredProducts.length} ${t('search.pieces')} · ${t('search.curatedBy')}`
+                  )}
                 </p>
               </div>
 
@@ -773,13 +777,13 @@ function SearchResults() {
             )}
           </div>
 
-          {isLoading && accumulatedProducts.length === 0 ? (
+          {(isLoading || isFetching) && accumulatedProducts.length === 0 ? (
             viewMode === 'grid' ? (
               <ProductGridSkeleton count={12} />
             ) : (
               <ProductListSkeleton count={6} />
             )
-          ) : sortedProducts.length === 0 ? (
+          ) : sortedProducts.length === 0 && !isLoading && !isFetching ? (
             <EmptyProductState
               variant={isAnyFilterActive ? 'no-results' : 'empty-category'}
               onReset={handleResetOnlyFilters}

@@ -12,7 +12,7 @@ import {
 } from '@/store/api/productApi';
 import { useUploadImageMutation, useUploadVideoMutation } from '@/store/api/adminApi';
 import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
-import RichTextEditor from '@/components/admin/RichTextEditor';
+import ProductDescriptionEditor from '@/components/admin/ProductDescriptionEditor';
 import { 
   Plus, 
   Search, 
@@ -1421,740 +1421,758 @@ export default function AdminProductsPage() {
 
       {/* Edit / Add Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-card border border-border rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl sm:rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl my-auto overflow-hidden">
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-foreground font-serif">
+            {/* Modal Header (Sticky) */}
+            <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-6 sm:py-4 bg-card shrink-0">
+              <div className="min-w-0 pr-3">
+                <h3 className="text-base sm:text-lg font-bold text-foreground font-serif truncate">
                   {editId ? 'Edit Product Details' : 'Add New Product'}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                   {editId ? 'Update product pricing, stock, images and category' : 'Publish a new item to catalog'}
                 </p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition cursor-pointer"
+                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition cursor-pointer shrink-0"
+                aria-label="Close modal"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Title */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Product Title *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter product title"
-                    value={form.title}
-                    onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
-                  />
-                </div>
-
-                {/* Slug */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Slug *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Auto-generated from title (editable)"
-                    value={form.slug}
-                    onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-mono"
-                  />
-                </div>
-
-                {/* Category Custom Brand Dropdown */}
-                <div className="relative">
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Category *</label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsFormCategoryDropdownOpen(!isFormCategoryDropdownOpen)}
-                      className="w-full bg-muted/60 hover:bg-muted border border-border focus:border-primary rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground transition cursor-pointer flex items-center justify-between shadow-2xs min-h-[42px]"
-                    >
-                      <div className="flex items-center space-x-2 truncate">
-                        <Folder size={15} className="text-primary shrink-0" />
-                        <span className={form.category ? 'text-foreground font-bold' : 'text-muted-foreground'}>
-                          {categoriesList.find((c: any) => c._id === form.category)?.name || 'Select a category'}
-                        </span>
-                      </div>
-                      <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-200 ${isFormCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
-                    </button>
-
-                    {isFormCategoryDropdownOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={() => setIsFormCategoryDropdownOpen(false)} 
-                        />
-                        
-                        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-border/40 animate-in fade-in slide-in-from-top-2 duration-150 p-1 space-y-0.5">
-                          {categoriesList.map((cat: any) => {
-                            const isSelected = form.category === cat._id;
-                            return (
-                              <button
-                                key={cat._id}
-                                type="button"
-                                onClick={() => {
-                                  setForm(prev => ({ ...prev, category: cat._id }));
-                                  setIsFormCategoryDropdownOpen(false);
-                                }}
-                                className={`w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-primary text-white shadow-xs font-extrabold'
-                                    : 'text-foreground hover:bg-primary/10 hover:text-primary'
-                                }`}
-                              >
-                                <div className="flex items-center space-x-2 truncate">
-                                  <Folder size={14} className={isSelected ? 'text-white' : 'text-primary'} />
-                                  <span>{cat.name}</span>
-                                </div>
-                                {isSelected && <Check size={14} className="text-white shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* SKU */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter unique SKU"
-                    value={form.sku}
-                    onChange={(e) => setForm(prev => ({ ...prev, sku: e.target.value }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-mono"
-                  />
-                </div>
-
-                {/* Regular Price */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                    Regular Price (গায়ের মূল দাম ৳) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    placeholder="e.g. 500"
-                    value={form.price === 0 ? '' : form.price}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">পণ্যের মূল আসল গায়ের দাম (যেমন: ৳৫০০)</p>
-                </div>
-
-                {/* Sale Price */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">
-                    Sale Price (অফার বিক্রয় মূল্য ৳)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 300 (খালি রাখুন ছাড় না থাকলে)"
-                    value={form.salePrice === 0 ? '' : form.salePrice || ''}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setForm(prev => ({ ...prev, salePrice: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">কাস্টমার যে দামে কিনবেন (যেমন: ৳৩০০)</p>
-                </div>
-
-                {/* Dynamic Price Breakdown & Live Preview Card */}
-                {form.price > 0 && (
-                  <div className="col-span-2 bg-primary/5 border border-primary/20 p-3.5 sm:p-4 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-primary">
-                      <span className="flex items-center space-x-1.5">
-                        <Sparkles size={15} className="text-primary shrink-0 animate-pulse" />
-                        <span>কাস্টমার ওয়েবসাইটে যেভাবে দেখবে (Live Price Preview):</span>
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 pt-1">
-                      <div>
-                        <span className="text-[10px] text-muted-foreground block font-medium">কাস্টমার চূড়ান্ত যে দাম দেবেন:</span>
-                        <span className="text-lg sm:text-xl font-black text-primary font-mono">
-                          ৳{(form.salePrice > 0 && form.salePrice < form.price ? form.salePrice : form.price).toLocaleString()}
-                        </span>
-                      </div>
-
-                      {form.salePrice > 0 && form.salePrice < form.price && (
-                        <div>
-                          <span className="text-[10px] text-muted-foreground block font-medium">আসল গায়ের দাম (Regular):</span>
-                          <span className="text-sm font-bold text-muted-foreground line-through font-mono">
-                            ৳{form.price.toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-
-                      {form.salePrice > 0 && form.salePrice < form.price && (
-                        <div>
-                          <span className="text-[10px] text-muted-foreground block font-medium">মোট ছাড় পাবেন:</span>
-                          <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-mono">
-                            ৳{(form.price - form.salePrice).toLocaleString()} ছাড় ({Math.floor(((form.price - form.salePrice) / form.price) * 100)}% OFF)
-                          </span>
-                        </div>
-                      )}
-
-                      {form.salePrice > 0 && form.salePrice >= form.price && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 w-full mt-1">
-                          ⚠️ দ্রষ্টব্য: ছাড় দিয়ে বিক্রি করতে চাইলে "Sale Price" এ গায়ের দামের চেয়ে কম মূল্য (যেমন: ৳300) লিখুন।
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Discount Duration Selector with Lucide Icons & Brand Colors */}
-                {form.salePrice > 0 && (
-                  <div className="col-span-2 space-y-2 bg-primary/5 border border-primary/20 p-3.5 rounded-2xl">
-                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center space-x-1.5 text-primary">
-                        <Clock size={15} className="text-primary shrink-0" />
-                        <span>Discount Timer Duration</span>
-                      </span>
-                      <span className="text-[10px] text-primary font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                        Brand Offer Duration
-                      </span>
-                    </label>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
-                      {[
-                        { value: '8h', label: '8 Hours Flash', icon: Zap },
-                        { value: '24h', label: '24 Hours (1 Day)', icon: Clock },
-                        { value: '48h', label: '48 Hours (2 Days)', icon: Hourglass },
-                        { value: '7d', label: '7 Days (1 Week)', icon: Calendar },
-                        { value: 'custom', label: 'Custom End Date', icon: Wrench },
-                      ].map((preset) => {
-                        const Icon = preset.icon;
-                        const isSelected = (form.discountDurationPreset || '24h') === preset.value;
-                        return (
-                          <button
-                            key={preset.value}
-                            type="button"
-                            onClick={() => setForm(prev => ({ ...prev, discountDurationPreset: preset.value }))}
-                            className={`flex items-center space-x-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 text-left ${
-                              isSelected
-                                ? 'bg-primary text-white border-primary shadow-md ring-2 ring-primary/30'
-                                : 'bg-card hover:bg-muted text-foreground border-border hover:border-primary/40'
-                            }`}
-                          >
-                            <Icon size={15} className={`shrink-0 ${isSelected ? 'text-white' : 'text-primary'}`} />
-                            <span className="truncate">{preset.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {form.salePrice > 0 && form.discountDurationPreset === 'custom' && (
-                  <div className="col-span-2 bg-primary/5 border border-primary/20 p-3.5 rounded-2xl space-y-1.5">
-                    <label className="block text-xs font-extrabold text-primary uppercase tracking-wider flex items-center space-x-1.5">
-                      <Wrench size={14} className="text-primary shrink-0" />
-                      <span>Custom Discount End Date & Time *</span>
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                  
+                  {/* Title */}
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Product Title *
                     </label>
                     <input
-                      type="datetime-local"
-                      value={form.discountEndDate || ''}
-                      onChange={(e) => setForm(prev => ({ ...prev, discountEndDate: e.target.value }))}
-                      className="w-full bg-card border border-primary/30 rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none transition font-mono font-bold"
+                      type="text"
+                      required
+                      placeholder="Enter product title"
+                      value={form.title}
+                      onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 sm:py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition min-h-[42px]"
                     />
                   </div>
-                )}
 
-                {/* Stock Quantity */}
-                <div>
-                  <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Stock Quantity *</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    placeholder="Enter available stock"
-                    value={form.stockQuantity === 0 ? '' : form.stockQuantity}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setForm(prev => ({ ...prev, stockQuantity: e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0) }))}
-                    className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
-
-              </div>
-
-              {/* Description (Rich Text Editor) */}
-              <div>
-                <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Description</label>
-                <RichTextEditor
-                  content={form.description}
-                  onChange={(html) => setForm(prev => ({ ...prev, description: html }))}
-                  placeholder="Describe the product, key features, specifications, and care instructions..."
-                />
-              </div>
-
-              {/* Dynamic Attributes & Product Variants Section */}
-              {categoryAttributes.length > 0 && (
-                <div className="space-y-4 border-t border-border pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-black text-foreground uppercase tracking-wider font-serif flex items-center space-x-1.5">
-                        <Sparkles size={14} className="text-primary" />
-                        <span>Category Attributes & Options ({selectedCatObj?.name || 'Selected Category'})</span>
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Select available options for this category to generate dynamic variants.
-                      </p>
-                    </div>
+                  {/* Slug */}
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Slug *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Auto-generated from title (editable)"
+                      value={form.slug}
+                      onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 sm:py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px]"
+                    />
                   </div>
 
-                  {/* Attribute Option Toggles */}
-                  <div className="space-y-3 bg-muted/40 p-3.5 rounded-2xl border border-border">
-                    {categoryAttributes.map(attr => {
-                      const selectedOptions = form.attributes.find(a => a.name === attr.name)?.options || [];
-                      return (
-                        <div key={attr.name} className="space-y-1.5">
-                          <label className="block text-[11px] font-extrabold text-foreground uppercase tracking-wider">
-                            {attr.name}
-                          </label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {attr.values.map(val => {
-                              const isChecked = selectedOptions.includes(val);
+                  {/* Category Custom Brand Dropdown */}
+                  <div className="col-span-1 relative">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Category *
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsFormCategoryDropdownOpen(!isFormCategoryDropdownOpen)}
+                        className="w-full bg-muted/60 hover:bg-muted border border-border focus:border-primary rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-foreground transition cursor-pointer flex items-center justify-between shadow-2xs min-h-[42px]"
+                      >
+                        <div className="flex items-center space-x-2 truncate min-w-0">
+                          <Folder size={16} className="text-primary shrink-0" />
+                          <span className={`truncate ${form.category ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
+                            {categoriesList.find((c: any) => c._id === form.category)?.name || 'Select a category'}
+                          </span>
+                        </div>
+                        <ChevronDown size={16} className={`text-muted-foreground shrink-0 ml-1 transition-transform duration-200 ${isFormCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                      </button>
+
+                      {isFormCategoryDropdownOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setIsFormCategoryDropdownOpen(false)} 
+                          />
+                          
+                          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-border/40 animate-in fade-in slide-in-from-top-2 duration-150 p-1 space-y-0.5">
+                            {categoriesList.map((cat: any) => {
+                              const isSelected = form.category === cat._id;
                               return (
                                 <button
+                                  key={cat._id}
                                   type="button"
-                                  key={val}
-                                  onClick={() => handleToggleAttributeOption(attr.name, val)}
-                                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
-                                    isChecked
-                                      ? 'bg-primary text-white border-primary shadow-2xs'
-                                      : 'bg-card text-foreground border-border hover:border-muted-foreground/40'
+                                  onClick={() => {
+                                    setForm(prev => ({ ...prev, category: cat._id }));
+                                    setIsFormCategoryDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-primary text-white shadow-xs font-extrabold'
+                                      : 'text-foreground hover:bg-primary/10 hover:text-primary'
                                   }`}
                                 >
-                                  {isChecked ? `✓ ${val}` : val}
+                                  <div className="flex items-center space-x-2 truncate">
+                                    <Folder size={14} className={isSelected ? 'text-white' : 'text-primary'} />
+                                    <span>{cat.name}</span>
+                                  </div>
+                                  {isSelected && <Check size={14} className="text-white shrink-0" />}
                                 </button>
                               );
                             })}
                           </div>
-                        </div>
-                      );
-                    })}
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Product Variants List */}
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-black text-foreground uppercase tracking-wider">
-                        Product Variants ({form.variants.length})
+                  {/* SKU */}
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      SKU *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter unique SKU"
+                      value={form.sku}
+                      onChange={(e) => setForm(prev => ({ ...prev, sku: e.target.value }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px]"
+                    />
+                  </div>
+
+                  {/* Regular Price */}
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Regular Price (গায়ের মূল দাম ৳) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      placeholder="e.g. 500"
+                      value={form.price === 0 ? '' : form.price}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">পণ্যের মূল আসল গায়ের দাম (যেমন: ৳৫০০)</p>
+                  </div>
+
+                  {/* Sale Price */}
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Sale Price (অফার বিক্রয় মূল্য ৳)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 300 (খালি রাখুন ছাড় না থাকলে)"
+                      value={form.salePrice === 0 ? '' : form.salePrice || ''}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setForm(prev => ({ ...prev, salePrice: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">কাস্টমার যে দামে কিনবেন (যেমন: ৳৩০০)</p>
+                  </div>
+
+                  {/* Dynamic Price Breakdown & Live Preview Card */}
+                  {form.price > 0 && (
+                    <div className="col-span-1 sm:col-span-2 bg-primary/5 border border-primary/20 p-3.5 sm:p-4 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between text-xs font-extrabold text-primary">
+                        <span className="flex items-center space-x-1.5">
+                          <Sparkles size={15} className="text-primary shrink-0 animate-pulse" />
+                          <span>কাস্টমার ওয়েবসাইটে যেভাবে দেখবে (Live Price Preview):</span>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block font-medium">কাস্টমার চূড়ান্ত যে দাম দেবেন:</span>
+                          <span className="text-lg sm:text-xl font-black text-primary font-mono">
+                            ৳{(form.salePrice > 0 && form.salePrice < form.price ? form.salePrice : form.price).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {form.salePrice > 0 && form.salePrice < form.price && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block font-medium">আসল গায়ের দাম (Regular):</span>
+                            <span className="text-sm font-bold text-muted-foreground line-through font-mono">
+                              ৳{form.price.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+
+                        {form.salePrice > 0 && form.salePrice < form.price && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block font-medium">মোট ছাড় পাবেন:</span>
+                            <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-mono">
+                              ৳{(form.price - form.salePrice).toLocaleString()} ছাড় ({Math.floor(((form.price - form.salePrice) / form.price) * 100)}% OFF)
+                            </span>
+                          </div>
+                        )}
+
+                        {form.salePrice > 0 && form.salePrice >= form.price && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 w-full mt-1">
+                            ⚠️ দ্রষ্টব্য: ছাড় দিয়ে বিক্রি করতে চাইলে "Sale Price" এ গায়ের দামের চেয়ে কম মূল্য (যেমন: ৳300) লিখুন।
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Discount Duration Selector with Lucide Icons & Brand Colors */}
+                  {form.salePrice > 0 && (
+                    <div className="col-span-1 sm:col-span-2 space-y-2 bg-primary/5 border border-primary/20 p-3.5 rounded-2xl">
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center justify-between flex-wrap gap-1">
+                        <span className="flex items-center space-x-1.5 text-primary">
+                          <Clock size={15} className="text-primary shrink-0" />
+                          <span>Discount Timer Duration</span>
+                        </span>
+                        <span className="text-[10px] text-primary font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                          Brand Offer Duration
+                        </span>
                       </label>
-                      <button
-                        type="button"
-                        onClick={handleAddVariant}
-                        className="inline-flex items-center space-x-1.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
-                      >
-                        <Plus size={14} />
-                        <span>Add Variant</span>
-                      </button>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
+                        {[
+                          { value: '8h', label: '8 Hours Flash', icon: Zap },
+                          { value: '24h', label: '24 Hours (1 Day)', icon: Clock },
+                          { value: '48h', label: '48 Hours (2 Days)', icon: Hourglass },
+                          { value: '7d', label: '7 Days (1 Week)', icon: Calendar },
+                          { value: 'custom', label: 'Custom End Date', icon: Wrench },
+                        ].map((preset) => {
+                          const Icon = preset.icon;
+                          const isSelected = (form.discountDurationPreset || '24h') === preset.value;
+                          return (
+                            <button
+                              key={preset.value}
+                              type="button"
+                              onClick={() => setForm(prev => ({ ...prev, discountDurationPreset: preset.value }))}
+                              className={`flex items-center space-x-1.5 sm:space-x-2 p-2 sm:p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 text-left ${
+                                isSelected
+                                  ? 'bg-primary text-white border-primary shadow-md ring-2 ring-primary/30'
+                                  : 'bg-card hover:bg-muted text-foreground border-border hover:border-primary/40'
+                              }`}
+                            >
+                              <Icon size={14} className={`shrink-0 ${isSelected ? 'text-white' : 'text-primary'}`} />
+                              <span className="truncate">{preset.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {form.salePrice > 0 && form.discountDurationPreset === 'custom' && (
+                    <div className="col-span-1 sm:col-span-2 bg-primary/5 border border-primary/20 p-3.5 rounded-2xl space-y-1.5">
+                      <label className="block text-xs font-extrabold text-primary uppercase tracking-wider flex items-center space-x-1.5">
+                        <Wrench size={14} className="text-primary shrink-0" />
+                        <span>Custom Discount End Date & Time *</span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={form.discountEndDate || ''}
+                        onChange={(e) => setForm(prev => ({ ...prev, discountEndDate: e.target.value }))}
+                        className="w-full bg-card border border-primary/30 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none transition font-mono font-bold"
+                      />
+                    </div>
+                  )}
+
+                  {/* Stock Quantity */}
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Stock Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      placeholder="Enter available stock"
+                      value={form.stockQuantity === 0 ? '' : form.stockQuantity}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setForm(prev => ({ ...prev, stockQuantity: e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0) }))}
+                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+
+                </div>
+
+                {/* Description (Tiptap Rich Text Editor) */}
+                <div>
+                  <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                    Description
+                  </label>
+                  <ProductDescriptionEditor
+                    content={form.description}
+                    onChange={(html) => setForm(prev => ({ ...prev, description: html }))}
+                    placeholder="Describe the product, key features, specifications, and care instructions..."
+                  />
+                </div>
+
+                {/* Dynamic Attributes & Product Variants Section */}
+                {categoryAttributes.length > 0 && (
+                  <div className="space-y-4 border-t border-border pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider font-serif flex items-center space-x-1.5">
+                          <Sparkles size={14} className="text-primary" />
+                          <span>Category Attributes & Options ({selectedCatObj?.name || 'Selected Category'})</span>
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Select available options for this category to generate dynamic variants.
+                        </p>
+                      </div>
                     </div>
 
-                    {form.variants.length > 0 ? (
-                      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                        {form.variants.map((v, vIdx) => (
-                          <div key={vIdx} className="bg-card border border-border rounded-2xl p-3 space-y-2.5 shadow-2xs">
-                            <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                              <span className="text-[11px] font-black text-primary font-mono">
-                                Variant #{vIdx + 1}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveVariant(vIdx)}
-                                className="text-rose-500 hover:text-rose-700 p-1 transition cursor-pointer"
-                                title="Remove variant"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                              {/* SKU */}
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">SKU</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. CL-SRI-101-M"
-                                  value={v.sku || ''}
-                                  onChange={(e) => handleUpdateVariant(vIdx, 'sku', e.target.value)}
-                                  className="w-full bg-muted/60 border border-border rounded-lg px-2 py-1 text-[10px] text-foreground font-mono focus:outline-none"
-                                />
-                              </div>
-
-                              {/* Old / Base Price Override */}
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">Old Price (BDT)</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder={`e.g. ${form.price || 50000}`}
-                                  value={v.price !== undefined ? v.price : ''}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => handleUpdateVariant(vIdx, 'price', e.target.value ? parseFloat(e.target.value) : undefined)}
-                                  className="w-full bg-muted/60 border border-border rounded-lg px-2 py-1 text-[10px] text-foreground font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                              </div>
-
-                              {/* Sale / Offer Price Override */}
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-rose-500 mb-0.5">Sale Price (BDT)</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder={`e.g. ${form.salePrice || 40000}`}
-                                  value={v.salePrice !== undefined ? v.salePrice : ''}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => handleUpdateVariant(vIdx, 'salePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
-                                  className="w-full bg-rose-500/10 border border-rose-500/30 rounded-lg px-2 py-1 text-[10px] text-rose-600 dark:text-rose-400 font-mono font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                              </div>
-
-                              {/* Stock Quantity */}
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">Stock</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="e.g. 500"
-                                  value={v.stockQuantity === 0 ? '' : v.stockQuantity}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => handleUpdateVariant(vIdx, 'stockQuantity', e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0))}
-                                  className="w-full bg-muted/60 border border-border rounded-lg px-2 py-1 text-[10px] text-foreground font-mono focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                              </div>
-
-                              {/* Image URL */}
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">Variant Image URL</label>
-                                <input
-                                  type="url"
-                                  placeholder="e.g. https://domain.com/variant.jpg"
-                                  value={v.image || ''}
-                                  onChange={(e) => handleUpdateVariant(vIdx, 'image', e.target.value)}
-                                  className="w-full bg-muted/60 border border-border rounded-lg px-2 py-1 text-[10px] text-foreground focus:outline-none"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Attribute Choices for Variant (Only display attributes defined for THIS product) */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-muted/30 p-2 rounded-xl border border-border/40">
-                              {(form.attributes.length > 0 ? form.attributes : categoryAttributes).map((attr: any) => {
-                                const selectedOptions = (attr.options || attr.values || []) as string[];
-                                if (!selectedOptions || selectedOptions.length === 0) return null;
-                                const currentAttrVal = v.attributes?.[attr.name] || selectedOptions[0] || '';
+                    {/* Attribute Option Toggles */}
+                    <div className="space-y-3 bg-muted/40 p-3 sm:p-3.5 rounded-2xl border border-border">
+                      {categoryAttributes.map(attr => {
+                        const selectedOptions = form.attributes.find(a => a.name === attr.name)?.options || [];
+                        return (
+                          <div key={attr.name} className="space-y-1.5">
+                            <label className="block text-[11px] font-bold text-foreground uppercase tracking-wider">
+                              {attr.name}
+                            </label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {attr.values.map(val => {
+                                const isChecked = selectedOptions.includes(val);
                                 return (
-                                  <div key={attr.name}>
-                                    <label className="block text-[9px] font-extrabold text-foreground uppercase">{attr.name}</label>
-                                    <select
-                                      value={currentAttrVal}
-                                      onChange={(e) => handleUpdateVariantAttribute(vIdx, attr.name, e.target.value)}
-                                      className="w-full bg-card border border-border rounded-lg px-2 py-1 text-[10px] text-foreground focus:outline-none cursor-pointer"
-                                    >
-                                      {selectedOptions.map(opt => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    key={val}
+                                    onClick={() => handleToggleAttributeOption(attr.name, val)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer min-h-[34px] ${
+                                      isChecked
+                                        ? 'bg-primary text-white border-primary shadow-2xs font-extrabold'
+                                        : 'bg-card text-foreground border-border hover:border-muted-foreground/40'
+                                    }`}
+                                  >
+                                    {isChecked ? `✓ ${val}` : val}
+                                  </button>
                                 );
                               })}
                             </div>
-
                           </div>
-                        ))}
+                        );
+                      })}
+                    </div>
+
+                    {/* Product Variants List */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-foreground uppercase tracking-wider">
+                          Product Variants ({form.variants.length})
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleAddVariant}
+                          className="inline-flex items-center space-x-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+                        >
+                          <Plus size={14} />
+                          <span>Add Variant</span>
+                        </button>
                       </div>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground italic bg-muted/30 p-2.5 rounded-xl border border-dashed border-border text-center">
-                        No custom variants added yet. Click "+ Add Variant" above to define specific SKU, price, stock or image per attribute combination.
-                      </p>
-                    )}
-                  </div>
 
-                </div>
-              )}
+                      {form.variants.length > 0 ? (
+                        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                          {form.variants.map((v, vIdx) => (
+                            <div key={vIdx} className="bg-card border border-border rounded-2xl p-3 sm:p-3.5 space-y-3 shadow-2xs">
+                              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                                <span className="text-xs font-bold text-primary font-mono">
+                                  Variant #{vIdx + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariant(vIdx)}
+                                  className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-500/10 transition cursor-pointer"
+                                  title="Remove variant"
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
 
-              {/* Product Images Gallery Upload Section (Multi-Image Angles) */}
-              <div className="space-y-3 border-t border-border pt-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <label className="block text-xs font-black text-foreground uppercase tracking-wider font-serif flex items-center space-x-1.5">
-                      <span>Product Photos & Multi-Angle Gallery *</span>
-                    </label>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Upload front view, back view, side angles, or fabric detail photos (Array of images).
-                    </p>
-                  </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                                {/* SKU */}
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">SKU</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. CL-SRI-101-M"
+                                    value={v.sku || ''}
+                                    onChange={(e) => handleUpdateVariant(vIdx, 'sku', e.target.value)}
+                                    className="w-full bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-primary"
+                                  />
+                                </div>
 
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <label className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap shrink-0">
-                      {isUploadingMultiple ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          <span>Uploading...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload size={14} />
-                          <span>+ Upload Multiple Files</span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        disabled={isUploadingMultiple}
-                        onChange={handleMultipleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
+                                {/* Old / Base Price Override */}
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">Old Price (৳)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={`e.g. ${form.price || 500}`}
+                                    value={v.price !== undefined ? v.price : ''}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => handleUpdateVariant(vIdx, 'price', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                    className="w-full bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                </div>
 
-                    <button
-                      type="button"
-                      onClick={addImageField}
-                      className="px-3.5 py-2 bg-muted text-foreground border border-border hover:bg-muted/80 text-xs font-bold rounded-xl transition cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      + Add URL Link
-                    </button>
-                  </div>
-                </div>
+                                {/* Sale / Offer Price Override */}
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase text-rose-500 mb-1">Sale Price (৳)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={`e.g. ${form.salePrice || 400}`}
+                                    value={v.salePrice !== undefined ? v.salePrice : ''}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => handleUpdateVariant(vIdx, 'salePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                    className="w-full bg-rose-500/10 border border-rose-500/30 rounded-lg px-2.5 py-1.5 text-xs text-rose-600 dark:text-rose-400 font-mono font-bold focus:outline-none focus:border-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                </div>
 
-                {/* Live Thumbnail Grid Preview with Order & Cover Photo Badge */}
-                {form.productImages.some(img => img.trim() !== '') && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 bg-muted/30 p-3 rounded-2xl border border-border">
-                    {form.productImages.map((imgUrl, idx) => {
-                      if (!imgUrl.trim()) return null;
-                      const isCover = idx === 0;
-                      return (
-                        <div key={idx} className="relative group bg-card border border-border rounded-xl overflow-hidden shadow-2xs flex flex-col justify-between">
-                          <div className="h-28 w-full bg-muted relative">
-                            <Image src={imgUrl} alt={`Product Angle #${idx + 1}`} fill className="object-cover" />
-                            {isCover && (
-                              <span className="absolute top-1.5 left-1.5 bg-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
-                                ⭐ Cover Photo
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => removeImageField(idx)}
-                              className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-rose-600 text-white rounded-lg backdrop-blur-xs transition cursor-pointer"
-                              title="Delete Photo"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
+                                {/* Stock Quantity */}
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">Stock</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="e.g. 50"
+                                    value={v.stockQuantity === 0 ? '' : v.stockQuantity}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => handleUpdateVariant(vIdx, 'stockQuantity', e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0))}
+                                    className="w-full bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                </div>
 
-                          <div className="p-1.5 flex items-center justify-between bg-card text-[10px] border-t border-border">
-                            <span className="font-extrabold text-muted-foreground">Angle #{idx + 1}</span>
-                            <div className="flex items-center space-x-1">
-                              <button
-                                type="button"
-                                disabled={idx === 0}
-                                onClick={() => moveImageOrder(idx, 'left')}
-                                className="p-0.5 text-foreground hover:text-primary disabled:opacity-30 cursor-pointer font-bold"
-                                title="Move Left"
-                              >
-                                ←
-                              </button>
-                              <button
-                                type="button"
-                                disabled={idx === form.productImages.length - 1}
-                                onClick={() => moveImageOrder(idx, 'right')}
-                                className="p-0.5 text-foreground hover:text-primary disabled:opacity-30 cursor-pointer font-bold"
-                                title="Move Right"
-                              >
-                                →
-                              </button>
+                                {/* Image URL */}
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">Variant Image URL</label>
+                                  <input
+                                    type="url"
+                                    placeholder="e.g. https://domain.com/img.jpg"
+                                    value={v.image || ''}
+                                    onChange={(e) => handleUpdateVariant(vIdx, 'image', e.target.value)}
+                                    className="w-full bg-muted/60 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Attribute Choices for Variant */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                                {(form.attributes.length > 0 ? form.attributes : categoryAttributes).map((attr: any) => {
+                                  const selectedOptions = (attr.options || attr.values || []) as string[];
+                                  if (!selectedOptions || selectedOptions.length === 0) return null;
+                                  const currentAttrVal = v.attributes?.[attr.name] || selectedOptions[0] || '';
+                                  return (
+                                    <div key={attr.name}>
+                                      <label className="block text-[10px] font-bold text-foreground uppercase mb-0.5 truncate">{attr.name}</label>
+                                      <select
+                                        value={currentAttrVal}
+                                        onChange={(e) => handleUpdateVariantAttribute(vIdx, attr.name, e.target.value)}
+                                        className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none cursor-pointer"
+                                      >
+                                        {selectedOptions.map(opt => (
+                                          <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
                             </div>
-                          </div>
+                          ))}
                         </div>
-                      );
-                    })}
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic bg-muted/30 p-3 rounded-xl border border-dashed border-border text-center">
+                          No custom variants added yet. Click "+ Add Variant" above to define specific SKU, price, stock or image per attribute combination.
+                        </p>
+                      )}
+                    </div>
+
                   </div>
                 )}
 
-                {/* Individual URL Input List */}
-                <div className="space-y-2">
-                  {form.productImages.map((imgUrl, idx) => (
-                    <div key={idx} className="flex items-center space-x-2">
-                      <input
-                        type="url"
-                        placeholder={`Paste Image URL #${idx + 1} (e.g. https://domain.com/image.png) or click ⬆ upload icon`}
-                        value={imgUrl}
-                        onChange={(e) => handleImageChange(idx, e.target.value)}
-                        className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2 text-[11px] sm:text-xs text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition"
-                      />
+                {/* Product Images Gallery Upload Section (Multi-Image Angles) */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-foreground uppercase tracking-wider font-serif">
+                        Product Photos & Multi-Angle Gallery *
+                      </label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Upload front view, back view, side angles, or fabric detail photos.
+                      </p>
+                    </div>
 
-                      <label className="p-2 bg-muted hover:bg-primary hover:text-white rounded-xl border border-border transition cursor-pointer text-muted-foreground shrink-0" title="Upload File">
-                        {uploadingIndex === idx ? (
-                          <Loader2 size={16} className="animate-spin text-primary" />
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <label className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap shrink-0">
+                        {isUploadingMultiple ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Uploading...</span>
+                          </>
                         ) : (
-                          <Upload size={16} />
+                          <>
+                            <Upload size={14} />
+                            <span>+ Upload Files</span>
+                          </>
                         )}
                         <input
                           type="file"
+                          multiple
                           accept="image/*"
-                          onChange={(e) => handleProductImageUpload(idx, e)}
+                          disabled={isUploadingMultiple}
+                          onChange={handleMultipleImageUpload}
                           className="hidden"
                         />
                       </label>
 
-                      {form.productImages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={addImageField}
+                        className="px-3.5 py-2 bg-muted text-foreground border border-border hover:bg-muted/80 text-xs font-bold rounded-xl transition cursor-pointer whitespace-nowrap shrink-0"
+                      >
+                        + Add URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Live Thumbnail Grid Preview with Order & Cover Photo Badge */}
+                  {form.productImages.some(img => img.trim() !== '') && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 bg-muted/30 p-2.5 sm:p-3 rounded-2xl border border-border">
+                      {form.productImages.map((imgUrl, idx) => {
+                        if (!imgUrl.trim()) return null;
+                        const isCover = idx === 0;
+                        return (
+                          <div key={idx} className="relative group bg-card border border-border rounded-xl overflow-hidden shadow-2xs flex flex-col justify-between">
+                            <div className="h-24 sm:h-28 w-full bg-muted relative">
+                              <Image src={imgUrl} alt={`Product Angle #${idx + 1}`} fill className="object-cover" />
+                              {isCover && (
+                                <span className="absolute top-1 left-1 bg-amber-500 text-white text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full shadow-xs">
+                                  ⭐ Cover
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeImageField(idx)}
+                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 text-white rounded-lg backdrop-blur-xs transition cursor-pointer"
+                                title="Delete Photo"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+
+                            <div className="p-1 sm:p-1.5 flex items-center justify-between bg-card text-[10px] border-t border-border">
+                              <span className="font-bold text-muted-foreground">Angle #{idx + 1}</span>
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => moveImageOrder(idx, 'left')}
+                                  className="p-1 text-foreground hover:text-primary disabled:opacity-30 cursor-pointer font-bold"
+                                  title="Move Left"
+                                >
+                                  ←
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === form.productImages.length - 1}
+                                  onClick={() => moveImageOrder(idx, 'right')}
+                                  className="p-1 text-foreground hover:text-primary disabled:opacity-30 cursor-pointer font-bold"
+                                  title="Move Right"
+                                >
+                                  →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Individual URL Input List */}
+                  <div className="space-y-2">
+                    {form.productImages.map((imgUrl, idx) => (
+                      <div key={idx} className="flex items-center space-x-2">
+                        <input
+                          type="url"
+                          placeholder={`Paste Image URL #${idx + 1} or click upload`}
+                          value={imgUrl}
+                          onChange={(e) => handleImageChange(idx, e.target.value)}
+                          className="w-full bg-muted/60 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition min-h-[38px]"
+                        />
+
+                        <label className="p-2 bg-muted hover:bg-primary hover:text-white rounded-xl border border-border transition cursor-pointer text-muted-foreground shrink-0 min-h-[38px] min-w-[38px] flex items-center justify-center" title="Upload File">
+                          {uploadingIndex === idx ? (
+                            <Loader2 size={16} className="animate-spin text-primary" />
+                          ) : (
+                            <Upload size={16} />
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleProductImageUpload(idx, e)}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {form.productImages.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeImageField(idx)}
+                            className="p-2 text-rose-500 hover:text-rose-700 rounded-xl hover:bg-rose-500/10 transition cursor-pointer shrink-0 min-h-[38px] min-w-[38px] flex items-center justify-center"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── OPTIONAL PRODUCT MARKETING VIDEO SECTION ── */}
+                <div className="space-y-2.5 bg-muted/20 p-3.5 sm:p-4 rounded-2xl border border-border">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <div className="flex items-center space-x-2">
+                      <Video className="text-rose-500" size={17} />
+                      <h3 className="text-xs sm:text-sm font-bold text-foreground">
+                        Product Demo Video <span className="text-muted-foreground font-normal text-[10px] sm:text-xs">(Optional)</span>
+                      </h3>
+                    </div>
+                    <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full font-bold">
+                      Video / MP4
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                    Upload an MP4/WebM file or paste a video URL to show demo video on product page.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="url"
+                      placeholder="Paste video URL (e.g. https://domain.com/video.mp4)"
+                      value={form.videoUrl || ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, videoUrl: e.target.value }))}
+                      className="w-full bg-card border border-border rounded-xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[38px]"
+                    />
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="flex-1 sm:flex-initial px-3.5 py-2 bg-primary text-white hover:opacity-90 rounded-xl transition cursor-pointer font-bold text-xs flex items-center justify-center space-x-1.5 shrink-0 shadow-2xs min-h-[38px]">
+                        {isUploadingVideo ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={14} />
+                            <span>Upload Video</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="video/*"
+                          disabled={isUploadingVideo}
+                          onChange={handleProductVideoUpload}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {form.videoUrl && (
                         <button
                           type="button"
-                          onClick={() => removeImageField(idx)}
-                          className="p-2 text-rose-500 hover:text-rose-700 rounded-xl hover:bg-rose-500/10 transition cursor-pointer shrink-0"
+                          onClick={() => setForm(prev => ({ ...prev, videoUrl: '' }))}
+                          className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-xl transition cursor-pointer shrink-0 min-h-[38px] min-w-[38px] flex items-center justify-center"
+                          title="Remove Video"
                         >
                           <X size={16} />
                         </button>
                       )}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── OPTIONAL PRODUCT MARKETING VIDEO SECTION ── */}
-              <div className="space-y-3 bg-muted/20 p-4 rounded-2xl border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Video className="text-rose-500" size={18} />
-                    <h3 className="text-xs sm:text-sm font-extrabold text-foreground">
-                      Product Demo / Marketing Video <span className="text-muted-foreground font-normal text-[11px]">(Optional)</span>
-                    </h3>
                   </div>
-                  <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full font-bold">
-                    Cloudinary Video / MP4
-                  </span>
-                </div>
 
-                <p className="text-[11px] text-muted-foreground">
-                  Add a product demo video to boost marketing. You can upload an MP4/WebM file directly to Cloudinary or paste a video URL.
-                </p>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="url"
-                    placeholder="Paste video URL (e.g. https://res.cloudinary.com/.../video.mp4) or upload file"
-                    value={form.videoUrl || ''}
-                    onChange={(e) => setForm(prev => ({ ...prev, videoUrl: e.target.value }))}
-                    className="w-full bg-card border border-border rounded-xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono"
-                  />
-
-                  <label className="px-3.5 py-2 bg-primary text-white hover:opacity-90 rounded-xl transition cursor-pointer font-bold text-xs flex items-center space-x-1.5 shrink-0 shadow-2xs">
-                    {isUploadingVideo ? (
-                      <>
-                        <Loader2 size={15} className="animate-spin" />
-                        <span>Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={15} />
-                        <span>Upload Video</span>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="video/*"
-                      disabled={isUploadingVideo}
-                      onChange={handleProductVideoUpload}
-                      className="hidden"
-                    />
-                  </label>
-
+                  {/* Live Video Preview Player */}
                   {form.videoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setForm(prev => ({ ...prev, videoUrl: '' }))}
-                      className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-xl transition cursor-pointer shrink-0"
-                      title="Remove Video"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="mt-2 relative rounded-xl border border-border overflow-hidden bg-black/90 aspect-video max-w-sm">
+                      <video
+                        src={form.videoUrl}
+                        controls
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="absolute top-2 left-2 bg-rose-600 text-white font-mono text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase">
+                        🎬 Video Preview
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Live Video Preview Player */}
-                {form.videoUrl && (
-                  <div className="mt-2 relative rounded-xl border border-border overflow-hidden bg-black/90 aspect-video max-w-sm">
-                    <video
-                      src={form.videoUrl}
-                      controls
-                      className="w-full h-full object-contain"
+                {/* Marketing Badges & Status Checkboxes */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 bg-muted/30 p-3 sm:p-3.5 rounded-2xl border border-border/80">
+                  <label className="flex items-center space-x-2 cursor-pointer p-1">
+                    <input
+                      type="checkbox"
+                      checked={form.bestSelling}
+                      onChange={(e) => setForm(prev => ({ ...prev, bestSelling: e.target.checked }))}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
                     />
-                    <div className="absolute top-2 left-2 bg-rose-600 text-white font-mono text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase">
-                      🎬 Video Preview
-                    </div>
-                  </div>
-                )}
+                    <span className="text-xs font-bold text-foreground select-none">Bestseller</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer p-1">
+                    <input
+                      type="checkbox"
+                      checked={form.flashSale}
+                      onChange={(e) => setForm(prev => ({ ...prev, flashSale: e.target.checked }))}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                    />
+                    <span className="text-xs font-bold text-foreground select-none">Flash Sale</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer p-1">
+                    <input
+                      type="checkbox"
+                      checked={form.newArrival}
+                      onChange={(e) => setForm(prev => ({ ...prev, newArrival: e.target.checked }))}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                    />
+                    <span className="text-xs font-bold text-foreground select-none">New Arrival</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer p-1">
+                    <input
+                      type="checkbox"
+                      checked={form.isActive}
+                      onChange={(e) => setForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                    />
+                    <span className="text-xs font-bold text-foreground select-none">Active Item</span>
+                  </label>
+                </div>
+
               </div>
 
-              {/* Marketing Badges & Status Checkboxes */}
-              <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-border">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.bestSelling}
-                    onChange={(e) => setForm(prev => ({ ...prev, bestSelling: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] sm:text-xs font-bold text-foreground">Bestseller</span>
-                </label>
-
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.flashSale}
-                    onChange={(e) => setForm(prev => ({ ...prev, flashSale: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] sm:text-xs font-bold text-foreground">Flash Sale</span>
-                </label>
-
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.newArrival}
-                    onChange={(e) => setForm(prev => ({ ...prev, newArrival: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] sm:text-xs font-bold text-foreground">New Arrival</span>
-                </label>
-
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => setForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] sm:text-xs font-bold text-foreground">Active Item</span>
-                </label>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="border-t border-border pt-4 flex items-center justify-end space-x-3">
+              {/* Submit Buttons (Sticky Bottom) */}
+              <div className="border-t border-border px-4 py-3 sm:px-6 sm:py-3.5 bg-card flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs font-bold transition cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 border border-border text-muted-foreground hover:text-foreground rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -2162,12 +2180,12 @@ export default function AdminProductsPage() {
                 <button
                   type="submit"
                   disabled={isCreating || isUpdating}
-                  className="inline-flex items-center space-x-1.5 px-5 py-2 bg-primary text-white rounded-xl text-xs font-extrabold hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-md"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-6 py-2.5 bg-primary text-white rounded-xl text-xs sm:text-sm font-extrabold hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   {isCreating || isUpdating ? (
                     <Loader2 className="animate-spin h-4 w-4 mr-1" />
                   ) : (
-                    <Check size={15} />
+                    <Check size={16} />
                   )}
                   <span>{editId ? 'Update Product' : 'Create Product'}</span>
                 </button>
