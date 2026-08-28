@@ -16,34 +16,16 @@ const getCleanApiUrl = () => {
 
 const API_URL = getCleanApiUrl();
 
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
-export const revalidate = 120; // 2 minutes ISR revalidation
 export const maxDuration = 60; // Up to 60s serverless timeout
-
-export async function generateStaticParams() {
-  try {
-    const res = await fetch(`${API_URL}/products?limit=100`, {
-      next: { revalidate: 120, tags: ['products'] },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const products = json?.data?.products || json?.products || json?.data || [];
-    if (!Array.isArray(products)) return [];
-    return products
-      .filter((p: any) => p?.slug)
-      .map((p: any) => ({ slug: p.slug }));
-  } catch {
-    return [];
-  }
-}
 
 const fetchProductBySlug = cache(async (slug: string) => {
   try {
     const cleanSlug = encodeURIComponent(decodeURIComponent(slug));
     const res = await fetch(`${API_URL}/products/${cleanSlug}`, {
-      next: { revalidate: 120, tags: ['product', 'products', `product-${cleanSlug}`] },
-      signal: AbortSignal.timeout(15000),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -58,8 +40,8 @@ const fetchRelatedProducts = cache(async (categoryId: string, currentProductId?:
   if (!categoryId) return [];
   try {
     const res = await fetch(`${API_URL}/products?category=${categoryId}&limit=6`, {
-      next: { revalidate: 120, tags: ['products'] },
-      signal: AbortSignal.timeout(8000),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -74,7 +56,7 @@ const fetchRelatedProducts = cache(async (categoryId: string, currentProductId?:
 const fetchProductReviews = cache(async (productId: string) => {
   try {
     const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=10&sort=-createdAt`, {
-      next: { revalidate: 120, tags: ['reviews', `product-reviews-${productId}`] },
+      cache: 'no-store',
       signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
