@@ -581,6 +581,10 @@ export default function Header() {
               <Search className="absolute left-3.5 text-muted-foreground pointer-events-none" size={18} />
               <input
                 type="text"
+                name="headerSearch"
+                autoComplete="off"
+                spellCheck={false}
+                data-form-type="other"
                 placeholder={t('header.searchPlaceholder')}
                 value={searchQuery}
                 onFocus={() => setIsSearchFocused(true)}
@@ -824,6 +828,10 @@ export default function Header() {
             <Search className="absolute left-3 text-muted-foreground pointer-events-none" size={17} />
             <input
               type="text"
+              name="mobileSearch"
+              autoComplete="off"
+              spellCheck={false}
+              data-form-type="other"
               placeholder={t('header.searchPlaceholder')}
               value={searchQuery}
               onFocus={() => setIsSearchFocused(true)}

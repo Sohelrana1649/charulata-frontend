@@ -1351,6 +1351,11 @@ export default function CheckoutForm() {
                     <textarea
                       required
                       rows={2}
+                      name="deliveryAddressLine"
+                      autoComplete="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-form-type="other"
                       placeholder={t('checkout.addressPlaceholder')}
                       value={shippingAddress.addressLine}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, addressLine: e.target.value })}
