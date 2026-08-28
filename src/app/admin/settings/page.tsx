@@ -180,7 +180,7 @@ export default function AdminSettingsPage() {
     setIsChangingPass(true);
     try {
       const token = localStorage.getItem('charulata_token');
-      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-backend.onrender.com/api/v1';
+      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
       if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
         baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
       }

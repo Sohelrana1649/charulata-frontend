@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://charulatalifestyle.com';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-backend.onrender.com/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
 
 function escapeXml(unsafe: string): string {
   if (!unsafe) return '';

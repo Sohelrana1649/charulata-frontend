@@ -4,7 +4,7 @@ import { logout } from '../authSlice';
 import { getErrorMessage } from '@/utils/errorHelper';
 
 const getDynamicBaseUrl = () => {
-  let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-backend.onrender.com/api/v1';
+  let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
   if (typeof window !== 'undefined' && url.includes('localhost')) {
     url = url.replace('localhost', window.location.hostname);
   }
