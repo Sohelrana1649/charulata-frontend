@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
+import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
 import JsonLd from '@/components/common/JsonLd';
 
@@ -33,7 +34,7 @@ const fetchProductBySlug = cache(async (slug: string) => {
     const cleanSlug = encodeURIComponent(decodeURIComponent(slug));
     const res = await fetch(`${API_URL}/products/${cleanSlug}`, {
       next: { revalidate: 120, tags: ['product', 'products', `product-${cleanSlug}`] },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -104,10 +105,11 @@ export async function generateMetadata({
     }
 
     const categoryName = product?.category?.name || 'Ethnic Wear';
-    const effectivePrice = product.salePrice || product.price || 0;
-    const title = `${product.title} - ৳${effectivePrice.toLocaleString()}`;
-    const plainDesc = product.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
-    const description = `Buy ${product.title} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${plainDesc ? plainDesc.slice(0, 120) : ''}`;
+    const effectivePrice = Number(product?.salePrice || product?.price) || 0;
+    const productTitle = product?.title || 'Product';
+    const title = `${productTitle} - ৳${effectivePrice.toLocaleString()}`;
+    const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
+    const description = `Buy ${productTitle} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${plainDesc ? plainDesc.slice(0, 120) : ''}`;
     
     const images = (Array.isArray(product.productImages) ? product.productImages : [])
       .concat(Array.isArray(product.images) ? product.images : [])
@@ -119,14 +121,14 @@ export async function generateMetadata({
       title,
       description,
       keywords: [
-        product.title,
+        productTitle,
         categoryName,
         'charulata lifestyle',
         'চারুলতা লাইফস্টাইল',
         'bangladesh fashion',
         'online shopping bd',
         'cash on delivery',
-        ...(Array.isArray(product.tags) ? product.tags : []),
+        ...(Array.isArray(product?.tags) ? product.tags : []),
       ],
       alternates: {
         canonical: `${SITE_URL}/products/${product.slug || slug}`,
@@ -136,7 +138,7 @@ export async function generateMetadata({
         },
       },
       openGraph: {
-        title: `${product.title} | Charulata Lifestyle`,
+        title: `${productTitle} | Charulata Lifestyle`,
         description,
         url: `${SITE_URL}/products/${product.slug || slug}`,
         siteName: 'Charulata Lifestyle',
@@ -146,12 +148,12 @@ export async function generateMetadata({
           url: imgUrl,
           width: 1200,
           height: 1200,
-          alt: `${product.title} - চারুলতা লাইফস্টাইল`,
+          alt: `${productTitle} - চারুলতা লাইফস্টাইল`,
         })),
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${product.title} | Charulata Lifestyle`,
+        title: `${productTitle} | Charulata Lifestyle`,
         description,
         images: [validImages[0]],
       },
@@ -176,7 +178,7 @@ export default async function ProductDetailPageServer({
     const product = slug ? await fetchProductBySlug(slug) : null;
 
     if (!product) {
-      return <ProductDetailClient slug={slug} />;
+      notFound();
     }
 
     const categoryName = product?.category?.name || 'Collection';
@@ -344,6 +346,6 @@ export default async function ProductDetailPageServer({
     );
   } catch (err) {
     console.error('Error in ProductDetailPageServer:', err);
-    return <ProductDetailClient slug={slug} />;
+    notFound();
   }
 }
