@@ -34,12 +34,13 @@ const fetchProductBySlug = cache(async (slug: string) => {
     const cleanSlug = encodeURIComponent(decodeURIComponent(slug));
     const res = await fetch(`${API_URL}/products/${cleanSlug}`, {
       next: { revalidate: 120, tags: ['product', 'products', `product-${cleanSlug}`] },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data?.product || json?.data || json;
-  } catch {
+  } catch (err) {
+    console.warn(`[fetchProductBySlug Warning] Could not fetch product ${slug}:`, err);
     return null;
   }
 });
@@ -49,7 +50,7 @@ const fetchRelatedProducts = cache(async (categoryId: string, currentProductId?:
   try {
     const res = await fetch(`${API_URL}/products?category=${categoryId}&limit=6`, {
       next: { revalidate: 120, tags: ['products'] },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -65,7 +66,7 @@ const fetchProductReviews = cache(async (productId: string) => {
   try {
     const res = await fetch(`${API_URL}/reviews/product/${productId}?limit=10&sort=-createdAt`, {
       next: { revalidate: 120, tags: ['reviews', `product-reviews-${productId}`] },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -104,16 +105,16 @@ export async function generateMetadata({
       };
     }
 
-    const categoryName = product?.category?.name || 'Ethnic Wear';
+    const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Ethnic Wear');
     const effectivePrice = Number(product?.salePrice || product?.price) || 0;
     const productTitle = product?.title || 'Product';
     const title = `${productTitle} - ৳${effectivePrice.toLocaleString()}`;
     const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
     const description = `Buy ${productTitle} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${plainDesc ? plainDesc.slice(0, 120) : ''}`;
     
-    const images = (Array.isArray(product.productImages) ? product.productImages : [])
-      .concat(Array.isArray(product.images) ? product.images : [])
-      .concat(product.image ? [product.image] : [])
+    const images = (Array.isArray(product?.productImages) ? product.productImages : [])
+      .concat(Array.isArray(product?.images) ? product.images : [])
+      .concat(product?.image ? [product.image] : [])
       .filter((img: any) => typeof img === 'string' && img.trim() !== '');
     const validImages = images.length > 0 ? images : ['https://www.charulatalifestyle.com/logo.png'];
 
@@ -131,16 +132,16 @@ export async function generateMetadata({
         ...(Array.isArray(product?.tags) ? product.tags : []),
       ],
       alternates: {
-        canonical: `${SITE_URL}/products/${product.slug || slug}`,
+        canonical: `${SITE_URL}/products/${product?.slug || slug}`,
         languages: {
-          'bn-BD': `${SITE_URL}/products/${product.slug || slug}?lang=bn`,
-          'en-US': `${SITE_URL}/products/${product.slug || slug}?lang=en`,
+          'bn-BD': `${SITE_URL}/products/${product?.slug || slug}?lang=bn`,
+          'en-US': `${SITE_URL}/products/${product?.slug || slug}?lang=en`,
         },
       },
       openGraph: {
         title: `${productTitle} | Charulata Lifestyle`,
         description,
-        url: `${SITE_URL}/products/${product.slug || slug}`,
+        url: `${SITE_URL}/products/${product?.slug || slug}`,
         siteName: 'Charulata Lifestyle',
         locale: 'bn_BD',
         type: 'website',
@@ -171,181 +172,176 @@ export default async function ProductDetailPageServer({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  let slug = '';
-  try {
-    const resolvedParams = await params;
-    slug = resolvedParams?.slug ? decodeURIComponent(resolvedParams.slug) : '';
-    const product = slug ? await fetchProductBySlug(slug) : null;
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug ? decodeURIComponent(resolvedParams.slug) : '';
+  const product = slug ? await fetchProductBySlug(slug) : null;
 
-    if (!product) {
-      notFound();
-    }
-
-    const categoryName = product?.category?.name || 'Collection';
-    const categorySlug = product?.category?.slug || 'all';
-    const categoryId = product?.category?._id || product?.category;
-    const effectivePrice = product.salePrice || product.price || 0;
-    const plainDesc = product.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
-
-    // Fetch related products and reviews server-side for ISR pre-rendering
-    let relatedProducts: any[] = [];
-    let reviews: any[] = [];
-    try {
-      [relatedProducts, reviews] = await Promise.all([
-        categoryId ? fetchRelatedProducts(categoryId, product._id) : Promise.resolve([]),
-        product._id ? fetchProductReviews(product._id) : Promise.resolve([]),
-      ]);
-    } catch {
-      // Graceful fallback
-    }
-
-    const productImages = (Array.isArray(product.productImages) ? product.productImages : [])
-      .concat(Array.isArray(product.images) ? product.images : [])
-      .concat(product.image ? [product.image] : [])
-      .filter((img: any) => typeof img === 'string' && img.trim() !== '');
-
-    const productJsonLd: Record<string, any> = {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: product.title || 'Product',
-      image: productImages.length > 0 ? productImages : ['https://www.charulatalifestyle.com/logo.png'],
-      description: plainDesc || product.title || 'Product',
-      sku: product.sku || product._id,
-      mpn: product.sku || product._id,
-      brand: {
-        '@type': 'Brand',
-        name: 'Charulata Lifestyle',
-      },
-      category: categoryName,
-      offers: {
-        '@type': 'Offer',
-        url: `${SITE_URL}/products/${product.slug || slug}`,
-        priceCurrency: 'BDT',
-        price: effectivePrice,
-        priceValidUntil: safeIsoDate(product.discountEndDate) || '2028-12-31',
-        itemCondition: 'https://schema.org/NewCondition',
-        availability: (Number(product.stockQuantity) || 0) > 0
-          ? 'https://schema.org/InStock'
-          : 'https://schema.org/OutOfStock',
-        seller: {
-          '@type': 'Organization',
-          name: 'Charulata Lifestyle',
-        },
-        shippingDetails: {
-          '@type': 'OfferShippingDetails',
-          shippingRate: {
-            '@type': 'MonetaryAmount',
-            value: '60',
-            currency: 'BDT',
-          },
-          shippingDestination: {
-            '@type': 'DefinedRegion',
-            addressCountry: 'BD',
-          },
-          deliveryTime: {
-            '@type': 'ShippingDeliveryTime',
-            handlingTime: {
-              '@type': 'QuantitativeValue',
-              minValue: 0,
-              maxValue: 1,
-              unitCode: 'DAY',
-            },
-            transitTime: {
-              '@type': 'QuantitativeValue',
-              minValue: 1,
-              maxValue: 5,
-              unitCode: 'DAY',
-            },
-          },
-        },
-        hasMerchantReturnPolicy: {
-          '@type': 'MerchantReturnPolicy',
-          applicableCountry: 'BD',
-          returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-          merchantReturnDays: 3,
-          returnMethod: 'https://schema.org/ReturnByMail',
-          returnFees: 'https://schema.org/FreeReturn',
-        },
-      },
-    };
-
-    // Add highPrice for sale items
-    if (product.salePrice && product.price > product.salePrice) {
-      productJsonLd.offers.highPrice = product.price;
-    }
-
-    // Add AggregateRating if product has reviews
-    if (product.ratings?.count > 0 && product.ratings?.average > 0) {
-      productJsonLd.aggregateRating = {
-        '@type': 'AggregateRating',
-        ratingValue: product.ratings.average,
-        reviewCount: product.ratings.count,
-        bestRating: 5,
-        worstRating: 1,
-      };
-    }
-
-    // Add individual Review items for rich snippet (up to 5 latest)
-    if (reviews.length > 0) {
-      productJsonLd.review = reviews
-        .filter((r: any) => r && r.comment && r.rating)
-        .slice(0, 5)
-        .map((r: any) => ({
-          '@type': 'Review',
-          reviewRating: {
-            '@type': 'Rating',
-            ratingValue: r.rating,
-            bestRating: 5,
-            worstRating: 1,
-          },
-          author: {
-            '@type': 'Person',
-            name: r.customer?.name || r.name || 'Customer',
-          },
-          reviewBody: r.comment,
-          datePublished: safeIsoDate(r.createdAt),
-        }));
-    }
-
-    const breadcrumbJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Home',
-          item: SITE_URL,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: categoryName,
-          item: `${SITE_URL}/category/${categorySlug}`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 3,
-          name: product.title,
-          item: `${SITE_URL}/products/${product.slug || slug}`,
-        },
-      ],
-    };
-
-    return (
-      <>
-        <JsonLd data={productJsonLd} />
-        <JsonLd data={breadcrumbJsonLd} />
-        <ProductDetailClient 
-          slug={slug}
-          initialProduct={product}
-          initialRelatedProducts={relatedProducts}
-          initialReviews={reviews}
-        />
-      </>
-    );
-  } catch (err) {
-    console.error('Error in ProductDetailPageServer:', err);
+  // If product is not found, trigger standard Next.js 404 handler (outside of try/catch)
+  if (!product) {
     notFound();
   }
+
+  const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Collection');
+  const categorySlug = product?.category?.slug || 'all';
+  const categoryId = product?.category?._id || product?.category;
+  const effectivePrice = Number(product?.salePrice || product?.price) || 0;
+  const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
+
+  // Fetch related products and reviews server-side for ISR pre-rendering
+  let relatedProducts: any[] = [];
+  let reviews: any[] = [];
+  try {
+    [relatedProducts, reviews] = await Promise.all([
+      categoryId ? fetchRelatedProducts(categoryId, product._id) : Promise.resolve([]),
+      product._id ? fetchProductReviews(product._id) : Promise.resolve([]),
+    ]);
+  } catch {
+    // Graceful fallback if related items fail
+  }
+
+  const productImages = (Array.isArray(product?.productImages) ? product.productImages : [])
+    .concat(Array.isArray(product?.images) ? product.images : [])
+    .concat(product?.image ? [product.image] : [])
+    .filter((img: any) => typeof img === 'string' && img.trim() !== '');
+
+  const productJsonLd: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product?.title || 'Product',
+    image: productImages.length > 0 ? productImages : ['https://www.charulatalifestyle.com/logo.png'],
+    description: plainDesc || product?.title || 'Product',
+    sku: product?.sku || product?._id,
+    mpn: product?.sku || product?._id,
+    brand: {
+      '@type': 'Brand',
+      name: 'Charulata Lifestyle',
+    },
+    category: categoryName,
+    offers: {
+      '@type': 'Offer',
+      url: `${SITE_URL}/products/${product?.slug || slug}`,
+      priceCurrency: 'BDT',
+      price: effectivePrice,
+      priceValidUntil: safeIsoDate(product?.discountEndDate) || '2028-12-31',
+      itemCondition: 'https://schema.org/NewCondition',
+      availability: (Number(product?.stockQuantity) || 0) > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      seller: {
+        '@type': 'Organization',
+        name: 'Charulata Lifestyle',
+      },
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: '60',
+          currency: 'BDT',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'BD',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 0,
+            maxValue: 1,
+            unitCode: 'DAY',
+          },
+          transitTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 1,
+            maxValue: 5,
+            unitCode: 'DAY',
+          },
+        },
+      },
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'BD',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays: 3,
+        returnMethod: 'https://schema.org/ReturnByMail',
+        returnFees: 'https://schema.org/FreeReturn',
+      },
+    },
+  };
+
+  // Add highPrice for sale items
+  if (product?.salePrice && product?.price > product?.salePrice) {
+    productJsonLd.offers.highPrice = product.price;
+  }
+
+  // Add AggregateRating if product has reviews
+  if (product?.ratings?.count > 0 && product?.ratings?.average > 0) {
+    productJsonLd.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: product.ratings.average,
+      reviewCount: product.ratings.count,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  // Add individual Review items for rich snippet (up to 5 latest)
+  if (reviews.length > 0) {
+    productJsonLd.review = reviews
+      .filter((r: any) => r && r.comment && r.rating)
+      .slice(0, 5)
+      .map((r: any) => ({
+        '@type': 'Review',
+        reviewRating: {
+          '@type': 'Rating',
+          ratingValue: r.rating,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        author: {
+          '@type': 'Person',
+          name: r.customer?.name || r.name || 'Customer',
+        },
+        reviewBody: r.comment,
+        datePublished: safeIsoDate(r.createdAt),
+      }));
+  }
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: SITE_URL,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: categoryName,
+        item: `${SITE_URL}/category/${categorySlug}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product?.title || 'Product',
+        item: `${SITE_URL}/products/${product?.slug || slug}`,
+      },
+    ],
+  };
+
+  return (
+    <>
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
+      <ProductDetailClient 
+        slug={slug}
+        initialProduct={product}
+        initialRelatedProducts={relatedProducts}
+        initialReviews={reviews}
+      />
+    </>
+  );
 }

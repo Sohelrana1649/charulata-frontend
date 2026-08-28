@@ -9,6 +9,7 @@ import {
 } from '@/store/api/productApi';
 import { useUploadImageMutation } from '@/store/api/adminApi';
 import { useGetAttributesQuery } from '@/store/api/attributeApi';
+import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
 import { 
   Plus, 
   Search, 
@@ -135,6 +136,7 @@ export default function AdminCategoriesPage() {
       return;
     }
     try {
+      const currentCatSlug = form.slug;
       if (editId) {
         await updateCategory({ id: editId, categoryData: form }).unwrap();
         toast.success('Category updated successfully!');
@@ -142,6 +144,13 @@ export default function AdminCategoriesPage() {
         await createCategory(form).unwrap();
         toast.success('Category created successfully!');
       }
+
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['categories', 'landing', 'products', currentCatSlug ? `category-${currentCatSlug}` : ''],
+        paths: ['/', '/search', currentCatSlug ? `/category/${currentCatSlug}` : '']
+      });
+
       setIsModalOpen(false);
       refetch();
     } catch (err: any) {
@@ -151,9 +160,18 @@ export default function AdminCategoriesPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
+    const catToDelete = categories.find((c: any) => c._id === id);
+    const catSlug = catToDelete?.slug;
     try {
       await deleteCategory(id).unwrap();
       toast.success('Category deleted successfully!');
+
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['categories', 'landing', 'products', catSlug ? `category-${catSlug}` : ''],
+        paths: ['/', '/search', catSlug ? `/category/${catSlug}` : '']
+      });
+
       refetch();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to delete category.');

@@ -11,6 +11,7 @@ import {
   useBulkDeleteProductsMutation
 } from '@/store/api/productApi';
 import { useUploadImageMutation, useUploadVideoMutation } from '@/store/api/adminApi';
+import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { 
   Plus, 
@@ -137,7 +138,7 @@ export default function AdminProductsPage() {
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   // Modern Delete Confirmation Modal States
-  const [deleteModalProduct, setDeleteModalProduct] = useState<{ id: string; title: string; image?: string; sku?: string; price?: number } | null>(null);
+  const [deleteModalProduct, setDeleteModalProduct] = useState<{ id: string; title: string; image?: string; sku?: string; price?: number; slug?: string; categorySlug?: string } | null>(null);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
   const productsList = productsRes?.data?.products || productsRes?.data || productsRes?.products || [];
@@ -171,6 +172,11 @@ export default function AdminProductsPage() {
     try {
       await bulkUpdateProducts({ productIds: selectedProductIds, isActive }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) marked as ${isActive ? 'Published (Active)' : 'Draft (Inactive)'}!`);
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['products', 'landing', 'categories'],
+        paths: ['/', '/products', '/search']
+      });
       setSelectedProductIds([]);
       refetch();
     } catch (err: any) {
@@ -183,6 +189,11 @@ export default function AdminProductsPage() {
     try {
       await bulkUpdateProducts({ productIds: selectedProductIds, isFeatured }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) updated!`);
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['products', 'landing'],
+        paths: ['/', '/products', '/search']
+      });
       setSelectedProductIds([]);
       refetch();
     } catch (err: any) {
@@ -195,6 +206,11 @@ export default function AdminProductsPage() {
     try {
       await bulkUpdateProducts({ productIds: selectedProductIds, stockQuantity: Number(bulkStockValue) }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) stock set to ${bulkStockValue}!`);
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['products'],
+        paths: ['/products', '/search']
+      });
       setBulkStockModalOpen(false);
       setSelectedProductIds([]);
       refetch();
@@ -213,6 +229,11 @@ export default function AdminProductsPage() {
     try {
       await bulkDeleteProducts({ productIds: selectedProductIds }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) deleted successfully!`);
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: ['products', 'landing', 'categories'],
+        paths: ['/', '/products', '/search']
+      });
       setIsBulkDeleteModalOpen(false);
       setSelectedProductIds([]);
       refetch();
@@ -510,6 +531,11 @@ export default function AdminProductsPage() {
     };
 
     try {
+      const currentSlug = payload.slug;
+      const existingProd = editId ? productsList.find((p: any) => p._id === editId) : null;
+      const oldSlug = existingProd?.slug;
+      const categorySlug = selectedCatObj?.slug;
+
       if (editId) {
         await updateProduct({ id: editId, productData: payload }).unwrap();
         toast.success('Product updated successfully!');
@@ -517,6 +543,27 @@ export default function AdminProductsPage() {
         await createProduct(payload).unwrap();
         toast.success('Product created successfully!');
       }
+
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: [
+          'products',
+          'landing',
+          'categories',
+          currentSlug ? `product-${currentSlug}` : '',
+          oldSlug ? `product-${oldSlug}` : '',
+          categorySlug ? `category-${categorySlug}` : ''
+        ],
+        paths: [
+          '/',
+          '/products',
+          '/search',
+          currentSlug ? `/products/${currentSlug}` : '',
+          oldSlug && oldSlug !== currentSlug ? `/products/${oldSlug}` : '',
+          categorySlug ? `/category/${categorySlug}` : ''
+        ]
+      });
+
       setIsModalOpen(false);
       refetch();
     } catch (err: any) {
@@ -531,14 +578,37 @@ export default function AdminProductsPage() {
       image: product.productImages?.[0] || product.image,
       sku: product.sku,
       price: product.salePrice || product.price,
+      slug: product.slug,
+      categorySlug: product.category?.slug || (typeof product.category === 'object' ? product.category?.slug : '')
     });
   };
 
   const confirmSingleDelete = async () => {
     if (!deleteModalProduct) return;
     try {
+      const deletedSlug = deleteModalProduct.slug;
+      const deletedCatSlug = deleteModalProduct.categorySlug;
       await deleteProduct(deleteModalProduct.id).unwrap();
       toast.success('Product deleted successfully!');
+
+      // Trigger Instant On-Demand Revalidation on Vercel
+      triggerOnDemandRevalidation({
+        tags: [
+          'products',
+          'landing',
+          'categories',
+          deletedSlug ? `product-${deletedSlug}` : '',
+          deletedCatSlug ? `category-${deletedCatSlug}` : ''
+        ],
+        paths: [
+          '/',
+          '/products',
+          '/search',
+          deletedSlug ? `/products/${deletedSlug}` : '',
+          deletedCatSlug ? `/category/${deletedCatSlug}` : ''
+        ]
+      });
+
       setDeleteModalProduct(null);
       refetch();
     } catch (err: any) {
