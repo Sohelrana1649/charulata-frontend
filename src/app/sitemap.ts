@@ -1,7 +1,15 @@
 import { MetadataRoute } from 'next';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://charulatalifestyle.com';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+const cleanApiUrl = () => {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+  if (url.includes('charulata-backend.onrender.com')) {
+    url = url.replace('charulata-backend.onrender.com', 'charulata-database.onrender.com');
+  }
+  return url;
+};
+
+const API_URL = cleanApiUrl();
 
 async function getProducts() {
   try {

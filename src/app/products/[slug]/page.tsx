@@ -5,7 +5,16 @@ import ProductDetailClient from './ProductDetailClient';
 import JsonLd from '@/components/common/JsonLd';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.charulatalifestyle.com';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+
+const getCleanApiUrl = () => {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+  if (url.includes('charulata-backend.onrender.com')) {
+    url = url.replace('charulata-backend.onrender.com', 'charulata-database.onrender.com');
+  }
+  return url;
+};
+
+const API_URL = getCleanApiUrl();
 
 export const dynamicParams = true;
 export const revalidate = 120; // 2 minutes ISR revalidation
@@ -176,9 +185,16 @@ export default async function ProductDetailPageServer({
   const slug = resolvedParams?.slug ? decodeURIComponent(resolvedParams.slug) : '';
   const product = slug ? await fetchProductBySlug(slug) : null;
 
-  // If product is not found, trigger standard Next.js 404 handler (outside of try/catch)
+  // Gracefully fallback to client-side hydration if server SSR fetch is cold or missing
   if (!product) {
-    notFound();
+    return (
+      <ProductDetailClient 
+        slug={slug}
+        initialProduct={null}
+        initialRelatedProducts={[]}
+        initialReviews={[]}
+      />
+    );
   }
 
   const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Collection');

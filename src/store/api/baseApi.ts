@@ -5,6 +5,9 @@ import { getErrorMessage } from '@/utils/errorHelper';
 
 const getDynamicBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+  if (url.includes('charulata-backend.onrender.com')) {
+    url = url.replace('charulata-backend.onrender.com', 'charulata-database.onrender.com');
+  }
   if (typeof window !== 'undefined' && url.includes('localhost')) {
     url = url.replace('localhost', window.location.hostname);
   }
