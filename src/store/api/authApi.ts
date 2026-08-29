@@ -47,16 +47,57 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
-    getProfile: builder.query({
-      query: () => '/auth/profile',
+    getProfile: builder.query<any, any>({
+      async queryFn(_arg, _queryApi, _extraOptions, fetchWithBQ) {
+        let result = await fetchWithBQ('/auth/profile');
+        if (result.error && (result.error.status === 404 || result.error.status === 'FETCH_ERROR')) {
+          const fallback = await fetchWithBQ('/users/profile');
+          if (!fallback.error) {
+            return { data: fallback.data };
+          }
+        }
+        if (result.error) return { error: result.error };
+        return { data: result.data };
+      },
       providesTags: ['User'],
     }),
-    updateProfile: builder.mutation({
-      query: (userData) => ({
-        url: '/users/profile',
-        method: 'PATCH',
-        body: userData,
-      }),
+    updateProfile: builder.mutation<any, any>({
+      async queryFn(userData: any, _queryApi, _extraOptions, fetchWithBQ) {
+        // 1. Try PATCH /users/profile
+        let result = await fetchWithBQ({
+          url: '/users/profile',
+          method: 'PATCH',
+          body: userData,
+        });
+
+        // 2. Fallback to PATCH /auth/profile if 404
+        if (result.error && result.error.status === 404) {
+          const authPatch = await fetchWithBQ({
+            url: '/auth/profile',
+            method: 'PATCH',
+            body: userData,
+          });
+          if (!authPatch.error) return { data: authPatch.data };
+
+          // 3. Fallback to PUT /auth/profile or PUT /users/profile
+          const authPut = await fetchWithBQ({
+            url: '/auth/profile',
+            method: 'PUT',
+            body: userData,
+          });
+          if (!authPut.error) return { data: authPut.data };
+
+          const userPut = await fetchWithBQ({
+            url: '/users/profile',
+            method: 'PUT',
+            body: userData,
+          });
+          if (!userPut.error) return { data: userPut.data };
+        }
+
+        if (result.error) return { error: result.error };
+        return { data: result.data };
+      },
       invalidatesTags: ['User'],
     }),
   }),

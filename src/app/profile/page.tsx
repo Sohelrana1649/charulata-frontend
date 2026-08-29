@@ -6,6 +6,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { logout, updateUser } from '@/store/authSlice';
 import { useGetProfileQuery, useUpdateProfileMutation } from '@/store/api/authApi';
+import { useUploadImageMutation } from '@/store/api/adminApi';
+import { getUserAvatarUrl, getFallbackAvatarUrl, saveUserAvatarLocally } from '@/utils/avatarHelper';
 import { useGetOrderHistoryQuery } from '@/store/api/orderApi';
 import {
   useAddAddressMutation,
@@ -34,6 +36,8 @@ import {
   EyeOff,
   ChevronRight,
   Upload,
+  UploadCloud,
+  Camera,
   X,
   Calendar,
   Sparkles,
@@ -75,6 +79,7 @@ function ProfileContent() {
   const { data: profileResponse, isLoading: isProfileLoading } = useGetProfileQuery({}, { skip: !isAuthenticated });
   const { data: ordersResponse, isLoading: isOrdersLoading } = useGetOrderHistoryQuery({}, { skip: !isAuthenticated });
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
+  const [uploadImage, { isLoading: isUploadingAvatar }] = useUploadImageMutation();
 
   // User API Hooks
   const { data: wishlistResponse } = useGetWishlistQuery({}, { skip: !isAuthenticated });
@@ -84,7 +89,16 @@ function ProfileContent() {
   const [removeFromWishlistMutation] = useRemoveFromWishlistMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
 
-  const user = profileResponse?.data?.user || profileResponse?.user || reduxUser;
+  const rawUser = profileResponse?.data?.user || profileResponse?.user || reduxUser;
+  const user = useMemo(() => {
+    if (!rawUser) return rawUser;
+    const avatarUrl = getUserAvatarUrl(rawUser) || rawUser.profileImage || rawUser.avatar || '';
+    return {
+      ...rawUser,
+      profileImage: avatarUrl,
+      avatar: avatarUrl,
+    };
+  }, [rawUser]);
   const orders = ordersResponse?.data?.orders || ordersResponse?.data || ordersResponse || [];
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -118,26 +132,71 @@ function ProfileContent() {
       setProfileForm({
         name: user.name || '',
         phone: user.phone || '',
-        profileImage: user.profileImage || '',
+        profileImage: getUserAvatarUrl(user),
         dateOfBirth: dobString,
         gender: user.gender || 'male'
       });
     }
   }, [user]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("Image size must be less than 2MB");
-        return;
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await uploadImage(formData).unwrap();
+      const url = res?.data?.url || res?.url;
+      if (url) {
+        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+        if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
+          baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
+        }
+        const fullUrl = url.startsWith('http') ? url : `${baseApiUrl.replace('/api/v1', '')}${url}`;
+        setProfileForm(prev => ({ ...prev, profileImage: fullUrl }));
+        saveUserAvatarLocally(user, fullUrl);
+
+        // Auto-save to MongoDB profile immediately
+        const payload: any = {
+          name: (user?.name || profileForm.name || '').trim(),
+          phone: (user?.phone || profileForm.phone || '').trim(),
+          profileImage: fullUrl,
+          avatar: fullUrl,
+          avatarUrl: fullUrl,
+          image: fullUrl,
+          photo: fullUrl,
+        };
+
+        try {
+          const updateRes = await updateProfile(payload).unwrap();
+          const updatedUser = updateRes?.data?.user || updateRes?.data || updateRes?.user || updateRes;
+          if (updatedUser) {
+            dispatch(updateUser(updatedUser));
+          } else {
+            dispatch(updateUser({ ...user, ...payload }));
+          }
+        } catch {
+          dispatch(updateUser({ ...user, ...payload }));
+        }
+
+        toast.success('Profile photo updated successfully! 🎉');
       }
+    } catch (err: any) {
+      // Fallback to local FileReader if upload endpoint error
       const reader = new FileReader();
       reader.onloadend = () => {
+        const localData = reader.result as string;
         setProfileForm(prev => ({
           ...prev,
-          profileImage: reader.result as string
+          profileImage: localData
         }));
+        saveUserAvatarLocally(user, localData);
+        dispatch(updateUser({ ...user, profileImage: localData, avatar: localData }));
       };
       reader.readAsDataURL(file);
     }
@@ -284,28 +343,39 @@ function ProfileContent() {
   };
 
   const handleSaveProfile = async () => {
-    try {
-      const res = await updateProfile({
-        name: profileForm.name,
-        phone: profileForm.phone,
-        profileImage: profileForm.profileImage,
-        gender: profileForm.gender.toLowerCase(),
-        dateOfBirth: profileForm.dateOfBirth ? new Date(profileForm.dateOfBirth) : null
-      }).unwrap();
+    const imgUrl = profileForm.profileImage ? profileForm.profileImage.trim() : '';
+    if (imgUrl) {
+      saveUserAvatarLocally(user, imgUrl);
+    }
+    const payload: any = {
+      name: profileForm.name.trim(),
+      phone: profileForm.phone.trim(),
+      profileImage: imgUrl,
+      avatar: imgUrl,
+      avatarUrl: imgUrl,
+      image: imgUrl,
+      photo: imgUrl,
+      gender: profileForm.gender.toLowerCase(),
+    };
+    if (profileForm.dateOfBirth) {
+      payload.dateOfBirth = profileForm.dateOfBirth;
+    }
 
-      if (res?.data || res) {
-        dispatch(updateUser((res.data?.user || res.data || res.user || res) as any));
+    try {
+      const res = await updateProfile(payload).unwrap();
+      const updatedUser = res?.data?.user || res?.data || res?.user || res;
+      if (updatedUser) {
+        dispatch(updateUser(updatedUser));
+      } else {
+        dispatch(updateUser({ ...user, ...payload }));
       }
       setIsEditing(false);
-      toast.success('Profile updated successfully!');
-    } catch (err) {
+      toast.success('Profile updated successfully! 🎉');
+    } catch (err: any) {
+      console.warn('Update profile fallback applied:', err);
       dispatch(updateUser({ 
         ...user, 
-        name: profileForm.name, 
-        phone: profileForm.phone,
-        profileImage: profileForm.profileImage,
-        gender: profileForm.gender,
-        dateOfBirth: profileForm.dateOfBirth
+        ...payload
       }));
       setIsEditing(false);
       toast.success('Profile saved!');
@@ -405,6 +475,9 @@ function ProfileContent() {
     ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'CU';
 
+  // Synchronized Avatar across banner, form, and header
+  const currentAvatar = profileForm.profileImage || getUserAvatarUrl(user) || getFallbackAvatarUrl(user);
+
   const statusColors: Record<string, string> = {
     Pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     Confirmed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
@@ -422,12 +495,33 @@ function ProfileContent() {
       <div className="max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 mb-6 sm:mb-8">
         <div className="bg-card border border-border p-5 sm:p-6 rounded-3xl shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 border-2 border-primary/40 overflow-hidden relative flex items-center justify-center shrink-0 shadow-md">
-              {user.profileImage ? (
-                <Image src={user.profileImage} alt={user.name} fill className="object-cover" />
-              ) : (
-                <span className="text-xl font-black text-primary font-serif">{initials}</span>
-              )}
+            <div className="relative group shrink-0">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-primary/10 border-2 border-primary/40 overflow-hidden relative flex items-center justify-center shadow-md bg-muted">
+                <img
+                  src={currentAvatar}
+                  alt={user?.name || 'User'}
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+
+              {/* Direct Quick Upload / Change Photo Camera Badge */}
+              <label
+                className="absolute -bottom-1 -right-1 p-1.5 bg-primary text-white rounded-xl shadow-lg border-2 border-card hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                title="Click to upload/change photo"
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Camera size={13} />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingAvatar}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
             </div>
             
             <div>
@@ -604,23 +698,107 @@ function ProfileContent() {
                 </div>
 
                 {isEditing && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider mb-1.5">Avatar Image URL or PC File</label>
-                    <input
-                      type="url"
-                      placeholder="https://images.unsplash.com/photo-..."
-                      value={profileForm.profileImage}
-                      onChange={(e) => setProfileForm(prev => ({ ...prev, profileImage: e.target.value }))}
-                      className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:border-primary outline-none transition mb-2"
-                    />
-                    
-                    <div className="mt-2.5">
-                      <label className="inline-flex items-center space-x-2 text-xs font-extrabold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 px-4 py-2 rounded-xl cursor-pointer transition shadow-2xs group active:scale-95">
-                        <Upload size={15} className="group-hover:-translate-y-0.5 transition-transform" />
-                        <span>Or upload file from computer</span>
-                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  <div className="col-span-2 space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-wider">
+                        Profile Photo
+                      </label>
+                      {profileForm.profileImage && (
+                        <button
+                          type="button"
+                          onClick={() => setProfileForm(prev => ({ ...prev, profileImage: '' }))}
+                          className="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          <span>Remove Photo</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Drag & Drop / Click to Upload Box */}
+                    <div className="relative group">
+                      <label className={`relative flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden ${
+                        profileForm.profileImage
+                          ? 'bg-primary/5 border-primary/40 hover:border-primary'
+                          : 'bg-muted/40 hover:bg-muted/60 border-border hover:border-primary/50'
+                      }`}>
+                        <div className="flex items-center space-x-4">
+                          {/* Avatar Thumbnail */}
+                          <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-2xl overflow-hidden border-2 border-border shadow-xs bg-muted shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform">
+                            {currentAvatar ? (
+                              <img
+                                src={currentAvatar}
+                                alt="Profile Preview"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Camera size={24} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                            )}
+
+                            {isUploadingAvatar && (
+                              <div className="absolute inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center">
+                                <Loader2 size={20} className="animate-spin text-white" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 text-left">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-extrabold text-foreground text-xs sm:text-sm">
+                                {isUploadingAvatar
+                                  ? 'Uploading your photo...'
+                                  : profileForm.profileImage
+                                  ? 'Photo selected & ready'
+                                  : 'Upload profile photo'}
+                              </span>
+                              {profileForm.profileImage && !isUploadingAvatar && (
+                                <span className="inline-flex items-center text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                  <Check size={10} className="mr-1" /> Active
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Click to choose image from your computer (JPG, PNG, WebP up to 5MB)
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 sm:mt-0">
+                          <span className="inline-flex items-center space-x-1.5 px-4 py-2 bg-primary text-white text-xs font-extrabold rounded-xl shadow-md hover:opacity-90 transition group-active:scale-95">
+                            {isUploadingAvatar ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <UploadCloud size={14} />
+                            )}
+                            <span>{isUploadingAvatar ? 'Uploading...' : 'Browse PC File'}</span>
+                          </span>
+                        </div>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingAvatar}
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
                       </label>
                     </div>
+
+                    {/* Optional direct URL input */}
+                    <details className="text-[11px] text-muted-foreground group">
+                      <summary className="cursor-pointer font-bold hover:text-foreground inline-flex items-center space-x-1 py-1">
+                        <span>🔗 Or paste image URL directly</span>
+                      </summary>
+                      <div className="pt-2">
+                        <input
+                          type="url"
+                          placeholder="https://images.unsplash.com/photo-..."
+                          value={profileForm.profileImage}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, profileImage: e.target.value }))}
+                          className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:border-primary outline-none transition"
+                        />
+                      </div>
+                    </details>
                   </div>
                 )}
 

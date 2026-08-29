@@ -14,6 +14,7 @@ import WishlistDrawer from '@/components/common/WishlistDrawer';
 import { useGetProductsQuery, useGetCategoriesQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { getUserAvatarUrl, getFallbackAvatarUrl } from '@/utils/avatarHelper';
 import { 
   ShoppingCart, 
   User, 
@@ -714,18 +715,11 @@ export default function Header() {
                 aria-label={t('header.myProfile')}
               >
                 <div className="w-full h-full rounded-[10px] overflow-hidden relative flex items-center justify-center bg-primary/10 shrink-0">
-                  {user?.profileImage ? (
-                    <Image 
-                      src={user.profileImage} 
-                      alt={user.name || 'User'} 
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <span className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 font-serif">
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  )}
+                  <img 
+                    src={getFallbackAvatarUrl(user)} 
+                    alt={user?.name || 'User'} 
+                    className="h-full w-full object-cover"
+                  />
                 </div>
               </button>
 

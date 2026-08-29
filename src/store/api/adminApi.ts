@@ -266,7 +266,16 @@ export const adminApi = baseApi.injectEndpoints({
       }),
     }),
     getUsers: builder.query({
-      query: () => '/users/admin/all',
+      query: (params?: { role?: string; search?: string; page?: number; limit?: number }) => {
+        const { role, search, page, limit } = params || {};
+        const queryParams = new URLSearchParams();
+        if (role) queryParams.append('role', role);
+        if (search) queryParams.append('search', search);
+        if (page) queryParams.append('page', String(page));
+        if (limit) queryParams.append('limit', String(limit));
+        const qs = queryParams.toString();
+        return `/users/admin/all${qs ? `?${qs}` : ''}`;
+      },
       providesTags: ['User'],
     }),
     updateUserRole: builder.mutation({
@@ -274,6 +283,14 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/users/admin/${userId}/role`,
         method: 'PATCH',
         body: { role },
+      }),
+      invalidatesTags: ['User'],
+    }),
+    createAdminUser: builder.mutation({
+      query: (userData: { name: string; email: string; phone?: string; role: string; password?: string }) => ({
+        url: '/users/admin/create',
+        method: 'POST',
+        body: userData,
       }),
       invalidatesTags: ['User'],
     }),
@@ -322,5 +339,6 @@ export const {
   useSendPromotionalEmailMutation,
   useGetUsersQuery,
   useUpdateUserRoleMutation,
+  useCreateAdminUserMutation,
   useBulkUpdateOrderStatusMutation,
 } = adminApi;

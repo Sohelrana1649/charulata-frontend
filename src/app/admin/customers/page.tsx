@@ -10,8 +10,10 @@ import {
   useDeleteContactMessageMutation,
   useSendPromotionalEmailMutation,
   useGetUsersQuery,
-  useUpdateUserRoleMutation
+  useUpdateUserRoleMutation,
+  useCreateAdminUserMutation
 } from '@/store/api/adminApi';
+import { useRegisterMutation } from '@/store/api/authApi';
 import { 
   Loader2, 
   Search, 
@@ -24,25 +26,58 @@ import {
   MessageSquare, 
   Check, 
   Trash2, 
-  Globe,
-  Send,
-  UserCheck,
-  ShieldAlert,
-  MapPin,
-  Lock,
-  ShieldCheck,
-  ChevronDown
+  Globe, 
+  Send, 
+  UserCheck, 
+  ShieldAlert, 
+  MapPin, 
+  Lock, 
+  ShieldCheck, 
+  ChevronDown, 
+  X, 
+  UserCog, 
+  AlertTriangle,
+  UserPlus,
+  User,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Camera,
+  Upload
 } from 'lucide-react';
+import { useUploadImageMutation } from '@/store/api/adminApi';
+import { getFallbackAvatarUrl, defaultTeamAvatars } from '@/utils/avatarHelper';
 import { toast } from 'react-toastify';
 import { useRole } from '@/hooks/useRole';
 import RoleGuard from '@/components/admin/RoleGuard';
 
 export default function AdminCustomersPage() {
   const { isSuperAdmin } = useRole();
-  const [activeTab, setActiveTab] = useState<'ordering' | 'subscribers' | 'contacts' | 'users'>('ordering');
+  const [activeTab, setActiveTab] = useState<'ordering' | 'subscribers' | 'contacts' | 'users' | 'team'>('ordering');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [confirmRoleModal, setConfirmRoleModal] = useState<{
+    isOpen: boolean;
+    user: { _id: string; name: string; email: string; role: string } | null;
+    targetRole: string;
+  }>({
+    isOpen: false,
+    user: null,
+    targetRole: ''
+  });
+  const [showAddTeamModal, setShowAddTeamModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [newTeamMember, setNewTeamMember] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'staff',
+    password: '',
+    profileImage: '',
+  });
+  const [createAdminUser, { isLoading: isCreatingTeamMember }] = useCreateAdminUserMutation();
+  const [uploadImage, { isLoading: isUploadingPhoto }] = useUploadImageMutation();
   const itemsPerPage = 10;
 
   React.useEffect(() => {
@@ -50,7 +85,7 @@ export default function AdminCustomersPage() {
   }, [search, activeTab]);
 
   React.useEffect(() => {
-    if (!isSuperAdmin && activeTab === 'users') {
+    if (!isSuperAdmin && (activeTab === 'users' || activeTab === 'team')) {
       setActiveTab('ordering');
     }
   }, [isSuperAdmin, activeTab]);
@@ -75,8 +110,10 @@ export default function AdminCustomersPage() {
   const contacts = contactsResponse?.data?.messages || contactsResponse?.messages || [];
 
   // 4. Registered Users Data
-  const { data: usersResponse, isLoading: usersLoading, refetch: refetchUsers } = useGetUsersQuery({}, { skip: activeTab !== 'users' || !isSuperAdmin });
+  const { data: usersResponse, isLoading: usersLoading, refetch: refetchUsers } = useGetUsersQuery({}, { skip: !isSuperAdmin });
   const users = usersResponse?.data?.users || usersResponse?.users || [];
+  const teamMembers = users.filter((u: any) => ['staff', 'admin', 'super_admin'].includes(u.role));
+  const registeredCustomers = users.filter((u: any) => !['staff', 'admin', 'super_admin'].includes(u.role) || u.role === 'customer');
 
   // Mutations
   const [markAsRead] = useMarkContactMessageReadMutation();
@@ -110,6 +147,10 @@ export default function AdminCustomersPage() {
 
   const customersList = Object.values(customerMap);
 
+  const getUserAvatar = (user: any) => {
+    return getFallbackAvatarUrl(user);
+  };
+
   // Search filter logic
   const getFilteredData = () => {
     const term = search.toLowerCase().trim();
@@ -132,6 +173,14 @@ export default function AdminCustomersPage() {
     }
     if (activeTab === 'users') {
       return users.filter((u: any) =>
+        (u.name || '').toLowerCase().includes(term) ||
+        (u.email || '').toLowerCase().includes(term) ||
+        (u.phone || '').includes(term) ||
+        (u.role || '').toLowerCase().includes(term)
+      );
+    }
+    if (activeTab === 'team') {
+      return teamMembers.filter((u: any) =>
         (u.name || '').toLowerCase().includes(term) ||
         (u.email || '').toLowerCase().includes(term) ||
         (u.phone || '').includes(term) ||
@@ -168,21 +217,104 @@ export default function AdminCustomersPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleInitiateRoleChange = (user: any, newRole: string) => {
     if (!isSuperAdmin) {
       toast.error('শুধুমাত্র Super Admin রোল পরিবর্তন করতে পারেন');
       return;
     }
-    if (!window.confirm(`Are you sure you want to change this user's role to "${newRole}"?`)) return;
+    if (currentUser?._id === user._id) {
+      toast.error("You can't change your own role");
+      return;
+    }
+    if (user.role === newRole) return;
+    setConfirmRoleModal({
+      isOpen: true,
+      user,
+      targetRole: newRole
+    });
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!confirmRoleModal.user || !confirmRoleModal.targetRole) return;
+    const targetUserId = confirmRoleModal.user._id;
+    const targetRole = confirmRoleModal.targetRole;
     try {
-      setUpdatingUserId(userId);
-      await updateUserRole({ userId, role: newRole }).unwrap();
-      toast.success(`User role updated to ${newRole}!`);
+      setUpdatingUserId(targetUserId);
+      await updateUserRole({ userId: targetUserId, role: targetRole }).unwrap();
+      toast.success(`Role for ${confirmRoleModal.user.name} changed to ${targetRole}!`);
+      setConfirmRoleModal({ isOpen: false, user: null, targetRole: '' });
       refetchUsers();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to update user role');
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const [rtkRegister, { isLoading: isRegistering }] = useRegisterMutation();
+
+  const handleCreateTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeamMember.name.trim() || !newTeamMember.email.trim() || !newTeamMember.password.trim()) {
+      toast.error('Name, email, and password are required.');
+      return;
+    }
+    if (newTeamMember.password.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+
+    try {
+      let createdUserId: string | null = null;
+
+      // 1. Try dedicated admin creation endpoint first
+      try {
+        const directRes: any = await createAdminUser(newTeamMember).unwrap();
+        createdUserId = directRes?.data?._id || directRes?._id;
+      } catch (directErr: any) {
+        // If /users/admin/create is not implemented on backend (404), fallback to /auth/register + role patch
+        if (directErr?.status === 404 || directErr?.data?.message?.includes("Can't find")) {
+          const registerRes: any = await rtkRegister({
+            name: newTeamMember.name.trim(),
+            identifier: newTeamMember.email.toLowerCase().trim(),
+            password: newTeamMember.password,
+          }).unwrap();
+
+          createdUserId = registerRes?.data?.user?._id || registerRes?.data?._id || registerRes?.user?._id || registerRes?._id;
+
+          // If role is staff, admin, or super_admin, patch role now
+          if (newTeamMember.role !== 'customer') {
+            if (createdUserId) {
+              await updateUserRole({ userId: createdUserId, role: newTeamMember.role }).unwrap();
+            } else {
+              const refreshed = await refetchUsers();
+              const found = (refreshed.data?.data?.users || refreshed.data?.users || []).find(
+                (u: any) => u.email?.toLowerCase() === newTeamMember.email.toLowerCase().trim()
+              );
+              if (found?._id) {
+                await updateUserRole({ userId: found._id, role: newTeamMember.role }).unwrap();
+              }
+            }
+          }
+        } else {
+          throw directErr;
+        }
+      }
+
+      toast.success(`New ${newTeamMember.role.toUpperCase()} account created successfully!`);
+      setShowAddTeamModal(false);
+      setNewTeamMember({
+        name: '',
+        email: '',
+        phone: '',
+        role: 'staff',
+        password: '',
+        profileImage: '',
+      });
+      refetchUsers();
+    } catch (err: any) {
+      console.error('Failed to create team member:', err);
+      toast.error(err?.data?.message || err?.message || 'Failed to create team member');
     }
   };
 
@@ -223,6 +355,16 @@ export default function AdminCustomersPage() {
             <span>Send Email Campaign</span>
           </button>
         )}
+
+        {activeTab === 'team' && isSuperAdmin && (
+          <button
+            onClick={() => setShowAddTeamModal(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-md cursor-pointer shrink-0"
+          >
+            <UserPlus size={15} />
+            <span>+ Add Team Member</span>
+          </button>
+        )}
       </div>
 
       {/* Interactive Tabs */}
@@ -231,7 +373,10 @@ export default function AdminCustomersPage() {
           { id: 'ordering', label: `Ordering Clients (${customersList.length})`, icon: <ShoppingBag size={14} /> },
           { id: 'subscribers', label: `Subscribers (${subscribers.length})`, icon: <Globe size={14} /> },
           { id: 'contacts', label: `Contact Queries (${contacts.length})`, icon: <MessageSquare size={14} /> },
-          ...(isSuperAdmin ? [{ id: 'users', label: `Registered Accounts (${users.length})`, icon: <Users size={14} /> }] : []),
+          ...(isSuperAdmin ? [
+            { id: 'users', label: `Registered Accounts (${users.length})`, icon: <Users size={14} /> },
+            { id: 'team', label: `Team & Staff (${teamMembers.length})`, icon: <ShieldCheck size={14} /> },
+          ] : []),
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -513,7 +658,7 @@ export default function AdminCustomersPage() {
           </div>
         )}
 
-        {/* Tab 4: System User Accounts & Roles */}
+        {/* Tab 4: System User Accounts (Read-Only) */}
         {activeTab === 'users' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -523,7 +668,7 @@ export default function AdminCustomersPage() {
                   <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Email</th>
                   <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Phone</th>
                   <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Current Role</th>
-                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right">Actions</th>
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right">Joined Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border text-[11px] sm:text-xs text-foreground">
@@ -542,7 +687,23 @@ export default function AdminCustomersPage() {
                   paginatedData.map((u: any) => (
                     <tr key={u._id} className="hover:bg-muted/30 transition">
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 font-bold text-foreground font-serif text-sm">
-                        {u.name}
+                        <div className="flex items-center space-x-3">
+                          <div className="relative shrink-0">
+                            <img
+                              src={getUserAvatar(u)}
+                              alt={u.name || 'User'}
+                              className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover border border-border shadow-2xs bg-muted"
+                              onError={(e: any) => {
+                                const bg = u.role === 'super_admin' ? 'f43f5e' : (u.role === 'admin' ? 'f59e0b' : (u.role === 'staff' ? '3b82f6' : '64748b'));
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'U')}&background=${bg}&color=fff&size=128&bold=true`;
+                              }}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground font-serif text-sm truncate">{u.name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono truncate">{u.email}</p>
+                          </div>
+                        </div>
                       </td>
 
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-muted-foreground font-mono">
@@ -556,9 +717,9 @@ export default function AdminCustomersPage() {
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">
                         <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
                           u.role === 'super_admin'
-                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
-                            : u.role === 'admin'
                             ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            : u.role === 'admin'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                             : u.role === 'staff'
                             ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                             : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20'
@@ -567,55 +728,148 @@ export default function AdminCustomersPage() {
                         </span>
                       </td>
 
+                      <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right text-muted-foreground font-mono text-[11px]">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 5: Team & Staff Management (Super Admin Exclusive) */}
+        {activeTab === 'team' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border text-[8px] sm:text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Team Member</th>
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Email & Phone</th>
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Current Role</th>
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">Joined Date</th>
+                  <th className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right">Role Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-[11px] sm:text-xs text-foreground">
+                {usersLoading ? (
+                  <tr>
+                    <td colSpan={5} className="py-16 text-center text-muted-foreground">
+                      <Loader2 className="animate-spin text-primary inline mr-2 h-5 w-5" />
+                      <span>Loading team & staff members...</span>
+                    </td>
+                  </tr>
+                ) : filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-16 text-center text-muted-foreground">No team or staff members found.</td>
+                  </tr>
+                ) : (
+                  paginatedData.map((u: any) => (
+                    <tr key={u._id} className="hover:bg-muted/30 transition">
+                      <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 font-bold text-foreground font-serif text-sm">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative shrink-0">
+                            <img
+                              src={getUserAvatar(u)}
+                              alt={u.name || 'Team Member'}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl object-cover border border-border shadow-2xs bg-muted"
+                              onError={(e: any) => {
+                                const bg = u.role === 'super_admin' ? 'f43f5e' : (u.role === 'admin' ? 'f59e0b' : (u.role === 'staff' ? '3b82f6' : '64748b'));
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'U')}&background=${bg}&color=fff&size=128&bold=true`;
+                              }}
+                            />
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${
+                                u.role === 'super_admin'
+                                  ? 'bg-rose-500 ring-1 ring-rose-500/20'
+                                  : u.role === 'admin'
+                                  ? 'bg-amber-500 ring-1 ring-amber-500/20'
+                                  : 'bg-blue-500 ring-1 ring-blue-500/20'
+                              }`}
+                              title={`Role: ${u.role || 'staff'}`}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground font-serif text-sm truncate">{u.name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono truncate">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-muted-foreground font-mono text-xs">
+                        <div>{u.email}</div>
+                        {u.phone && <div className="text-[10px] opacity-75">{u.phone}</div>}
+                      </td>
+
+                      <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                          u.role === 'super_admin'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            : u.role === 'admin'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            : u.role === 'staff'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                            : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20'
+                        }`}>
+                          {u.role ? u.role.replace('_', ' ').toUpperCase() : 'STAFF'}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-muted-foreground font-mono text-[11px]">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                      </td>
+
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right">
                         {currentUser?._id === u._id ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold text-primary bg-primary/10 border border-primary/20 rounded-xl">
+                          <span 
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold text-primary bg-primary/10 border border-primary/20 rounded-xl cursor-default"
+                            title="You can't change your own role"
+                          >
                             <ShieldCheck size={13} />
                             <span>You (Active Super Admin)</span>
                           </span>
                         ) : isSuperAdmin ? (
-                          <div className="inline-flex items-center justify-end">
-                            {/* Super Admin Interactive Role Selector */}
+                          <div className="flex items-center justify-end space-x-2">
+                            {/* Quick Switch Button */}
+                            <button
+                              onClick={() => handleInitiateRoleChange(u, u.role === 'admin' ? 'staff' : 'admin')}
+                              disabled={updatingUserId === u._id}
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold text-foreground bg-muted hover:bg-primary hover:text-white rounded-lg border border-border transition cursor-pointer disabled:opacity-50"
+                              title={`Switch to ${u.role === 'admin' ? 'Staff' : 'Admin'}`}
+                            >
+                              {updatingUserId === u._id ? (
+                                <Loader2 size={13} className="animate-spin text-primary" />
+                              ) : (
+                                <UserCheck size={13} />
+                              )}
+                              <span>Switch to {u.role === 'admin' ? 'Staff' : 'Admin'}</span>
+                            </button>
+
+                            {/* Dropdown for All Roles */}
                             <div className="relative inline-flex items-center">
                               <select
-                                value={u.role || 'customer'}
-                                onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                                value={u.role || 'staff'}
+                                onChange={(e) => handleInitiateRoleChange(u, e.target.value)}
                                 disabled={updatingUserId === u._id}
                                 className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold rounded-xl border border-border bg-card hover:bg-muted/50 text-foreground transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs disabled:opacity-50"
-                                title="Click to change user role"
+                                title="Change role"
                               >
-                                <option value="customer">Customer</option>
                                 <option value="staff">Staff</option>
                                 <option value="admin">Admin</option>
                                 <option value="super_admin">Super Admin</option>
+                                <option value="customer">Demote to Customer</option>
                               </select>
                               <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                {updatingUserId === u._id ? (
-                                  <Loader2 size={12} className="animate-spin text-primary" />
-                                ) : (
-                                  <ChevronDown size={13} />
-                                )}
+                                <ChevronDown size={13} />
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center justify-end" title="Super Admin permission required to change user roles">
-                            {/* Disabled Lock State for Non-Super Admin */}
-                            <div className="relative inline-flex items-center opacity-60 cursor-not-allowed">
-                              <select
-                                value={u.role || 'customer'}
-                                disabled={true}
-                                className="appearance-none pl-7 pr-8 py-1.5 text-xs font-bold rounded-xl border border-dashed border-border bg-muted/40 text-muted-foreground cursor-not-allowed"
-                              >
-                                <option value="customer">Customer</option>
-                                <option value="staff">Staff</option>
-                                <option value="admin">Admin</option>
-                                <option value="super_admin">Super Admin</option>
-                              </select>
-                              <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                              <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            </div>
-                          </div>
+                          <span className="text-xs text-muted-foreground italic flex items-center justify-end gap-1">
+                            <Lock size={12} />
+                            <span>Super Admin Only</span>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -667,6 +921,268 @@ export default function AdminCustomersPage() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Confirmation Modal */}
+      {confirmRoleModal.isOpen && confirmRoleModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-500/20">
+                  <ShieldAlert size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground font-serif">Confirm Role Change</h3>
+                  <p className="text-xs text-muted-foreground">Admin panel access permissions</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setConfirmRoleModal({ isOpen: false, user: null, targetRole: '' })}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="bg-muted/50 border border-border rounded-2xl p-4 space-y-3 text-xs">
+              <div className="flex items-center space-x-3 bg-card p-3 rounded-xl border border-border shadow-2xs">
+                <img
+                  src={getUserAvatar(confirmRoleModal.user)}
+                  alt={confirmRoleModal.user.name}
+                  className="h-10 w-10 rounded-xl object-cover border border-border shadow-2xs bg-muted"
+                />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-foreground text-sm font-serif truncate">{confirmRoleModal.user.name}</p>
+                  <p className="text-[11px] text-muted-foreground font-mono truncate">{confirmRoleModal.user.email}</p>
+                </div>
+              </div>
+
+              <p className="text-foreground leading-relaxed">
+                Are you sure you want to change this member&apos;s role from{' '}
+                <span className="font-extrabold uppercase px-2 py-0.5 rounded-md bg-muted border border-border">
+                  {confirmRoleModal.user.role || 'customer'}
+                </span>{' '}
+                to{' '}
+                <span className="font-extrabold uppercase px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+                  {confirmRoleModal.targetRole}
+                </span>
+                ?
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                This will immediately update their dashboard permissions and access privileges.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmRoleModal({ isOpen: false, user: null, targetRole: '' })}
+                className="px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-foreground text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRoleChange}
+                disabled={updatingUserId !== null}
+                className="inline-flex items-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {updatingUserId !== null ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                <span>Confirm & Update Role</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Team Member Modal */}
+      {showAddTeamModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-primary/10 text-primary rounded-2xl border border-primary/20">
+                  <UserPlus size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground font-serif">Add New Team Member</h3>
+                  <p className="text-xs text-muted-foreground">Create a staff or admin account with dashboard access</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddTeamModal(false)}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTeamMember} className="space-y-4">
+              {/* Photo Upload & Preview */}
+              <div className="flex items-center space-x-4 p-3 bg-muted/40 border border-border rounded-2xl">
+                <img
+                  src={newTeamMember.profileImage || defaultTeamAvatars[0]}
+                  alt="Preview"
+                  className="h-12 w-12 rounded-xl object-cover border border-border shadow-xs bg-muted"
+                />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-foreground">Member Photo (Optional)</p>
+                  <label className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-primary hover:underline cursor-pointer mt-0.5">
+                    {isUploadingPhoto ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    <span>{isUploadingPhoto ? 'Uploading photo...' : 'Upload custom photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingPhoto}
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          const res = await uploadImage(formData).unwrap();
+                          const url = res?.data?.url || res?.url;
+                          if (url) {
+                            let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+                            if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
+                              baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
+                            }
+                            const fullUrl = url.startsWith('http') ? url : `${baseApiUrl.replace('/api/v1', '')}${url}`;
+                            setNewTeamMember(prev => ({ ...prev, profileImage: fullUrl }));
+                            toast.success('Photo uploaded!');
+                          }
+                        } catch (err) {
+                          toast.error('Failed to upload photo');
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">
+                  Full Name <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Tanvir Hasan"
+                    value={newTeamMember.name}
+                    onChange={(e) => setNewTeamMember({ ...newTeamMember, name: e.target.value })}
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                  />
+                </div>
+              </div>
+
+              {/* Email & Phone Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Email Address <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="staff@charulata.com"
+                      value={newTeamMember.email}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })}
+                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Phone Number <span className="text-muted-foreground text-[10px]">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="017XXXXXXXX"
+                      value={newTeamMember.phone}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, phone: e.target.value })}
+                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Role & Password Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Assign Role <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <UserCog size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <select
+                      value={newTeamMember.role}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, role: e.target.value })}
+                      className="w-full pl-9 pr-8 py-2.5 text-xs font-bold bg-muted/30 border border-border rounded-xl text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition cursor-pointer"
+                    >
+                      <option value="staff">Staff (Orders & Products)</option>
+                      <option value="admin">Admin (Store Manager)</option>
+                      <option value="super_admin">Super Admin (Full Access)</option>
+                    </select>
+                    <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Login Password <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Minimum 6 characters"
+                      value={newTeamMember.password}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, password: e.target.value })}
+                      className="w-full pl-9 pr-9 py-2.5 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTeamModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-foreground text-xs font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingTeamMember || isRegistering}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isCreatingTeamMember || isRegistering ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                  <span>Create Account</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
