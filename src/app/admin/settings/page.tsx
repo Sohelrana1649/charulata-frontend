@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useRole } from '@/hooks/useRole';
 import { 
   Settings, 
   User, 
@@ -21,7 +23,8 @@ import {
   ImageIcon,
   FileText,
   Save,
-  HelpCircle
+  HelpCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUpdateProfileMutation } from '@/store/api/authApi';
@@ -30,13 +33,38 @@ import { updateUser } from '@/store/authSlice';
 import Image from '@/components/SafeImage';
 
 export default function AdminSettingsPage() {
+  const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
+  const { isSuperAdmin } = useRole();
   const dispatch = useAppDispatch();
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
-  const { data: settingsData, isLoading: isSettingsLoading, refetch: refetchSettings } = useGetSettingsQuery();
+  const { data: settingsData, isLoading: isSettingsLoading, refetch: refetchSettings } = useGetSettingsQuery(undefined, {
+    skip: !isSuperAdmin
+  });
   const [updateSettings, { isLoading: isUpdatingSettings }] = useUpdateSettingsMutation();
   
   const [activeTab, setActiveTab] = useState<'advance' | 'logos' | 'shipping' | 'store' | 'profile'>('advance');
+
+  useEffect(() => {
+    if (user && !isSuperAdmin) {
+      toast.error('সেটিংস পরিবর্তন করার অনুমতি শুধুমাত্র Super Admin এর রয়েছে');
+      router.replace('/admin');
+    }
+  }, [user, isSuperAdmin, router]);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-card border border-border rounded-2xl text-center space-y-4">
+        <div className="p-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl">
+          <ShieldAlert size={36} />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">অ্যাক্সেস অস্বীকৃত (Access Denied)</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          এই পৃষ্ঠাটি শুধুমাত্র Super Admin এর জন্য সংরক্ষিত। আপনার অ্যাকাউন্টটিতে পর্যাপ্ত অনুমতি নেই।
+        </p>
+      </div>
+    );
+  }
 
   // Form states for Store Settings
   const [settingsForm, setSettingsForm] = useState({

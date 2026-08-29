@@ -33,6 +33,8 @@ import {
   BarChart3
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 const PIE_COLORS = ['#e11d48', '#f59e0b', '#10b981', '#6366f1', '#8b5cf6'];
 const mockPieData = [
@@ -44,6 +46,7 @@ const mockPieData = [
 ];
 
 export default function AdminAnalyticsPage() {
+  const { isSuperAdmin } = useRole();
   const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery({});
   const [timeframe, setTimeframe] = useState('30days');
   const { data: chartResponse, isLoading: chartLoading } = useGetSalesChartDataQuery(timeframe);
@@ -191,37 +194,45 @@ export default function AdminAnalyticsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <button
-            onClick={handleExportCSV}
-            disabled={isExporting}
-            className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
-            title="Download store analytics report as Excel CSV file"
-          >
-            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={14} className="group-hover:scale-110 transition-transform" />}
-            <span>Export CSV</span>
-          </button>
-          
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            className="inline-flex items-center space-x-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
-            title="Generate printable PDF summary report"
-          >
-            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={14} className="group-hover:scale-110 transition-transform" />}
-            <span>Export PDF Report</span>
-          </button>
-        </div>
+        <RoleGuard allowedRoles={['super_admin']}>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
+              title="Download store analytics report as Excel CSV file"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={14} className="group-hover:scale-110 transition-transform" />}
+              <span>Export CSV</span>
+            </button>
+            
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="inline-flex items-center space-x-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
+              title="Generate printable PDF summary report"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={14} className="group-hover:scale-110 transition-transform" />}
+              <span>Export PDF Report</span>
+            </button>
+          </div>
+        </RoleGuard>
       </div>
 
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {[
-          { label: 'Total Sales Revenue', value: `৳${revenueVal.toLocaleString()}`, change: '+14.2%', icon: <DollarSign size={20} />, bg: 'bg-primary/10 text-primary border-primary/20' },
-          { label: 'Total Orders', value: ordersVal, change: '+9.1%', icon: <ShoppingBag size={20} />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-          { label: 'Total Customers', value: customersVal.toLocaleString(), change: '+5.4%', icon: <Users size={20} />, bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-          { label: 'Avg Order Value', value: `৳${Math.round(avgOrderVal).toLocaleString()}`, change: '+2.8%', icon: <TrendingUp size={20} />, bg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-        ].map((card, i) => (
+      <div className={`grid gap-2.5 sm:gap-4 ${isSuperAdmin ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-2'}`}>
+        {(isSuperAdmin
+          ? [
+              { label: 'Total Sales Revenue', value: `৳${revenueVal.toLocaleString()}`, change: '+14.2%', icon: <DollarSign size={20} />, bg: 'bg-primary/10 text-primary border-primary/20' },
+              { label: 'Total Orders', value: ordersVal, change: '+9.1%', icon: <ShoppingBag size={20} />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+              { label: 'Total Customers', value: customersVal.toLocaleString(), change: '+5.4%', icon: <Users size={20} />, bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+              { label: 'Avg Order Value', value: `৳${Math.round(avgOrderVal).toLocaleString()}`, change: '+2.8%', icon: <TrendingUp size={20} />, bg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+            ]
+          : [
+              { label: 'Total Orders', value: ordersVal, change: '+9.1%', icon: <ShoppingBag size={20} />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+              { label: 'Total Customers', value: customersVal.toLocaleString(), change: '+5.4%', icon: <Users size={20} />, bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+            ]
+        ).map((card, i) => (
           <div key={i} className="bg-card border border-border p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm flex items-center justify-between">
             <div className="space-y-0.5 sm:space-y-1">
               <div className={`inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl border ${card.bg}`}>

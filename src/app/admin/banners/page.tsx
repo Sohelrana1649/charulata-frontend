@@ -29,6 +29,8 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 import Image from '@/components/SafeImage';
 
 interface BannerForm {
@@ -50,6 +52,7 @@ const initialForm: BannerForm = {
 };
 
 export default function AdminBannersPage() {
+  const { isSuperAdmin } = useRole();
   const { data: bannersRes, isLoading, refetch } = useGetBannersQuery({});
   
   const [createBanner, { isLoading: isCreating }] = useCreateBannerMutation();
@@ -245,6 +248,10 @@ export default function AdminBannersPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin ব্যানার ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this banner?')) return;
     try {
       await deleteBanner(id).unwrap();
@@ -493,13 +500,15 @@ export default function AdminBannersPage() {
                       <span>Edit</span>
                     </button>
 
-                    <button
-                      onClick={() => handleDelete(banner._id)}
-                      className="p-2 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-xl border border-rose-500/20 transition cursor-pointer"
-                      title="Delete Banner"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <RoleGuard allowedRoles={['super_admin']}>
+                      <button
+                        onClick={() => handleDelete(banner._id)}
+                        className="p-2 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-xl border border-rose-500/20 transition cursor-pointer"
+                        title="Delete Banner"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </RoleGuard>
                   </div>
                 </div>
               </div>

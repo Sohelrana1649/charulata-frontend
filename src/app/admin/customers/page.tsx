@@ -28,19 +28,33 @@ import {
   Send,
   UserCheck,
   ShieldAlert,
-  MapPin
+  MapPin,
+  Lock,
+  ShieldCheck,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 export default function AdminCustomersPage() {
+  const { isSuperAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<'ordering' | 'subscribers' | 'contacts' | 'users'>('ordering');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   React.useEffect(() => {
     setPage(1);
   }, [search, activeTab]);
+
+  React.useEffect(() => {
+    if (!isSuperAdmin && activeTab === 'users') {
+      setActiveTab('ordering');
+    }
+  }, [isSuperAdmin, activeTab]);
+
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [campaignSubject, setCampaignSubject] = useState('');
   const [campaignMessage, setCampaignMessage] = useState('');
@@ -61,7 +75,7 @@ export default function AdminCustomersPage() {
   const contacts = contactsResponse?.data?.messages || contactsResponse?.messages || [];
 
   // 4. Registered Users Data
-  const { data: usersResponse, isLoading: usersLoading, refetch: refetchUsers } = useGetUsersQuery({}, { skip: activeTab !== 'users' });
+  const { data: usersResponse, isLoading: usersLoading, refetch: refetchUsers } = useGetUsersQuery({}, { skip: activeTab !== 'users' || !isSuperAdmin });
   const users = usersResponse?.data?.users || usersResponse?.users || [];
 
   // Mutations
@@ -141,6 +155,10 @@ export default function AdminCustomersPage() {
   };
 
   const handleDeleteContact = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin মেসেজ ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this contact query?')) return;
     try {
       await deleteContact(id).unwrap();
@@ -150,15 +168,21 @@ export default function AdminCustomersPage() {
     }
   };
 
-  const handleRoleToggle = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'customer' : 'admin';
-    if (!window.confirm(`Are you sure you want to change user role to ${newRole}?`)) return;
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin রোল পরিবর্তন করতে পারেন');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to change this user's role to "${newRole}"?`)) return;
     try {
+      setUpdatingUserId(userId);
       await updateUserRole({ userId, role: newRole }).unwrap();
       toast.success(`User role updated to ${newRole}!`);
       refetchUsers();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to update user role');
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -207,7 +231,7 @@ export default function AdminCustomersPage() {
           { id: 'ordering', label: `Ordering Clients (${customersList.length})`, icon: <ShoppingBag size={14} /> },
           { id: 'subscribers', label: `Subscribers (${subscribers.length})`, icon: <Globe size={14} /> },
           { id: 'contacts', label: `Contact Queries (${contacts.length})`, icon: <MessageSquare size={14} /> },
-          { id: 'users', label: `Registered Accounts (${users.length})`, icon: <Users size={14} /> },
+          ...(isSuperAdmin ? [{ id: 'users', label: `Registered Accounts (${users.length})`, icon: <Users size={14} /> }] : []),
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -470,13 +494,15 @@ export default function AdminCustomersPage() {
                               <Check size={14} />
                             </button>
                           )}
-                          <button
-                            onClick={() => handleDeleteContact(msg._id)}
-                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                            title="Delete Query"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <RoleGuard allowedRoles={['super_admin']}>
+                            <button
+                              onClick={() => handleDeleteContact(msg._id)}
+                              className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                              title="Delete Query"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </RoleGuard>
                         </div>
                       </td>
                     </tr>
@@ -529,24 +555,67 @@ export default function AdminCustomersPage() {
 
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4">
                         <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                          u.role === 'admin' 
-                            ? 'bg-primary/10 text-primary border-primary/20' 
-                            : 'bg-muted text-muted-foreground border-border'
+                          u.role === 'super_admin'
+                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                            : u.role === 'admin'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            : u.role === 'staff'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                            : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20'
                         }`}>
-                          {u.role || 'customer'}
+                          {u.role ? u.role.replace('_', ' ').toUpperCase() : 'CUSTOMER'}
                         </span>
                       </td>
 
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 text-right">
-                        {currentUser?._id !== u._id && (
-                          <button
-                            onClick={() => handleRoleToggle(u._id, u.role)}
-                            disabled={isUpdatingRole}
-                            className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-foreground bg-muted hover:bg-primary hover:text-white rounded-lg border border-border transition cursor-pointer"
-                          >
-                            <UserCheck size={13} />
-                            <span>Switch to {u.role === 'admin' ? 'Customer' : 'Admin'}</span>
-                          </button>
+                        {currentUser?._id === u._id ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-extrabold text-primary bg-primary/10 border border-primary/20 rounded-xl">
+                            <ShieldCheck size={13} />
+                            <span>You (Active Super Admin)</span>
+                          </span>
+                        ) : isSuperAdmin ? (
+                          <div className="inline-flex items-center justify-end">
+                            {/* Super Admin Interactive Role Selector */}
+                            <div className="relative inline-flex items-center">
+                              <select
+                                value={u.role || 'customer'}
+                                onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                                disabled={updatingUserId === u._id}
+                                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold rounded-xl border border-border bg-card hover:bg-muted/50 text-foreground transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs disabled:opacity-50"
+                                title="Click to change user role"
+                              >
+                                <option value="customer">Customer</option>
+                                <option value="staff">Staff</option>
+                                <option value="admin">Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                              </select>
+                              <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                {updatingUserId === u._id ? (
+                                  <Loader2 size={12} className="animate-spin text-primary" />
+                                ) : (
+                                  <ChevronDown size={13} />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center justify-end" title="Super Admin permission required to change user roles">
+                            {/* Disabled Lock State for Non-Super Admin */}
+                            <div className="relative inline-flex items-center opacity-60 cursor-not-allowed">
+                              <select
+                                value={u.role || 'customer'}
+                                disabled={true}
+                                className="appearance-none pl-7 pr-8 py-1.5 text-xs font-bold rounded-xl border border-dashed border-border bg-muted/40 text-muted-foreground cursor-not-allowed"
+                              >
+                                <option value="customer">Customer</option>
+                                <option value="staff">Staff</option>
+                                <option value="admin">Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                              </select>
+                              <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                              <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            </div>
+                          </div>
                         )}
                       </td>
                     </tr>

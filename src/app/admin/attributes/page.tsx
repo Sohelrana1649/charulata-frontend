@@ -23,6 +23,8 @@ import {
   Tag
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 interface AttributeForm {
   name: string;
@@ -37,6 +39,7 @@ const initialForm: AttributeForm = {
 };
 
 export default function AdminAttributesPage() {
+  const { isSuperAdmin } = useRole();
   const { data: attributesRes, isLoading, refetch } = useGetAttributesQuery({});
 
   const [createAttribute, { isLoading: isCreating }] = useCreateAttributeMutation();
@@ -145,6 +148,10 @@ export default function AdminAttributesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin অ্যাট্রিবিউট ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this attribute? This cannot be undone.')) return;
     try {
       await deleteAttribute(id).unwrap();
@@ -387,13 +394,15 @@ export default function AdminAttributesPage() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(attr._id)}
-                          className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                          title="Delete Attribute"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <RoleGuard allowedRoles={['super_admin']}>
+                          <button
+                            onClick={() => handleDelete(attr._id)}
+                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                            title="Delete Attribute"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </RoleGuard>
                       </div>
                     </td>
                   </tr>

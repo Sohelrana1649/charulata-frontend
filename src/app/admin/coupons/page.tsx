@@ -15,14 +15,18 @@ import {
   X, 
   Loader2, 
   Check, 
-  Ticket,
-  Percent,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Copy
+  Ticket, 
+  Percent, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  Copy 
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
+
+const MAX_DISCOUNT = Number(process.env.NEXT_PUBLIC_MAX_DISCOUNT) || 25;
 
 interface CouponForm {
   code: string;
@@ -47,6 +51,7 @@ const initialForm: CouponForm = {
 };
 
 export default function AdminCouponsPage() {
+  const { isSuperAdmin } = useRole();
   const { data: couponsRes, isLoading, refetch } = useGetCouponsQuery({});
   
   const [createCoupon, { isLoading: isCreating }] = useCreateCouponMutation();
@@ -102,6 +107,10 @@ export default function AdminCouponsPage() {
       toast.error('Expiry date is required.');
       return;
     }
+    if (form.discountType === 'percentage' && Number(form.discountValue) > MAX_DISCOUNT) {
+      toast.error(`ডিসকাউন্ট শতকরা সর্বোচ্চ ${MAX_DISCOUNT}% হতে পারে (Max Discount Cap: ${MAX_DISCOUNT}%)`);
+      return;
+    }
     const payload = {
       ...form,
       discountValue: Number(form.discountValue),
@@ -126,6 +135,10 @@ export default function AdminCouponsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin কুপন ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this coupon code?')) return;
     try {
       await deleteCoupon(id).unwrap();
@@ -344,13 +357,15 @@ export default function AdminCouponsPage() {
                           >
                             <Edit3 size={14} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(coupon._id)}
-                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                            title="Delete Coupon"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <RoleGuard allowedRoles={['super_admin']}>
+                            <button
+                              onClick={() => handleDelete(coupon._id)}
+                              className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                              title="Delete Coupon"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </RoleGuard>
                         </div>
                       </td>
 

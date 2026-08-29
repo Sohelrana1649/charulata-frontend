@@ -10,6 +10,8 @@ import {
 import { useUploadImageMutation } from '@/store/api/adminApi';
 import { useGetAttributesQuery } from '@/store/api/attributeApi';
 import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 import { 
   Plus, 
   Search, 
@@ -50,6 +52,7 @@ const initialForm: CategoryForm = {
 };
 
 export default function AdminCategoriesPage() {
+  const { isSuperAdmin } = useRole();
   const { data: categoriesRes, isLoading, refetch } = useGetCategoriesQuery({});
   const { data: attributesRes } = useGetAttributesQuery({});
   
@@ -159,6 +162,10 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin ক্যাটাগরি ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this category?')) return;
     const catToDelete = categories.find((c: any) => c._id === id);
     const catSlug = catToDelete?.slug;
@@ -396,12 +403,14 @@ export default function AdminCategoriesPage() {
                     <span>Edit</span>
                   </button>
 
-                  <button
-                    onClick={() => handleDelete(cat._id)}
-                    className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <RoleGuard allowedRoles={['super_admin']}>
+                    <button
+                      onClick={() => handleDelete(cat._id)}
+                      className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </RoleGuard>
                 </div>
               </div>
             </div>
@@ -468,13 +477,15 @@ export default function AdminCategoriesPage() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(cat._id)}
-                          className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                          title="Delete Category"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <RoleGuard allowedRoles={['super_admin']}>
+                          <button
+                            onClick={() => handleDelete(cat._id)}
+                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                            title="Delete Category"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </RoleGuard>
                       </div>
                     </td>
                   </tr>

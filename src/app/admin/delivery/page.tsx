@@ -21,6 +21,8 @@ import {
   DollarSign
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 interface DeliveryZoneForm {
   district: string;
@@ -41,6 +43,7 @@ const initialForm: DeliveryZoneForm = {
 };
 
 export default function AdminDeliveryPage() {
+  const { isSuperAdmin } = useRole();
   const { data: zonesRes, isLoading, refetch } = useGetDeliveryZonesQuery({});
   
   const [createOrUpdateZone, { isLoading: isSaving }] = useCreateOrUpdateDeliveryZoneMutation();
@@ -100,6 +103,10 @@ export default function AdminDeliveryPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin ডেলিভারি জোন ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this delivery zone?')) return;
     try {
       await deleteZone(id).unwrap();
@@ -293,13 +300,15 @@ export default function AdminDeliveryPage() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(zone._id)}
-                          className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                          title="Delete Delivery Zone"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <RoleGuard allowedRoles={['super_admin']}>
+                          <button
+                            onClick={() => handleDelete(zone._id)}
+                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                            title="Delete Delivery Zone"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </RoleGuard>
                       </div>
                     </td>
 

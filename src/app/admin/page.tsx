@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 const PIE_COLORS = ['#e11d48', '#f59e0b', '#10b981', '#6366f1', '#8b5cf6'];
 
@@ -64,6 +66,7 @@ const mockPieData = [
 ];
 
 export default function AdminDashboardPage() {
+  const { isSuperAdmin } = useRole();
   const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery({}, { pollingInterval: 30000 });
   const [chartTimeframe, setChartTimeframe] = useState('30days');
   const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
@@ -379,25 +382,27 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          <button
-            onClick={handleExportCSV}
-            disabled={isExporting}
-            className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
-            title="Download store sales analytics as Excel CSV file"
-          >
-            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={14} className="group-hover:scale-110 transition-transform" />}
-            <span>Export CSV</span>
-          </button>
-          
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
-            title="Generate printable PDF summary report"
-          >
-            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={14} className="group-hover:scale-110 transition-transform" />}
-            <span>Export PDF</span>
-          </button>
+          <RoleGuard allowedRoles={['super_admin']}>
+            <button
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
+              title="Download store sales analytics as Excel CSV file"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={14} className="group-hover:scale-110 transition-transform" />}
+              <span>Export CSV</span>
+            </button>
+            
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="inline-flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/30 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-2xs active:scale-95 group"
+              title="Generate printable PDF summary report"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={14} className="group-hover:scale-110 transition-transform" />}
+              <span>Export PDF</span>
+            </button>
+          </RoleGuard>
 
           <Link
             href="/admin/products"
@@ -410,41 +415,61 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {[
-          {
-            label: `Total Revenue (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
-            value: `৳${filteredMetrics.revenue.toLocaleString()}`,
-            change: '+12.4%',
-            icon: <DollarSign size={20} />,
-            color: 'text-primary',
-            bg: 'bg-primary/10 border-primary/20',
-          },
-          {
-            label: `Total Orders (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
-            value: filteredMetrics.orders,
-            change: '+8.2%',
-            icon: <ShoppingBag size={20} />,
-            color: 'text-amber-600 dark:text-amber-400',
-            bg: 'bg-amber-500/10 border-amber-500/20',
-          },
-          {
-            label: 'Total Customers',
-            value: customersVal.toLocaleString(),
-            change: '+3.1%',
-            icon: <Users size={20} />,
-            color: 'text-emerald-600 dark:text-emerald-400',
-            bg: 'bg-emerald-500/10 border-emerald-500/20',
-          },
-          {
-            label: `Avg. Order Value (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
-            value: `৳${filteredMetrics.avgOrderVal.toLocaleString()}`,
-            change: '-1.8%',
-            icon: <TrendingUp size={20} />,
-            color: 'text-indigo-600 dark:text-indigo-400',
-            bg: 'bg-indigo-500/10 border-indigo-500/20',
-          },
-        ].map((card, i) => (
+      <div className={`grid gap-2.5 sm:gap-4 ${isSuperAdmin ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-2'}`}>
+        {(isSuperAdmin
+          ? [
+              {
+                label: `Total Revenue (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
+                value: `৳${filteredMetrics.revenue.toLocaleString()}`,
+                change: '+12.4%',
+                icon: <DollarSign size={20} />,
+                color: 'text-primary',
+                bg: 'bg-primary/10 border-primary/20',
+              },
+              {
+                label: `Total Orders (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
+                value: filteredMetrics.orders,
+                change: '+8.2%',
+                icon: <ShoppingBag size={20} />,
+                color: 'text-amber-600 dark:text-amber-400',
+                bg: 'bg-amber-500/10 border-amber-500/20',
+              },
+              {
+                label: 'Total Customers',
+                value: customersVal.toLocaleString(),
+                change: '+3.1%',
+                icon: <Users size={20} />,
+                color: 'text-emerald-600 dark:text-emerald-400',
+                bg: 'bg-emerald-500/10 border-emerald-500/20',
+              },
+              {
+                label: `Avg. Order Value (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
+                value: `৳${filteredMetrics.avgOrderVal.toLocaleString()}`,
+                change: '-1.8%',
+                icon: <TrendingUp size={20} />,
+                color: 'text-indigo-600 dark:text-indigo-400',
+                bg: 'bg-indigo-500/10 border-indigo-500/20',
+              },
+            ]
+          : [
+              {
+                label: `Total Orders (${TIMEFRAME_LABELS[chartTimeframe] || 'Filtered'})`,
+                value: filteredMetrics.orders,
+                change: '+8.2%',
+                icon: <ShoppingBag size={20} />,
+                color: 'text-amber-600 dark:text-amber-400',
+                bg: 'bg-amber-500/10 border-amber-500/20',
+              },
+              {
+                label: 'Total Customers',
+                value: customersVal.toLocaleString(),
+                change: '+3.1%',
+                icon: <Users size={20} />,
+                color: 'text-emerald-600 dark:text-emerald-400',
+                bg: 'bg-emerald-500/10 border-emerald-500/20',
+              },
+            ]
+        ).map((card, i) => (
           <div key={i} className="bg-card border border-border rounded-xl sm:rounded-2xl p-3 sm:p-5 flex items-center justify-between shadow-sm">
             <div className="space-y-0.5 sm:space-y-1">
               <div className={`inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl border ${card.bg} ${card.color}`}>
@@ -465,12 +490,16 @@ export default function AdminDashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         
-        {/* Revenue Timeline Chart */}
+        {/* Revenue / Orders Timeline Chart */}
         <div className="lg:col-span-2 bg-card border border-border rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-foreground font-serif">Revenue Timeline</h2>
-              <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Sales performance analytics (BDT)</p>
+              <h2 className="text-sm sm:text-base font-extrabold text-foreground font-serif">
+                {isSuperAdmin ? 'Revenue Timeline' : 'Order Volume Timeline'}
+              </h2>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                {isSuperAdmin ? 'Sales performance analytics (BDT)' : 'Order fulfillment volume'}
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-1 bg-muted border border-border rounded-xl p-1">
@@ -518,7 +547,13 @@ export default function AdminDashboardPage() {
                     labelStyle={{ color: 'var(--muted-foreground)' }}
                     itemStyle={{ color: 'var(--primary)' }}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#e11d48" strokeWidth={2.5} fill="url(#colorRevDash)" />
+                  <Area 
+                    type="monotone" 
+                    dataKey={isSuperAdmin ? 'revenue' : 'orders'} 
+                    stroke="#e11d48" 
+                    strokeWidth={2.5} 
+                    fill="url(#colorRevDash)" 
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}

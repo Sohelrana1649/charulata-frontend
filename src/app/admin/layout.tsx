@@ -88,7 +88,7 @@ const allSidebarSections = [
     links: [
       { label: 'Analytics', href: '/admin/analytics', icon: BarChart3, minRole: 3 },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell, badge: true, minRole: 2 },
-      { label: 'Settings', href: '/admin/settings', icon: Settings, minRole: 3 },
+      { label: 'Settings', href: '/admin/settings', icon: Settings, minRole: 4 },
     ]
   }
 ];

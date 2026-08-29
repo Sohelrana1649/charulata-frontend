@@ -24,8 +24,11 @@ import {
   Square
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 
 export default function AdminReviewsPage() {
+  const { isSuperAdmin } = useRole();
   const { data: reviewsRes, isLoading, refetch } = useGetReviewsQuery({});
   const [moderateReview, { isLoading: isModerating }] = useModerateReviewMutation();
   const [deleteReview, { isLoading: isDeleting }] = useDeleteReviewMutation();
@@ -61,6 +64,10 @@ export default function AdminReviewsPage() {
 
   const confirmDelete = async () => {
     if (!deleteModalId) return;
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin রিভিউ ডিলিট করতে পারবেন');
+      return;
+    }
     try {
       await deleteReview(deleteModalId).unwrap();
       toast.success('Review deleted successfully!');
@@ -107,6 +114,10 @@ export default function AdminReviewsPage() {
     if (selectedIds.length === 0) return;
 
     if (action === 'delete') {
+      if (!isSuperAdmin) {
+        toast.error('শুধুমাত্র Super Admin রিভিউ ডিলিট করতে পারবেন');
+        return;
+      }
       if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected review(s)?`)) {
         return;
       }
@@ -262,14 +273,16 @@ export default function AdminReviewsPage() {
               <span>Bulk Reject</span>
             </button>
 
-            <button
-              onClick={() => handleBulkAction('delete')}
-              disabled={isBulking}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-xl border border-rose-500/20 transition cursor-pointer disabled:opacity-50"
-            >
-              {isBulking ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={14} />}
-              <span>Bulk Delete</span>
-            </button>
+            <RoleGuard allowedRoles={['super_admin']}>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                disabled={isBulking}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-xl border border-rose-500/20 transition cursor-pointer disabled:opacity-50"
+              >
+                {isBulking ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={14} />}
+                <span>Bulk Delete</span>
+              </button>
+            </RoleGuard>
 
             <button
               onClick={() => setSelectedIds([])}
@@ -395,14 +408,16 @@ export default function AdminReviewsPage() {
                             </button>
                           )}
 
-                          <button
-                            onClick={() => handleDelete(rev._id)}
-                            disabled={isDeleting}
-                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                            title="Delete Review"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <RoleGuard allowedRoles={['super_admin']}>
+                            <button
+                              onClick={() => handleDelete(rev._id)}
+                              disabled={isDeleting}
+                              className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                              title="Delete Review"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </RoleGuard>
                         </div>
                       </td>
 

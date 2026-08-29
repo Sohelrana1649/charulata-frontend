@@ -13,6 +13,8 @@ import {
 import { useUploadImageMutation, useUploadVideoMutation } from '@/store/api/adminApi';
 import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
 import ProductDescriptionEditor from '@/components/admin/ProductDescriptionEditor';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 import { 
   Plus, 
   Search, 
@@ -105,6 +107,7 @@ const initialForm: ProductForm = {
 };
 
 export default function AdminProductsPage() {
+  const { isSuperAdmin } = useRole();
   const { data: productsRes, isLoading: productsLoading, refetch } = useGetProductsQuery({ limit: 200 });
   const { data: categoriesRes } = useGetCategoriesQuery({});
   const { data: attributesRes } = useGetAttributesQuery({});
@@ -225,7 +228,11 @@ export default function AdminProductsPage() {
   };
 
   const confirmBulkDelete = async () => {
-    if (selectedProductIds.length === 0) return;
+    if (!selectedProductIds.length) return;
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin পণ্য ডিলিট করতে পারবেন');
+      return;
+    }
     try {
       await bulkDeleteProducts({ productIds: selectedProductIds }).unwrap();
       toast.success(`${selectedProductIds.length} product(s) deleted successfully!`);
@@ -585,6 +592,10 @@ export default function AdminProductsPage() {
 
   const confirmSingleDelete = async () => {
     if (!deleteModalProduct) return;
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin পণ্য ডিলিট করতে পারবেন');
+      return;
+    }
     try {
       const deletedSlug = deleteModalProduct.slug;
       const deletedCatSlug = deleteModalProduct.categorySlug;
@@ -1081,15 +1092,17 @@ export default function AdminProductsPage() {
                 <span>Set Stock</span>
               </button>
 
-              <button
-                disabled={isBulkDeleting}
-                onClick={handleBulkDelete}
-                className="inline-flex items-center space-x-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-500/30 rounded-xl text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
-                title="Delete selected products"
-              >
-                <Trash2 size={14} />
-                <span>Delete</span>
-              </button>
+              <RoleGuard allowedRoles={['super_admin']}>
+                <button
+                  disabled={isBulkDeleting}
+                  onClick={handleBulkDelete}
+                  className="inline-flex items-center space-x-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-500/30 rounded-xl text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
+                  title="Delete selected products"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete</span>
+                </button>
+              </RoleGuard>
             </div>
 
           </div>
@@ -1257,13 +1270,15 @@ export default function AdminProductsPage() {
                       <span>Edit</span>
                     </button>
                     
-                    <button
-                      onClick={() => handleDelete(prod)}
-                      className="p-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white rounded-xl text-xs transition cursor-pointer border border-rose-500/20"
-                      title="Delete Product"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <RoleGuard allowedRoles={['super_admin']}>
+                      <button
+                        onClick={() => handleDelete(prod)}
+                        className="p-2 bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white rounded-xl text-xs transition cursor-pointer border border-rose-500/20"
+                        title="Delete Product"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </RoleGuard>
                   </div>
                 </div>
 
@@ -1359,13 +1374,15 @@ export default function AdminProductsPage() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(prod)}
-                          className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
-                          title="Delete Product"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <RoleGuard allowedRoles={['super_admin']}>
+                          <button
+                            onClick={() => handleDelete(prod)}
+                            className="p-1.5 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-500/20 transition cursor-pointer"
+                            title="Delete Product"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </RoleGuard>
                       </div>
                     </td>
                   </tr>

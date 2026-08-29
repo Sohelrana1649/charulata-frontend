@@ -27,6 +27,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRole } from '@/hooks/useRole';
+import RoleGuard from '@/components/admin/RoleGuard';
 import Image from '@/components/SafeImage';
 
 interface CampaignForm {
@@ -72,6 +74,7 @@ const initialForm: CampaignForm = {
 };
 
 export default function AdminCampaignsPage() {
+  const { isSuperAdmin } = useRole();
   const { data: campaignsRes, isLoading, refetch } = useGetAllCampaignsQuery();
   const [createCampaign, { isLoading: isCreating }] = useCreateCampaignMutation();
   const [updateCampaign, { isLoading: isUpdating }] = useUpdateCampaignMutation();
@@ -240,6 +243,10 @@ export default function AdminCampaignsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperAdmin) {
+      toast.error('শুধুমাত্র Super Admin ক্যাম্পেইন ডিলিট করতে পারবেন');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this campaign?')) return;
     try {
       await deleteCampaign(id).unwrap();
@@ -378,13 +385,15 @@ export default function AdminCampaignsPage() {
                     >
                       <Edit3 size={16} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(c._id)}
-                      className="p-2 rounded-xl hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition cursor-pointer"
-                      title="Delete Campaign"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <RoleGuard allowedRoles={['super_admin']}>
+                      <button
+                        onClick={() => handleDelete(c._id)}
+                        className="p-2 rounded-xl hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition cursor-pointer"
+                        title="Delete Campaign"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </RoleGuard>
                   </div>
                 </div>
 

@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { logout } from '../authSlice';
 import { getErrorMessage } from '@/utils/errorHelper';
+import { toast } from 'react-toastify';
 
 const getDynamicBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
@@ -38,20 +39,26 @@ const baseQueryWithReauth: BaseQueryFn<
       (result.error.data as any).message = cleanMessage;
     }
 
-    if (result.error.status === 401 || result.error.status === 403) {
-      // Don't auto-logout on auth endpoints (login/register) — 401 there means bad credentials, not expired session
-      const url = typeof args === 'string' ? args : args.url;
-      const isAuthEndpoint = url?.includes('/auth/login') || url?.includes('/auth/register');
-      
-      if (!isAuthEndpoint) {
-        if (typeof window !== 'undefined') {
-          const storedToken = localStorage.getItem('charulata_token');
-          // Only trigger session expiration redirect if the user WAS logged in with a stored token!
-          if (storedToken) {
-            api.dispatch(logout());
-            if (!window.location.pathname.startsWith('/login')) {
-              window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}&expired=true`;
-            }
+    const url = typeof args === 'string' ? args : args.url;
+    const isAuthEndpoint = url?.includes('/auth/login') || url?.includes('/auth/register');
+
+    // 403 = Insufficient permissions (RBAC) — show toast, do NOT logout
+    if (result.error.status === 403 && !isAuthEndpoint) {
+      if (typeof window !== 'undefined') {
+        const errorMsg = (result.error.data as any)?.message || 'আপনার এই অ্যাকশনের অনুমতি নেই';
+        toast.error(errorMsg, { toastId: 'rbac-403' });
+      }
+    }
+
+    // 401 = Expired/invalid token — auto-logout only for non-auth endpoints
+    if (result.error.status === 401 && !isAuthEndpoint) {
+      if (typeof window !== 'undefined') {
+        const storedToken = localStorage.getItem('charulata_token');
+        // Only trigger session expiration redirect if the user WAS logged in with a stored token!
+        if (storedToken) {
+          api.dispatch(logout());
+          if (!window.location.pathname.startsWith('/login')) {
+            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}&expired=true`;
           }
         }
       }
