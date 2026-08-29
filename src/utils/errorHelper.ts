@@ -7,7 +7,7 @@ export function getErrorMessage(err: any, fallbackMessage: string = 'An error oc
   if (!err) return fallbackMessage;
 
   // Extract raw error message string if available
-  let rawMessage =
+  const rawMessage =
     err?.data?.message ||
     err?.message ||
     (typeof err?.data === 'string' ? err.data : null);

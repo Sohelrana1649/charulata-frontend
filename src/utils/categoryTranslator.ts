@@ -309,7 +309,7 @@ export function translateCategoryName(categoryOrName: any, locale: string = 'bn'
 
   // Dynamic Word-by-Word Fallback
   const words = normalized.split(/[\s\-_]+/);
-  let translatedWords: string[] = [];
+  const translatedWords: string[] = [];
   let translatedCount = 0;
 
   for (let i = 0; i < words.length; i++) {

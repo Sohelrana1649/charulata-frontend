@@ -49,27 +49,6 @@ export default function AdminSettingsPage() {
   
   const [activeTab, setActiveTab] = useState<'advance' | 'logos' | 'shipping' | 'store' | 'profile'>('advance');
 
-  useEffect(() => {
-    if (user && !isSuperAdmin) {
-      toast.error('সেটিংস পরিবর্তন করার অনুমতি শুধুমাত্র Super Admin এর রয়েছে');
-      router.replace('/admin');
-    }
-  }, [user, isSuperAdmin, router]);
-
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-card border border-border rounded-2xl text-center space-y-4">
-        <div className="p-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl">
-          <ShieldAlert size={36} />
-        </div>
-        <h2 className="text-xl font-bold text-foreground">অ্যাক্সেস অস্বীকৃত (Access Denied)</h2>
-        <p className="text-sm text-muted-foreground max-w-md">
-          এই পৃষ্ঠাটি শুধুমাত্র Super Admin এর জন্য সংরক্ষিত। আপনার অ্যাকাউন্টটিতে পর্যাপ্ত অনুমতি নেই।
-        </p>
-      </div>
-    );
-  }
-
   // Form states for Store Settings
   const [settingsForm, setSettingsForm] = useState({
     navbarLogo: '/logo.png',
@@ -128,6 +107,27 @@ export default function AdminSettingsPage() {
     phone: '',
     profileImage: '',
   });
+
+  useEffect(() => {
+    if (user && !isSuperAdmin) {
+      toast.error('সেটিংস পরিবর্তন করার অনুমতি শুধুমাত্র Super Admin এর রয়েছে');
+      router.replace('/admin');
+    }
+  }, [user, isSuperAdmin, router]);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-card border border-border rounded-2xl text-center space-y-4">
+        <div className="p-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl">
+          <ShieldAlert size={36} />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">অ্যাক্সেস অস্বীকৃত (Access Denied)</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          এই পৃষ্ঠাটি শুধুমাত্র Super Admin এর জন্য সংরক্ষিত। আপনার অ্যাকাউন্টটিতে পর্যাপ্ত অনুমতি নেই।
+        </p>
+      </div>
+    );
+  }
 
   const handleOpenEditModal = () => {
     setEditForm({

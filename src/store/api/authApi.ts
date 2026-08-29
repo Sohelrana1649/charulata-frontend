@@ -49,7 +49,7 @@ export const authApi = baseApi.injectEndpoints({
     }),
     getProfile: builder.query<any, any>({
       async queryFn(_arg, _queryApi, _extraOptions, fetchWithBQ) {
-        let result = await fetchWithBQ('/auth/profile');
+        const result = await fetchWithBQ('/auth/profile');
         if (result.error && (result.error.status === 404 || result.error.status === 'FETCH_ERROR')) {
           const fallback = await fetchWithBQ('/users/profile');
           if (!fallback.error) {
@@ -64,7 +64,7 @@ export const authApi = baseApi.injectEndpoints({
     updateProfile: builder.mutation<any, any>({
       async queryFn(userData: any, _queryApi, _extraOptions, fetchWithBQ) {
         // 1. Try PATCH /users/profile
-        let result = await fetchWithBQ({
+        const result = await fetchWithBQ({
           url: '/users/profile',
           method: 'PATCH',
           body: userData,
