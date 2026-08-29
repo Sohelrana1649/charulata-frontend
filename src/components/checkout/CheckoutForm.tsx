@@ -1033,12 +1033,12 @@ export default function CheckoutForm() {
           </div>
           {/* ── END LEFT COLUMN ── */}
 
-          {/* ── RIGHT COLUMN: Password Setup + Action Buttons ── */}
+          {/* ── RIGHT COLUMN: Password Setup (Guest) OR Delivery Timeline & Actions (Logged-in) ── */}
           <div className="space-y-4">
 
-            {/* Post-Checkout Account Upgrade & Password Setup Card */}
-            {(!isAuthenticated || !user?.name) && !isUpgraded && (
-              <div className="p-3.5 sm:p-4 bg-primary/5 border border-primary/20 rounded-xl text-left space-y-3">
+            {/* A) Post-Checkout Account Upgrade & Password Setup Card (Only for Guest) */}
+            {(!isAuthenticated || !user?.name) && !isUpgraded ? (
+              <div className="p-4 sm:p-5 bg-primary/5 border border-primary/20 rounded-2xl text-left space-y-3.5 shadow-2xs">
                 <div className="flex items-center space-x-2 text-primary font-bold text-xs sm:text-sm">
                   <Sparkles size={16} />
                   <span>
@@ -1066,7 +1066,7 @@ export default function CheckoutForm() {
                         placeholder={locale === 'bn' ? 'নূন্যতম ৬ অক্ষরের পাসওয়ার্ড দিন' : 'Enter password (min 6 characters)'}
                         value={upgradePassword}
                         onChange={(e) => setUpgradePassword(e.target.value)}
-                        className="w-full pl-8 pr-9 py-2 text-xs rounded-lg border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
+                        className="w-full pl-8 pr-9 py-2 text-xs rounded-xl border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
                       />
                       <button
                         type="button"
@@ -1092,7 +1092,7 @@ export default function CheckoutForm() {
                         placeholder={locale === 'bn' ? 'আবার পাসওয়ার্ড লিখুন' : 'Re-enter your password'}
                         value={upgradeConfirmPassword}
                         onChange={(e) => setUpgradeConfirmPassword(e.target.value)}
-                        className={`w-full pl-8 pr-9 py-2 text-xs rounded-lg border bg-card focus:outline-none font-medium text-foreground transition ${upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword
+                        className={`w-full pl-8 pr-9 py-2 text-xs rounded-xl border bg-card focus:outline-none font-medium text-foreground transition ${upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword
                             ? 'border-rose-500 focus:border-rose-500'
                             : upgradeConfirmPassword && upgradePassword === upgradeConfirmPassword
                               ? 'border-emerald-500 focus:border-emerald-500'
@@ -1131,7 +1131,7 @@ export default function CheckoutForm() {
                         placeholder={locale === 'bn' ? 'আপনার ইমেইল ঠিকানা (optional)' : 'Your email address (optional)'}
                         value={upgradeEmail}
                         onChange={(e) => setUpgradeEmail(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
+                        className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
                       />
                     </div>
                   </div>
@@ -1139,7 +1139,7 @@ export default function CheckoutForm() {
                   <button
                     type="submit"
                     disabled={isCompletingProfile}
-                    className="w-full bg-primary hover:opacity-90 text-white py-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                    className="w-full bg-primary hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-md"
                   >
                     {isCompletingProfile ? <Loader2 size={14} className="animate-spin" /> : (
                       <>
@@ -1150,10 +1150,73 @@ export default function CheckoutForm() {
                   </button>
                 </form>
               </div>
+            ) : (
+              /* B) Delivery Progress Timeline & Updates (For Logged-in or Completed Users) */
+              <div className="space-y-4">
+                <div className="p-4 sm:p-5 bg-card border border-border rounded-2xl space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center space-x-2 text-primary font-black text-xs uppercase tracking-wider">
+                      <Truck size={16} />
+                      <span>{locale === 'bn' ? 'ডেলিভারি ট্র্যাকিং ও আপডেট' : 'Delivery & Next Steps'}</span>
+                    </div>
+                    <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center space-x-1">
+                      <CheckCircle2 size={11} className="mr-0.5" />
+                      <span>{locale === 'bn' ? 'অর্ডার গৃহীত' : 'Confirmed'}</span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-start space-x-3">
+                      <div className="h-6 w-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5 shadow-xs">
+                        ✓
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-foreground">{locale === 'bn' ? 'অর্ডার সফলভাবে গৃহীত হয়েছে' : 'Order Placed Successfully'}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{locale === 'bn' ? 'আমাদের প্রতিনিধি আপনার পার্সেলটি প্যাকিং ও কোয়ালিটি চেকিং শুরু করেছে।' : 'Your parcel is being packed and prepared for quality check.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-3 opacity-80">
+                      <div className="h-6 w-6 rounded-full bg-muted border border-border text-muted-foreground flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground">{locale === 'bn' ? 'কুরিয়ারে হস্তান্তর (১-২ কার্যদিবস)' : 'Courier Handover (1-2 Days)'}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{locale === 'bn' ? 'পার্সেল কুরিয়ারে পাঠানোর সাথে সাথে SMS-এ ট্র্যাকিং কোড পেয়ে যাবেন।' : 'You will receive SMS with courier tracking code once dispatched.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-3 opacity-80">
+                      <div className="h-6 w-6 rounded-full bg-muted border border-border text-muted-foreground flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground">{locale === 'bn' ? 'ডেলিভারি ও ক্যাশ অন ডেলিভারি (COD)' : 'Home Delivery & COD'}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{locale === 'bn' ? 'ডেলিভারি ম্যানের কাছ থেকে পণ্য বুঝে পেয়ে বাকি টাকা প্রদান করুন।' : 'Receive your parcel at home and pay remaining cash.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Need Assistance Card */}
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between shadow-2xs">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-extrabold text-foreground">{locale === 'bn' ? 'যেকোনো প্রয়োজনে সহায়তা?' : 'Need Help With Your Order?'}</p>
+                    <p className="text-[11px] text-muted-foreground">{locale === 'bn' ? 'আমাদের কাস্টমার সাপোর্টে কল করুন' : 'Call our 24/7 customer support'}</p>
+                  </div>
+                  <a
+                    href="tel:01620556299"
+                    className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-primary text-white text-xs font-extrabold rounded-xl shadow-xs hover:opacity-90 transition active:scale-95"
+                  >
+                    <Phone size={13} />
+                    <span>01620-556299</span>
+                  </a>
+                </div>
+              </div>
             )}
 
             {isUpgraded && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2 shadow-2xs">
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2 shadow-2xs">
                 <CheckCircle2 size={16} className="shrink-0" />
                 <span>
                   {locale === 'bn'
@@ -1164,21 +1227,31 @@ export default function CheckoutForm() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-row gap-2.5">
-              <button
-                onClick={() => window.location.href = '/orders'}
-                className="flex-1 bg-primary text-white py-2.5 rounded-lg font-bold text-xs hover:opacity-90 transition shadow-sm cursor-pointer flex items-center justify-center space-x-1.5 active:scale-95"
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5">
+                <Link
+                  href="/orders"
+                  className="bg-primary text-white py-2.5 rounded-xl font-extrabold text-xs hover:opacity-90 transition shadow-md flex items-center justify-center space-x-1.5 active:scale-95 text-center"
+                >
+                  <History size={14} />
+                  <span>{t('checkout.orderHistory')}</span>
+                </Link>
+                <Link
+                  href="/orders/track"
+                  className="bg-muted border border-border text-foreground py-2.5 rounded-xl font-extrabold text-xs hover:bg-muted/80 transition flex items-center justify-center space-x-1.5 active:scale-95 text-center"
+                >
+                  <Navigation size={14} />
+                  <span>{t('checkout.trackOrder')}</span>
+                </Link>
+              </div>
+
+              <Link
+                href="/"
+                className="w-full bg-card hover:bg-muted/60 border border-border text-foreground py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center space-x-1.5 text-center shadow-2xs"
               >
-                <History size={13} />
-                <span>{t('checkout.orderHistory')}</span>
-              </button>
-              <button
-                onClick={() => window.location.href = '/orders/track'}
-                className="flex-1 bg-muted border border-border text-foreground py-2.5 rounded-lg font-bold text-xs hover:bg-muted/80 transition cursor-pointer flex items-center justify-center space-x-1.5 active:scale-95"
-              >
-                <Navigation size={13} />
-                <span>{t('checkout.trackOrder')}</span>
-              </button>
+                <ArrowLeft size={14} />
+                <span>{locale === 'bn' ? 'আরও কেনাকাটা করুন' : 'Continue Shopping'}</span>
+              </Link>
             </div>
 
           </div>
