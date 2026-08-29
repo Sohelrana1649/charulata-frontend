@@ -42,7 +42,7 @@ export default function WhatsAppButton() {
       </button>
 
       <a
-        href="https://wa.me/8801620556299?text=Hello%20Charulata%20Lifestyle%2C%20I%20have%20an%20inquiry"
+        href={`https://wa.me/8801620556299?text=${encodeURIComponent('🌸আসসালামু আলাইকুম!🌸')}`}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Order via WhatsApp"
