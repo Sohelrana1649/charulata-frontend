@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from '@/components/SafeImage';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
 import { useGetCartQuery } from '@/store/api/cartApi';
@@ -45,7 +45,9 @@ import { translateCategoryName } from '@/utils/categoryTranslator';
 
 export default function Header() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const currentCategory = searchParams.get('category') || '';
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { t, locale, setLocale } = useTranslation();
@@ -158,7 +160,6 @@ export default function Header() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isWishlistDrawerOpen, setIsWishlistDrawerOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [currentCategory, setCurrentCategory] = useState('');
 
   const desktopSearchRef = React.useRef<HTMLDivElement>(null);
   const mobileSearchRef = React.useRef<HTMLDivElement>(null);
@@ -204,14 +205,6 @@ export default function Header() {
     const activeTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
     setTheme(activeTheme);
   }, []);
-
-  // Update active category and search text on route change (client-safe URL query extraction)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      setCurrentCategory(params.get('category') || '');
-    }
-  }, [pathname]);
 
   const handleHomeClick = (e: React.MouseEvent) => {
     if (pathname === '/') {
@@ -931,7 +924,7 @@ export default function Header() {
                   } else if (item.key === 'shop') {
                     isActive = pathname === '/search' && !currentCategory;
                   } else {
-                    isActive = pathname === '/search' && currentCategory === item.key;
+                    isActive = pathname === '/search' && currentCategory.toLowerCase() === item.key.toLowerCase();
                   }
                   
                   return (
@@ -1011,7 +1004,7 @@ export default function Header() {
               } else if (item.key === 'shop') {
                 isActive = pathname === '/search' && !currentCategory;
               } else {
-                isActive = pathname === '/search' && currentCategory === item.key;
+                isActive = pathname === '/search' && currentCategory.toLowerCase() === item.key.toLowerCase();
               }
 
               return (

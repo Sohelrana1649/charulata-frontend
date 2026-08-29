@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Poppins, Inter, Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
@@ -218,7 +219,9 @@ export default function RootLayout({
         <Providers>
           <FacebookPixel />
           <GoogleAnalytics />
-          <Header />
+          <Suspense fallback={null}>
+            <Header />
+          </Suspense>
           <div className="flex-1 flex flex-col">
             {children}
           </div>

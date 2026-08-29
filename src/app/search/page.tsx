@@ -248,7 +248,7 @@ function SearchResults() {
     setSelectedColor(urlColor);
   }, [urlColor]);
 
-  // URL Sync Helper (Shallow routing without adding to history stack)
+  // URL Sync Helper (Shallow routing without adding to history stack) for pagination load more
   const updateUrlPage = React.useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     if (newPage > 1) {
@@ -275,9 +275,8 @@ function SearchResults() {
       prevFiltersRef.current = { searchText, selectedCategory, priceRange, selectedColor, sortBy };
       setCurrentPage(1);
       setAccumulatedProducts([]);
-      updateUrlPage(1);
     }
-  }, [searchText, selectedCategory, priceRange, selectedColor, sortBy, updateUrlPage]);
+  }, [searchText, selectedCategory, priceRange, selectedColor, sortBy]);
 
   // Query Backend Products (Initial batch loads all pages up to initialLoadedPage if shared URL has ?page=3)
   const isInitialBatch = currentPage === initialLoadedPage && initialLoadedPage > 1 && accumulatedProducts.length === 0;
@@ -396,10 +395,46 @@ function SearchResults() {
 
   const isAnyFilterActive = Boolean(searchText.trim()) || (Boolean(selectedColor) && selectedColor.trim() !== '') || priceRange < 40000;
 
+  const handleCategorySelect = (catId: string) => {
+    const isAll = !catId || catId === 'all';
+    const targetCategory = isAll ? '' : catId;
+    setSelectedCategory(targetCategory);
+    setCurrentPage(1);
+    setAccumulatedProducts([]);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (isAll) {
+      params.delete('category');
+    } else {
+      params.set('category', catId);
+    }
+    params.delete('page');
+    const qs = params.toString();
+    router.push(qs ? `/search?${qs}` : '/search');
+  };
+
+  const handleColorSelect = (colorName: string) => {
+    const nextColor = selectedColor === colorName ? '' : colorName;
+    setSelectedColor(nextColor);
+    setCurrentPage(1);
+    setAccumulatedProducts([]);
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextColor) {
+      params.set('color', nextColor);
+    } else {
+      params.delete('color');
+    }
+    params.delete('page');
+    const qs = params.toString();
+    router.push(qs ? `/search?${qs}` : '/search');
+  };
+
   const handleResetOnlyFilters = () => {
     setSearchText('');
     setSelectedColor('');
     setPriceRange(40000);
+    setCurrentPage(1);
+    setAccumulatedProducts([]);
     const params = new URLSearchParams();
     if (selectedCategory && selectedCategory !== 'all') {
       params.set('category', selectedCategory);
@@ -410,17 +445,21 @@ function SearchResults() {
 
   const handleViewAllProducts = () => {
     setSearchText('');
-    setSelectedCategory('all');
+    setSelectedCategory('');
     setSelectedColor('');
     setPriceRange(40000);
+    setCurrentPage(1);
+    setAccumulatedProducts([]);
     router.push('/search');
   };
 
   const handleResetFilters = () => {
     setSearchText('');
-    setSelectedCategory('all');
+    setSelectedCategory('');
     setPriceRange(40000);
     setSelectedColor('');
+    setCurrentPage(1);
+    setAccumulatedProducts([]);
     router.push('/search');
   };
 
@@ -463,11 +502,11 @@ function SearchResults() {
         <Link href="/" className="hover:text-primary transition-colors">{t('search.breadcrumbHome')}</Link>
         <span>/</span>
         <Link href="/search" className="hover:text-primary transition-colors">{t('search.breadcrumbShop')}</Link>
-        {selectedCategory && (
+        {selectedCategory && selectedCategory !== 'all' && (
           <>
             <span>/</span>
             <span className="text-foreground capitalize font-bold">
-              {selectedCategory === 'all' ? t('search.allPieces') : (t(`nav.${selectedCategory.toLowerCase()}`) || translateCategoryName(selectedCategory, locale))}
+              {categoryOptions.find(c => c.id.toLowerCase() === selectedCategory.toLowerCase())?.label || (t(`nav.${selectedCategory.toLowerCase()}`) || translateCategoryName(selectedCategory, locale))}
             </span>
           </>
         )}
@@ -547,14 +586,7 @@ function SearchResults() {
                     return (
                       <button
                         key={cat.id}
-                        onClick={() => {
-                          setSelectedCategory(cat.id);
-                          if (cat.id === 'all') {
-                            router.push('/search');
-                          } else {
-                            router.push(`/search?category=${encodeURIComponent(cat.id)}`);
-                          }
-                        }}
+                        onClick={() => handleCategorySelect(cat.id)}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${isActive
                             ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs font-black'
                             : 'text-foreground/80 hover:bg-muted hover:text-foreground'
@@ -618,18 +650,7 @@ function SearchResults() {
                 return (
                   <button
                     key={color.name}
-                    onClick={() => {
-                      const nextColor = selectedColor === color.name ? '' : color.name;
-                      setSelectedColor(nextColor);
-                      const params = new URLSearchParams(window.location.search);
-                      if (nextColor) {
-                        params.set('color', nextColor);
-                      } else {
-                        params.delete('color');
-                      }
-                      const newQuery = params.toString();
-                      router.push(`/search${newQuery ? `?${newQuery}` : ''}`);
-                    }}
+                    onClick={() => handleColorSelect(color.name)}
                     style={{ backgroundColor: color.code }}
                     className={`h-7.5 w-7.5 rounded-full border transition-all cursor-pointer ${isSelected
                         ? 'ring-2 ring-offset-2 ring-primary scale-110 border-background shadow-md'
@@ -652,7 +673,9 @@ function SearchResults() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground font-serif capitalize">
-                  {selectedCategory && selectedCategory !== 'all' ? t(`nav.${selectedCategory.toLowerCase()}`) : t('search.allPieces')}
+                  {selectedCategory && selectedCategory !== 'all'
+                    ? (categoryOptions.find(c => c.id.toLowerCase() === selectedCategory.toLowerCase())?.label || (t(`nav.${selectedCategory.toLowerCase()}`) || translateCategoryName(selectedCategory, locale)))
+                    : t('search.allPieces')}
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground font-semibold mt-1">
                   {(isLoading || isFetching) && accumulatedProducts.length === 0 ? (
@@ -722,7 +745,7 @@ function SearchResults() {
                       {categoryOptions.find(c => c.id.toLowerCase() === selectedCategory.toLowerCase())?.label || selectedCategory.replace(/-/g, ' ')}
                     </span>
                     <button
-                      onClick={() => { setSelectedCategory('all'); router.push('/search'); }}
+                      onClick={() => handleCategorySelect('all')}
                       className="hover:text-foreground cursor-pointer"
                       title="Remove filter"
                     >
@@ -734,7 +757,20 @@ function SearchResults() {
                 {searchText.trim() !== '' && (
                   <span className="inline-flex items-center space-x-1.5 bg-primary/10 border border-primary/20 text-primary text-xs font-extrabold px-3 py-1 rounded-full shadow-2xs">
                     <span>"{searchText}"</span>
-                    <button onClick={() => setSearchText('')} className="hover:text-foreground cursor-pointer" title="Clear search">
+                    <button
+                      onClick={() => {
+                        setSearchText('');
+                        setCurrentPage(1);
+                        setAccumulatedProducts([]);
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete('q');
+                        params.delete('page');
+                        const qs = params.toString();
+                        router.push(qs ? `/search?${qs}` : '/search');
+                      }}
+                      className="hover:text-foreground cursor-pointer"
+                      title="Clear search"
+                    >
                       <X size={13} />
                     </button>
                   </span>
@@ -744,12 +780,7 @@ function SearchResults() {
                   <span className="inline-flex items-center space-x-1.5 bg-primary/10 border border-primary/20 text-primary text-xs font-extrabold px-3 py-1 rounded-full shadow-2xs">
                     <span>Color: {selectedColor}</span>
                     <button
-                      onClick={() => {
-                        setSelectedColor('');
-                        const params = new URLSearchParams(window.location.search);
-                        params.delete('color');
-                        router.push(`/search${params.toString() ? `?${params.toString()}` : ''}`);
-                      }}
+                      onClick={() => handleColorSelect(selectedColor)}
                       className="hover:text-foreground cursor-pointer"
                       title="Remove color filter"
                     >
