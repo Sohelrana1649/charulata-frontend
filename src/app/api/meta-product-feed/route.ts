@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://charulatalifestyle.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.charulatalifestyle.com';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
 
 function escapeXml(unsafe: string): string {
@@ -22,7 +22,7 @@ function cleanDescription(text: string): string {
 }
 
 function formatImageUrl(img: string): string {
-  if (!img) return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800';
+  if (!img) return 'https://www.charulatalifestyle.com/logo.png';
   if (img.startsWith('http://') || img.startsWith('https://')) {
     return img;
   }
@@ -43,21 +43,31 @@ export async function GET() {
       products = json?.data?.products || json?.products || json?.data || [];
     }
   } catch (error) {
-    console.error('Meta product feed fetch error:', error);
+    console.error('Product feed fetch error:', error);
   }
 
   const itemsXml = products
     .filter((product: any) => product && (product._id || product.id) && product.title)
     .map((product: any) => {
-      const productId = String(product._id || product.id);
+      const productId = String(product.sku || product._id || product.id);
       const title = product.title || product.name || 'Product';
       const descRaw = cleanDescription(product.description || product.shortDescription || title);
       const desc = descRaw || title;
       const slug = product.slug || productId;
       const productLink = `${SITE_URL}/products/${slug}`;
 
-      const mainImageRaw = product.productImages?.[0] || product.images?.[0] || product.image || '';
+      const allImages: string[] = (Array.isArray(product.productImages) ? product.productImages : [])
+        .concat(Array.isArray(product.images) ? product.images : [])
+        .concat(product.image ? [product.image] : [])
+        .filter((img: any) => typeof img === 'string' && img.trim() !== '');
+
+      const mainImageRaw = allImages[0] || '';
       const imageLink = formatImageUrl(mainImageRaw);
+
+      const additionalImagesXml = allImages
+        .slice(1, 6)
+        .map((img: string) => `      <g:additional_image_link>${escapeXml(formatImageUrl(img))}</g:additional_image_link>`)
+        .join('\n');
 
       const priceNum = Number(product.price) || 0;
       const salePriceNum = Number(product.salePrice) || 0;
@@ -72,6 +82,9 @@ export async function GET() {
       const availability = isInStock ? 'in stock' : 'out of stock';
 
       const brandName = product.brand || 'Charulata Lifestyle';
+      const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Apparel & Accessories');
+
+      const sku = product.sku ? String(product.sku) : '';
 
       return `    <item>
       <g:id>${escapeXml(productId)}</g:id>
@@ -79,10 +92,17 @@ export async function GET() {
       <g:description><![CDATA[${desc}]]></g:description>
       <g:link>${escapeXml(productLink)}</g:link>
       <g:image_link>${escapeXml(imageLink)}</g:image_link>
-      <g:brand><![CDATA[${brandName}]]></g:brand>
+${additionalImagesXml ? `${additionalImagesXml}\n` : ''}      <g:brand><![CDATA[${brandName}]]></g:brand>
+      <g:product_type><![CDATA[${categoryName}]]></g:product_type>
       <g:condition>new</g:condition>
       <g:availability>${availability}</g:availability>
       <g:price>${regularPriceStr}</g:price>${hasSale ? `\n      <g:sale_price>${salePriceStr}</g:sale_price>` : ''}
+      ${sku ? `<g:mpn>${escapeXml(sku)}</g:mpn>` : '<g:identifier_exists>no</g:identifier_exists>'}
+      <g:shipping>
+        <g:country>BD</g:country>
+        <g:service>Standard Delivery</g:service>
+        <g:price>60 BDT</g:price>
+      </g:shipping>
     </item>`;
     })
     .join('\n');
@@ -92,7 +112,7 @@ export async function GET() {
   <channel>
     <title>Charulata Lifestyle Product Catalog Feed</title>
     <link>${SITE_URL}</link>
-    <description>Meta / Facebook Commerce Manager Product Catalog Data Feed for Charulata Lifestyle</description>
+    <description>Google Merchant Center &amp; Meta Product Catalog XML Feed for Charulata Lifestyle</description>
 ${itemsXml}
   </channel>
 </rss>`;
