@@ -23,12 +23,14 @@ export default function robots(): MetadataRoute.Robots {
           '/register',
         ],
       },
-      // Allow specific crawlers full access to public product/category pages
+      // Allow specific crawlers full access to public product/category/blog pages
       {
         userAgent: 'Googlebot',
         allow: [
           '/products/',
           '/category/',
+          '/blog/',
+          '/blog',
           '/search',
           '/about',
           '/contact',

@@ -217,7 +217,7 @@ export default function BlogListClient() {
         
         {/* Loading State */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
             {Array.from({ length: 6 }).map((_, i) => (
               <BlogCardSkeleton key={i} />
             ))}
@@ -367,8 +367,8 @@ export default function BlogListClient() {
               </span>
             </div>
 
-            {/* Responsive grid with uniform card sizing */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+            {/* Responsive grid with uniform card sizing and compact gap */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
               {gridBlogs.map((blog) => (
                 <BlogCard
                   key={blog._id || blog.slug}

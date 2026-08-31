@@ -49,7 +49,7 @@ export default function BlogCard({ blog, onTagClick, priority = false }: BlogCar
   const readTime = calculateReadTime(blog.content);
 
   return (
-    <article className="group w-full max-w-[420px] mx-auto sm:mx-0 bg-card rounded-2xl border border-border/80 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 transition-all duration-300">
+    <article className="group w-full bg-card rounded-2xl border border-border/80 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 transition-all duration-300">
       
       {/* ─── Top Section: Image & Body ───────────────────────────────────── */}
       <div>
