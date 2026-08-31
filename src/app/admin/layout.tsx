@@ -46,7 +46,8 @@ import {
   ArrowRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Sliders
+  Sliders,
+  BookOpen
 } from 'lucide-react';
 import Image from '@/components/SafeImage';
 
@@ -78,6 +79,7 @@ const allSidebarSections = [
   {
     title: 'MARKETING & PROMO',
     links: [
+      { label: 'Blogs', href: '/admin/blogs', icon: BookOpen, minRole: 2 },
       { label: 'Coupons', href: '/admin/coupons', icon: Ticket, minRole: 3 },
       { label: 'Banners', href: '/admin/banners', icon: ImageIcon, minRole: 3 },
       { label: 'Campaigns', href: '/admin/campaigns', icon: Sparkles, minRole: 3 },

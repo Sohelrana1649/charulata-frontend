@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     const pathsToRevalidate: string[] = [];
     const tagsToRevalidate: string[] = [];
+    const revalType = searchParams.get('type') || body.type;
 
     // Collect paths from query params or body
     const paramPath = searchParams.get('path');
@@ -63,15 +64,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute revalidation
+    // Execute path revalidation
     for (const path of pathsToRevalidate) {
       try {
-        revalidatePath(path);
+        if (revalType === 'page' || revalType === 'layout') {
+          revalidatePath(path, revalType);
+        } else {
+          revalidatePath(path);
+        }
       } catch (err) {
         console.error(`Failed to revalidate path: ${path}`, err);
       }
     }
 
+    // Execute tag revalidation
     for (const tag of tagsToRevalidate) {
       try {
         (revalidateTag as any)(tag);
@@ -84,6 +90,7 @@ export async function POST(request: NextRequest) {
       revalidated: true,
       revalidatedPaths: pathsToRevalidate,
       revalidatedTags: tagsToRevalidate,
+      type: revalType || 'default',
       now: Date.now(),
     });
   } catch (error: any) {
@@ -111,6 +118,7 @@ export async function GET(request: NextRequest) {
 
     const path = searchParams.get('path');
     const tag = searchParams.get('tag');
+    const type = searchParams.get('type') as 'page' | 'layout' | null;
 
     if (!path && !tag) {
       return NextResponse.json(
@@ -120,7 +128,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (path) {
-      revalidatePath(path);
+      if (type === 'page' || type === 'layout') {
+        revalidatePath(path, type);
+      } else {
+        revalidatePath(path);
+      }
     }
     if (tag) {
       (revalidateTag as any)(tag);
@@ -130,6 +142,7 @@ export async function GET(request: NextRequest) {
       revalidated: true,
       path: path || null,
       tag: tag || null,
+      type: type || 'default',
       now: Date.now(),
     });
   } catch (error: any) {

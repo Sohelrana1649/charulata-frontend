@@ -78,6 +78,7 @@ export default function SafeImage({
   unoptimized,
   onLoad,
   onError,
+  suppressHydrationWarning = true,
   ...props
 }: ImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -128,6 +129,7 @@ export default function SafeImage({
       unoptimized={finalUnoptimized}
       onLoad={handleLoad}
       onError={handleError}
+      suppressHydrationWarning={suppressHydrationWarning}
       {...props}
     />
   );

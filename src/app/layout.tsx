@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Poppins, Inter, Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
 import Providers from '@/components/Providers';
@@ -10,6 +11,7 @@ import ThemeScript from '@/components/ThemeScript';
 import FacebookPixel from '@/components/analytics/FacebookPixel';
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
 import JsonLd from '@/components/common/JsonLd';
+import type { Locale } from '@/i18n/LanguageContext';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -118,11 +120,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const localeCookie = cookieStore.get('charulata-locale')?.value;
+  const initialLocale: Locale = (localeCookie === 'en' || localeCookie === 'bn') ? (localeCookie as Locale) : 'bn';
+
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -203,7 +209,7 @@ export default function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang={initialLocale}
       className={`${poppins.variable} ${inter.variable} ${notoSansBengali.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -216,7 +222,7 @@ export default function RootLayout({
         <JsonLd data={storeJsonLd} />
       </head>
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans" suppressHydrationWarning>
-        <Providers>
+        <Providers initialLocale={initialLocale}>
           <FacebookPixel />
           <GoogleAnalytics />
           <Suspense fallback={null}>

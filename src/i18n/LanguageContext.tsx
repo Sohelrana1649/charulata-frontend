@@ -70,36 +70,49 @@ function getNestedValue(obj: Record<string, unknown>, key: string, currentLocale
 
 const STORAGE_KEY = 'charulata-locale';
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('bn');
+export function LanguageProvider({ 
+  children,
+  initialLocale = 'bn',
+}: { 
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    let initialLocale: Locale | null = null;
+    let resolvedLocale: Locale = initialLocale;
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const urlLang = params.get('lang') as Locale | null;
       if (urlLang && (urlLang === 'en' || urlLang === 'bn')) {
-        initialLocale = urlLang;
+        resolvedLocale = urlLang;
       } else {
         const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
         if (stored && (stored === 'en' || stored === 'bn')) {
-          initialLocale = stored;
+          resolvedLocale = stored;
         }
       }
     }
-    if (initialLocale) {
-      setLocaleState(initialLocale);
-      document.documentElement.lang = initialLocale;
+    if (resolvedLocale && resolvedLocale !== initialLocale) {
+      setLocaleState(resolvedLocale);
+      document.documentElement.lang = resolvedLocale;
+      try {
+        document.cookie = `${STORAGE_KEY}=${resolvedLocale}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch {}
     }
     setMounted(true);
-  }, []);
+  }, [initialLocale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem(STORAGE_KEY, newLocale);
-    // Update the <html> lang attribute dynamically
-    document.documentElement.lang = newLocale;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, newLocale);
+        document.cookie = `${STORAGE_KEY}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+        document.documentElement.lang = newLocale;
+      } catch {}
+    }
   }, []);
 
   const t = useCallback(
@@ -109,9 +122,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [locale]
   );
 
-  // Update the <html> lang attribute on initial load
+  // Update the <html> lang attribute when locale changes
   useEffect(() => {
-    if (mounted) {
+    if (mounted && typeof document !== 'undefined') {
       document.documentElement.lang = locale;
     }
   }, [mounted, locale]);

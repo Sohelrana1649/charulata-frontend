@@ -448,6 +448,7 @@ export default function Header() {
     const baseItems = [
       { name: t('nav.home'), key: 'home', href: '/' },
       { name: t('nav.shop'), key: 'shop', href: '/search' },
+      { name: t('nav.blog') || (locale === 'bn' ? 'ব্লগ' : 'Blog'), key: 'blog', href: '/blog' },
     ];
     const allCats = categoriesList.map((cat: any) => ({
       name: translateCategoryName(cat, locale),
@@ -467,23 +468,24 @@ export default function Header() {
         <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full flex h-16 sm:h-20 items-center justify-between gap-4">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center shrink-0">
-            <div className="relative h-10 sm:h-14 w-auto flex items-center justify-center shrink-0">
+            <div className="relative h-10 sm:h-14 w-auto flex items-center justify-center shrink-0" suppressHydrationWarning>
               <Image 
                 src={navbarLogo} 
                 alt="Charulata Lifestyle Logo" 
                 width={160}
                 height={48}
                 priority
+                suppressHydrationWarning
                 className="h-10 sm:h-14 w-auto max-w-[140px] sm:max-w-[190px] object-contain"
               />
             </div>
           </Link>
 
           {/* Center Security Badge */}
-          <div className="hidden sm:flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-3.5 py-1.5 rounded-full text-xs font-extrabold shadow-2xs h-9">
+          <div className="hidden sm:flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-3.5 py-1.5 rounded-full text-xs font-extrabold shadow-2xs h-9" suppressHydrationWarning>
             <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
             <Lock size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>{locale === 'bn' ? '১০০% নিরাপদ চেকআউট' : '100% Secure Checkout'}</span>
+            <span suppressHydrationWarning>{locale === 'bn' ? '১০০% নিরাপদ চেকআউট' : '100% Secure Checkout'}</span>
           </div>
 
           {/* Right Actions: Theme & Language (Height Matched h-10) */}
@@ -491,6 +493,7 @@ export default function Header() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
+              suppressHydrationWarning
               className={`h-10 w-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-all cursor-pointer border shadow-2xs ${
                 theme === 'dark'
                   ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
@@ -506,12 +509,13 @@ export default function Header() {
             </button>
 
             {/* Language Toggle */}
-            <div className="flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang">
+            <div className="flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang" suppressHydrationWarning>
               <div className="pl-2 pr-1 text-primary flex items-center justify-center">
                 <Languages size={15} className="text-primary group-hover/lang:rotate-12 transition-transform duration-300" />
               </div>
               <button
                 onClick={() => setLocale('en')}
+                suppressHydrationWarning
                 className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'en'
                     ? 'bg-primary text-white shadow-xs scale-[1.02]'
@@ -523,6 +527,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => setLocale('bn')}
+                suppressHydrationWarning
                 className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                   locale === 'bn'
                     ? 'bg-primary text-white shadow-xs scale-[1.02]'
@@ -555,13 +560,14 @@ export default function Header() {
           </button>
 
           <Link href="/" onClick={handleHomeClick} className="flex items-center shrink-0">
-            <div className="relative h-10 sm:h-14 w-auto flex items-center justify-center shrink-0 pl-0.5">
+            <div className="relative h-10 sm:h-14 w-auto flex items-center justify-center shrink-0 pl-0.5" suppressHydrationWarning>
               <Image 
                 src={navbarLogo} 
                 alt="Charulata Lifestyle Logo" 
                 width={160}
                 height={48}
                 priority
+                suppressHydrationWarning
                 className="h-10 sm:h-14 w-auto max-w-[130px] sm:max-w-[190px] object-contain hover:opacity-95 transition-opacity"
               />
             </div>
@@ -586,6 +592,7 @@ export default function Header() {
                   setSearchQuery(e.target.value);
                   setIsSearchFocused(true);
                 }}
+                suppressHydrationWarning
                 className="w-full rounded-l-xl border border-border border-r-0 bg-muted/90 px-4 py-2.5 pl-11 pr-8 text-sm sm:text-base font-medium text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:bg-background focus:outline-none transition-all tracking-normal"
               />
               {searchQuery && (
@@ -604,9 +611,10 @@ export default function Header() {
             </div>
             <button 
               type="submit" 
+              suppressHydrationWarning
               className="bg-primary hover:opacity-90 text-white px-6 py-2.5 rounded-r-xl border border-primary text-sm sm:text-base font-bold transition-all cursor-pointer shadow-xs"
             >
-              {t('header.search')}
+              <span suppressHydrationWarning>{t('header.search')}</span>
             </button>
           </form>
           {renderSearchSuggestions()}
@@ -618,6 +626,7 @@ export default function Header() {
           {/* Desktop Theme Toggle (Laptop & Desktop) */}
           <button 
             onClick={toggleTheme}
+            suppressHydrationWarning
             className={`hidden md:flex w-11 h-11 min-w-[44px] min-h-[44px] items-center justify-center rounded-xl transition-all cursor-pointer focus:outline-none border shadow-2xs ${
               theme === 'dark'
                 ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
@@ -634,12 +643,13 @@ export default function Header() {
           </button>
 
           {/* Desktop Language Toggle Pill (Laptop & Desktop) */}
-          <div className="hidden md:flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang">
+          <div className="hidden md:flex items-center bg-card/90 dark:bg-muted/60 border border-border/90 p-1 rounded-xl shrink-0 h-10 min-h-[40px] shadow-2xs group/lang" suppressHydrationWarning>
             <div className="pl-2 pr-1 text-primary flex items-center justify-center">
               <Languages size={15} className="text-primary group-hover/lang:rotate-12 transition-transform duration-300" />
             </div>
             <button
               onClick={() => setLocale('en')}
+              suppressHydrationWarning
               className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                 locale === 'en'
                   ? 'bg-primary text-white shadow-xs scale-[1.02]'
@@ -651,6 +661,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => setLocale('bn')}
+              suppressHydrationWarning
               className={`h-8 px-2.5 flex items-center justify-center rounded-lg text-xs font-black transition-all focus:outline-none cursor-pointer min-w-[34px] ${
                 locale === 'bn'
                   ? 'bg-primary text-white shadow-xs scale-[1.02]'
@@ -666,6 +677,7 @@ export default function Header() {
           <button 
             type="button"
             onClick={() => setIsWishlistDrawerOpen(true)} 
+            suppressHydrationWarning
             className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all relative border border-rose-500/20 shadow-2xs cursor-pointer active:scale-95" 
             aria-label={t('header.wishlist')}
             title={locale === 'bn' ? 'পছন্দের তালিকা' : 'Wishlist'}
@@ -688,6 +700,7 @@ export default function Header() {
             href="/cart"
             id="header-cart-icon"
             data-cart-icon
+            suppressHydrationWarning
             className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all relative border border-primary/20 shadow-2xs cursor-pointer active:scale-95" 
             aria-label={t('header.cart')}
           >
@@ -789,14 +802,16 @@ export default function Header() {
               {/* Desktop Sign In button */}
               <Link
                 href="/login"
+                suppressHydrationWarning
                 className="hidden sm:flex items-center space-x-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition shadow-md whitespace-nowrap min-h-[44px]"
               >
                 <User size={16} />
-                <span>{t('header.signIn')}</span>
+                <span suppressHydrationWarning>{t('header.signIn')}</span>
               </Link>
               {/* Mobile Sign In icon */}
               <Link
                 href="/login"
+                suppressHydrationWarning
                 className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center sm:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl transition-all border border-amber-500/20 shadow-2xs"
                 aria-label={t('header.signIn')}
               >
@@ -826,6 +841,7 @@ export default function Header() {
                 setSearchQuery(e.target.value);
                 setIsSearchFocused(true);
               }}
+              suppressHydrationWarning
               className="w-full rounded-xl border border-border bg-muted/90 px-3.5 py-2.5 pl-10 pr-8 text-sm sm:text-base font-medium text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-2xs min-h-[44px] tracking-normal"
             />
             {searchQuery && (
@@ -845,10 +861,11 @@ export default function Header() {
           
           <button
             type="submit"
+            suppressHydrationWarning
             className="ml-2 inline-flex items-center space-x-1.5 bg-primary hover:opacity-90 text-white px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer shadow-xs active:scale-95 min-h-[44px]"
           >
             <Search size={14} className="text-white" />
-            <span>{locale === 'bn' ? 'খুঁজুন' : 'Search'}</span>
+            <span suppressHydrationWarning>{locale === 'bn' ? 'খুঁজুন' : 'Search'}</span>
           </button>
         </form>
         {renderSearchSuggestions()}

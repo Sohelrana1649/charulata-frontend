@@ -119,12 +119,14 @@ export default function Footer() {
                   }
                 }}
                 className="relative h-12 w-36 sm:h-16 sm:w-48 flex items-center justify-start shrink-0"
+                suppressHydrationWarning
               >
                 <Image 
                   src={footerLogo} 
                   alt="Charulata Lifestyle Logo" 
                   width={220}
                   height={64}
+                  suppressHydrationWarning
                   className="h-full w-auto object-contain brightness-110"
                 />
               </Link>
@@ -194,6 +196,7 @@ export default function Footer() {
             <ul className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm font-semibold">
               {[
                 { label: t('footer.home'), href: "/" },
+                { label: locale === 'bn' ? 'ব্লগ ও জার্নাল' : 'Blog & Journal', href: "/blog" },
                 { label: locale === 'bn' ? 'আমাদের সম্পর্কে' : 'About Us', href: "/about" },
                 { label: locale === 'bn' ? 'যোগাযোগ করুন' : 'Contact Us', href: "/contact" },
                 { label: t('footer.shopCollection'), href: "/search" },

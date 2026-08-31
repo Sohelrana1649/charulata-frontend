@@ -37,8 +37,21 @@ async function getCategories() {
   }
 }
 
+async function getBlogs() {
+  try {
+    const res = await fetch(`${API_URL}/blogs?limit=500`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json?.data?.blogs || json?.blogs || json?.data || [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  const [products, categories, blogs] = await Promise.all([getProducts(), getCategories(), getBlogs()]);
 
   // Static routes
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -53,6 +66,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
     },
     {
       url: `${SITE_URL}/about`,
@@ -130,5 +149,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return entry;
     });
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  // Dynamic Blog routes
+  const blogRoutes: MetadataRoute.Sitemap = blogs
+    .filter((blog: any) => blog?.slug)
+    .map((blog: any) => {
+      const entry: any = {
+        url: `${SITE_URL}/blog/${blog.slug}`,
+        lastModified: blog.updatedAt ? new Date(blog.updatedAt) : new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.7,
+      };
+
+      if (blog.coverImage) {
+        entry.images = [blog.coverImage];
+      }
+
+      return entry;
+    });
+
+  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...blogRoutes];
 }
