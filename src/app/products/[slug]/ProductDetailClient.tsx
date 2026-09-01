@@ -46,7 +46,7 @@ import ProductCard from '@/components/common/ProductCard';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
 import { toast } from 'react-toastify';
-import { fbEvent } from '@/components/analytics/FacebookPixel';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 interface ProductDetailClientProps {
@@ -434,12 +434,18 @@ export default function ProductDetailClient({
         setActiveMediaType('video');
       }
 
-      if (product._id) {
+      const catalogId = getCatalogProductId(product);
+      if (catalogId) {
+        const isDiscountExpired = product.discountEndDate && new Date() > new Date(product.discountEndDate);
+        const currentPrice = (!isDiscountExpired && product.salePrice && product.salePrice > 0)
+          ? Number(product.salePrice)
+          : (Number(product.price) || 0);
+
         fbEvent('track', 'ViewContent', {
-          content_ids: [product._id],
+          content_ids: [catalogId],
           content_type: 'product',
           content_name: product.title,
-          value: product.price,
+          value: currentPrice,
           currency: 'BDT'
         });
       }
@@ -490,10 +496,22 @@ export default function ProductDetailClient({
 
     const basePrice = Number(product?.price) || 0;
     const finalUnitPrice = matchedVariant?.price !== undefined && matchedVariant.price > 0 ? matchedVariant.price : basePrice;
+    const catalogId = getCatalogProductId(product);
 
     if (!isAuthenticated) {
       addToGuestCart(product, quantity, chosenColor, chosenSize, chosenAttrs, finalUnitPrice);
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Successfully added to your cart!');
+      
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: product.title,
+          value: finalUnitPrice * quantity,
+          currency: 'BDT',
+          quantity: quantity
+        });
+      }
       return true;
     }
 
@@ -509,9 +527,9 @@ export default function ProductDetailClient({
       await addToCart(payload).unwrap();
       toast.success('Successfully added to your cart!');
       
-      if (product._id) {
+      if (catalogId) {
         fbEvent('track', 'AddToCart', {
-          content_ids: [product._id],
+          content_ids: [catalogId],
           content_type: 'product',
           content_name: product.title,
           value: finalUnitPrice * quantity,

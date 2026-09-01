@@ -7,6 +7,20 @@ import Script from 'next/script';
 export const PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || '';
 
 /**
+ * Helper to ensure the Meta Catalog ID format strictly matches
+ * what is exported in the XML feed / Meta Catalog.
+ * Meta Feed exports: String(product.sku || product._id || product.id)
+ */
+export const getCatalogProductId = (product: any): string => {
+  if (!product) return '';
+  if (typeof product === 'string' || typeof product === 'number') return String(product).trim();
+  const sku = product.sku ? String(product.sku).trim() : '';
+  if (sku) return sku;
+  const id = product._id || product.id;
+  return id ? String(id).trim() : '';
+};
+
+/**
  * Tracks standard and custom events in Meta Pixel.
  * Safe to call from anywhere in client components.
  */

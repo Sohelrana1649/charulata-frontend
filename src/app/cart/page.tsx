@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { getGuestCart, addToGuestCart, removeFromGuestCart, updateGuestCartQuantity, clearGuestCart } from '@/utils/guestCart';
 import { getGuestWishlistItems } from '@/utils/guestWishlist';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 
 export default function CartPage() {
   const router = useRouter();
@@ -275,12 +276,28 @@ export default function CartPage() {
   const handleAddWishlistToCart = async () => {
     if (!wishlistItems.length) return;
 
+    const contentIds = wishlistItems.map((w: any) => getCatalogProductId(w.rawProduct || w)).filter(Boolean);
+    const totalVal = wishlistItems.reduce((acc: number, w: any) => {
+      const p = w.rawProduct || w;
+      return acc + (Number(p.salePrice || p.price || w.salePrice || w.price) || 0);
+    }, 0);
+
     if (!isAuthenticated) {
       wishlistItems.forEach((wItem: any) => {
         addToGuestCart(wItem.rawProduct || wItem, 1);
       });
       setGuestCartItems(getGuestCart());
       toast.success(locale === 'bn' ? 'উইশলিস্টের পণ্য কার্টে যোগ করা হয়েছে!' : 'Wishlist items added to cart!');
+      
+      if (contentIds.length > 0) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: contentIds,
+          content_type: 'product',
+          value: totalVal,
+          currency: 'BDT',
+          quantity: wishlistItems.length
+        });
+      }
       return;
     }
 
@@ -289,6 +306,16 @@ export default function CartPage() {
         wishlistItems.map((wItem: any) => addToCartApi({ product: wItem._id || wItem.id, quantity: 1 }).unwrap())
       );
       toast.success(locale === 'bn' ? 'উইশলিস্টের পণ্য কার্টে যোগ করা হয়েছে!' : 'Wishlist items added to cart!');
+
+      if (contentIds.length > 0) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: contentIds,
+          content_type: 'product',
+          value: totalVal,
+          currency: 'BDT',
+          quantity: wishlistItems.length
+        });
+      }
     } catch (err) {
       toast.error('Failed to add items to cart');
     }
@@ -525,7 +552,19 @@ export default function CartPage() {
 
           <div className="space-y-3">
             <button
-              onClick={() => router.push('/checkout')}
+              onClick={() => {
+                const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
+                if (contentIds.length > 0) {
+                  fbEvent('track', 'InitiateCheckout', {
+                    content_ids: contentIds,
+                    content_type: 'product',
+                    value: subTotal,
+                    currency: 'BDT',
+                    num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
+                  });
+                }
+                router.push('/checkout');
+              }}
               className="w-full bg-primary text-white py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold hover:opacity-90 transition flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer active:scale-98"
             >
               <span>{t('cart.proceedCheckout')}</span>

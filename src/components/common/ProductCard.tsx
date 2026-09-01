@@ -11,6 +11,7 @@ import { addToGuestCart } from '@/utils/guestCart';
 import { useAppSelector } from '@/store/hooks';
 import { toast } from 'react-toastify';
 import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 
 interface ProductCardProps {
   product: any;
@@ -75,9 +76,23 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       return;
     }
 
+    const catalogId = getCatalogProductId(product);
+    const itemPrice = isSale ? salePrice : price;
+
     if (!isAuthenticated) {
       addToGuestCart(product, 1);
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Added to cart!');
+      
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: product.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
       return;
     }
 
@@ -87,6 +102,17 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
         quantity: 1
       }).unwrap();
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Added to cart!');
+
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: product.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
     } catch (err: any) {
       router.push(`/products/${product.slug}`);
     }
@@ -101,8 +127,21 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       return;
     }
 
+    const catalogId = getCatalogProductId(product);
+    const itemPrice = isSale ? salePrice : price;
+
     if (!isAuthenticated) {
       addToGuestCart(product, 1);
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: product.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
       router.push('/checkout');
       return;
     }
@@ -112,6 +151,17 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
         product: product._id,
         quantity: 1
       }).unwrap();
+
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: product.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
       router.push('/checkout');
     } catch (err: any) {
       router.push(`/products/${product.slug}`);

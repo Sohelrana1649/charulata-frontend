@@ -14,6 +14,7 @@ import { useAddToCartMutation } from '@/store/api/cartApi';
 import { addToGuestCart } from '@/utils/guestCart';
 import { getGuestWishlistItems, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { toast } from 'react-toastify';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 
 interface WishlistDrawerProps {
   isOpen: boolean;
@@ -126,15 +127,41 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
   };
 
   const handleAddToCart = async (item: any) => {
+    const rawProd = item.rawProduct || item;
+    const catalogId = getCatalogProductId(rawProd);
+    const itemPrice = Number(rawProd.salePrice || rawProd.price || item.salePrice || item.price) || 0;
+
     if (!isAuthenticated) {
-      addToGuestCart(item.rawProduct || item, 1);
+      addToGuestCart(rawProd, 1);
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Added to cart!');
+      
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: rawProd.title || item.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
       return;
     }
 
     try {
       await addToCart({ product: item._id, quantity: 1 }).unwrap();
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Added to cart!');
+
+      if (catalogId) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: [catalogId],
+          content_type: 'product',
+          content_name: rawProd.title || item.title,
+          value: itemPrice,
+          currency: 'BDT',
+          quantity: 1
+        });
+      }
     } catch (err) {
       toast.error('Failed to add to cart');
     }
@@ -143,11 +170,27 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
   const handleAddAllToCart = async () => {
     if (items.length === 0) return;
 
+    const contentIds = items.map((it: any) => getCatalogProductId(it.rawProduct || it)).filter(Boolean);
+    const totalVal = items.reduce((sum: number, it: any) => {
+      const p = it.rawProduct || it;
+      return sum + (Number(p.salePrice || p.price || it.salePrice || it.price) || 0);
+    }, 0);
+
     if (!isAuthenticated) {
       items.forEach((item: any) => {
         addToGuestCart(item.rawProduct || item, 1);
       });
       toast.success(locale === 'bn' ? 'সকল পছন্দের পণ্য কার্টে যোগ করা হয়েছে!' : 'Added all wishlist items to cart!');
+      
+      if (contentIds.length > 0) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: contentIds,
+          content_type: 'product',
+          value: totalVal,
+          currency: 'BDT',
+          quantity: items.length
+        });
+      }
       onClose();
       router.push('/cart');
       return;
@@ -158,6 +201,16 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
         items.map((item: any) => addToCart({ product: item._id, quantity: 1 }).unwrap())
       );
       toast.success(locale === 'bn' ? 'সকল পছন্দের পণ্য কার্টে যোগ করা হয়েছে!' : 'Added all wishlist items to cart!');
+
+      if (contentIds.length > 0) {
+        fbEvent('track', 'AddToCart', {
+          content_ids: contentIds,
+          content_type: 'product',
+          value: totalVal,
+          currency: 'BDT',
+          quantity: items.length
+        });
+      }
       onClose();
       router.push('/cart');
     } catch (err) {

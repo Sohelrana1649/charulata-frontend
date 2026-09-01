@@ -10,7 +10,7 @@ import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { fbEvent } from '@/components/analytics/FacebookPixel';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
@@ -477,6 +477,23 @@ export default function CheckoutForm() {
   const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const totalAmount = subTotal + shippingCharge - discount;
 
+  const initiateCheckoutTracked = React.useRef(false);
+  useEffect(() => {
+    if (items.length > 0 && !initiateCheckoutTracked.current) {
+      initiateCheckoutTracked.current = true;
+      const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
+      if (contentIds.length > 0) {
+        fbEvent('track', 'InitiateCheckout', {
+          content_ids: contentIds,
+          content_type: 'product',
+          value: totalAmount,
+          currency: 'BDT',
+          num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
+        });
+      }
+    }
+  }, [items, totalAmount]);
+
   const activeAdvanceAmount = useMemo(() => {
     if (!requireAdvancePayment) return 0;
     return Math.min(advancePaymentAmount, totalAmount);
@@ -594,12 +611,32 @@ export default function CheckoutForm() {
           refetch();
         }
 
-        // Track Meta Pixel Purchase event
+        // Track Meta Pixel Purchase event with catalog SKU/IDs matching XML feed <g:id>
+        const purchasedContentIds = (orderObj.items || items || []).map((item: any) => {
+          const prod = item.product;
+          if (typeof prod === 'object' && prod !== null) {
+            return getCatalogProductId(prod);
+          }
+          const matchedItem = items.find((it: any) => {
+            const itProdId = typeof it.product === 'object' ? (it.product?._id || it.product?.id) : it.product;
+            return String(itProdId) === String(prod);
+          });
+          if (matchedItem && matchedItem.product) {
+            return getCatalogProductId(matchedItem.product);
+          }
+          const matchedDb = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id || p.id) === String(prod)) : null;
+          if (matchedDb) {
+            return getCatalogProductId(matchedDb);
+          }
+          return String(item.sku || prod);
+        }).filter(Boolean);
+
         fbEvent('track', 'Purchase', {
-          content_ids: orderObj.items?.map((item: any) => item.product?._id || item.product).filter(Boolean) || [],
+          content_ids: purchasedContentIds,
           content_type: 'product',
           value: orderObj.totalAmount || totalAmount,
-          currency: 'BDT'
+          currency: 'BDT',
+          num_items: (orderObj.items || items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
         });
       } else {
         setErrorMsg('Invalid checkout response from server.');
