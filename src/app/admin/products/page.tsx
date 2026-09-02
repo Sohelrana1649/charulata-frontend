@@ -43,7 +43,8 @@ import {
   ChevronDown,
   Folder,
   Video,
-  Play
+  Play,
+  FileText
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Image from '@/components/SafeImage';
@@ -796,6 +797,175 @@ export default function AdminProductsPage() {
     });
   };
 
+  const handleExportPDF = (listToExport: any[] = filteredProducts, exportTitle: string = 'Products Catalog') => {
+    if (!listToExport || listToExport.length === 0) {
+      toast.warning('No products available to export.');
+      return;
+    }
+
+    try {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Pop-up blocked. Please allow pop-ups to export the PDF report.');
+        return;
+      }
+
+      const totalInventoryUnits = listToExport.reduce((sum, p) => sum + (Number(p.stockQuantity) || 0), 0);
+      const totalInventoryValue = listToExport.reduce((sum, p) => sum + ((Number(p.salePrice) || Number(p.price) || 0) * (Number(p.stockQuantity) || 0)), 0);
+      const lowStockTotal = listToExport.filter((p: any) => (p.stockQuantity || 0) < 5).length;
+
+      const selectedCategoryName = selectedCategory === 'all' 
+        ? 'All Categories' 
+        : (categoriesList.find((c: any) => c._id === selectedCategory)?.name || 'Filtered Category');
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Charulata Lifestyle - ${exportTitle}</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 16px; color: #0f172a; background: #fff; font-size: 11px; line-height: 1.3; }
+    .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #800020; padding-bottom: 12px; margin-bottom: 14px; }
+    .brand-title { font-size: 20px; font-weight: 800; color: #800020; letter-spacing: -0.5px; }
+    .report-subtitle { font-size: 11px; color: #475569; margin-top: 2px; }
+    .meta-info { text-align: right; font-size: 10px; color: #64748b; line-height: 1.4; }
+    
+    .kpi-grid { display: flex; gap: 10px; margin-bottom: 14px; }
+    .kpi-card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; }
+    .kpi-label { font-size: 8.5px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    th { background: #800020; color: #ffffff; font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 8px; text-align: left; border: 1px solid #800020; }
+    td { border: 1px solid #e2e8f0; padding: 6px 8px; font-size: 10px; vertical-align: middle; }
+    tr:nth-child(even) { background: #f8fafc; }
+    
+    .sku-cell { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 700; color: #800020; }
+    .id-cell { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 9px; color: #94a3b8; }
+    .title-cell { font-weight: 600; color: #0f172a; max-width: 200px; word-break: break-word; }
+    .price-sale { color: #dc2626; font-weight: 700; }
+    .price-original { text-decoration: line-through; color: #94a3b8; font-size: 8.5px; margin-left: 4px; }
+    .stock-badge { display: inline-block; font-weight: 700; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; }
+    .stock-normal { background: #dcfce7; color: #15803d; }
+    .stock-low { background: #fee2e2; color: #b91c1c; }
+    .badge-tag { display: inline-block; font-size: 8.5px; font-weight: 700; padding: 1.5px 5px; border-radius: 3px; background: #e0e7ff; color: #4338ca; margin-right: 3px; }
+    
+    .footer { margin-top: 18px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
+    @media print {
+      body { padding: 0; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <div>
+      <div class="brand-title">CHARULATA LIFESTYLE</div>
+      <div class="report-subtitle">Official Inventory & Product Catalog Report • Category: <strong>${selectedCategoryName}</strong></div>
+    </div>
+    <div class="meta-info">
+      <div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+      <div><strong>Filter Applied:</strong> ${search ? `Search: "${search}" | ` : ''}${selectedCategoryName}</div>
+      <div><strong>Document:</strong> Catalog Export</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Listed Products</div>
+      <div class="kpi-value">${listToExport.length}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Inventory Units</div>
+      <div class="kpi-value">${totalInventoryUnits.toLocaleString()}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Est. Inventory Value</div>
+      <div class="kpi-value">৳${totalInventoryValue.toLocaleString()}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Low Stock Products (<5)</div>
+      <div class="kpi-value" style="color: ${lowStockTotal > 0 ? '#dc2626' : '#15803d'}">${lowStockTotal}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30px; text-align: center;">#</th>
+        <th style="width: 95px;">SKU</th>
+        <th style="width: 80px;">Product ID</th>
+        <th>Product Title</th>
+        <th style="width: 110px;">Category</th>
+        <th style="width: 95px;">Price (BDT)</th>
+        <th style="width: 60px; text-align: center;">Stock</th>
+        <th style="width: 100px;">Tags / Badges</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${listToExport.map((prod: any, idx: number) => {
+        const hasSale = prod.salePrice && Number(prod.salePrice) > 0 && Number(prod.salePrice) < Number(prod.price);
+        const catName = prod.category?.name || (typeof prod.category === 'object' ? prod.category?.name : '') || 'Uncategorized';
+        const isLow = (Number(prod.stockQuantity) || 0) < 5;
+        
+        const tags: string[] = [];
+        if (prod.bestSelling) tags.push('Bestseller');
+        if (prod.newArrival) tags.push('New');
+        if (prod.flashSale) tags.push('FlashSale');
+        if (prod.badge) tags.push(prod.badge);
+
+        return `
+          <tr>
+            <td style="text-align: center; color: #64748b; font-size: 9.5px;">${idx + 1}</td>
+            <td class="sku-cell">${prod.sku || 'N/A'}</td>
+            <td class="id-cell">${String(prod._id || '').substring(0, 8)}...</td>
+            <td class="title-cell">${prod.title || 'Untitled'}</td>
+            <td>${catName}</td>
+            <td>
+              ${hasSale 
+                ? `<span class="price-sale">৳${Number(prod.salePrice).toLocaleString()}</span><span class="price-original">৳${Number(prod.price).toLocaleString()}</span>`
+                : `<span style="font-weight: 700;">৳${Number(prod.price || 0).toLocaleString()}</span>`
+              }
+            </td>
+            <td style="text-align: center;">
+              <span class="stock-badge ${isLow ? 'stock-low' : 'stock-normal'}">${prod.stockQuantity ?? 0}</span>
+            </td>
+            <td>
+              ${tags.length > 0 ? tags.map(t => `<span class="badge-tag">${t}</span>`).join('') : '<span style="color:#94a3b8; font-size:9px;">Standard</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <div>Charulata Lifestyle E-Commerce Management System • Confidential & Proprietary</div>
+    <div>Total: ${listToExport.length} Products Printed</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    };
+  </script>
+</body>
+</html>`;
+
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      toast.success('Product catalog PDF opened for printing/saving!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate product catalog PDF');
+    }
+  };
+
   const totalProducts = productsList.length;
   const lowStockCount = productsList.filter((p: any) => (p.stockQuantity || 0) < 5).length;
   const bestsellerCount = productsList.filter((p: any) => !!p.bestSelling).length;
@@ -821,13 +991,24 @@ export default function AdminProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-md cursor-pointer shrink-0"
-        >
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            onClick={() => handleExportPDF(filteredProducts, 'Products Catalog')}
+            className="inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 group"
+            title="Export products to PDF"
+          >
+            <FileText size={15} className="group-hover:scale-110 transition-transform" />
+            <span>Export PDF</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition shadow-md cursor-pointer shrink-0"
+          >
+            <Plus size={16} />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Summary Widgets */}
@@ -1090,6 +1271,18 @@ export default function AdminProductsPage() {
               >
                 <Package size={14} />
                 <span>Set Stock</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const selectedItems = productsList.filter((p: any) => selectedProductIds.includes(p._id));
+                  handleExportPDF(selectedItems, 'Selected Products Report');
+                }}
+                className="inline-flex items-center space-x-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-500/30 rounded-xl text-xs font-extrabold transition cursor-pointer"
+                title="Export selected products to PDF"
+              >
+                <FileText size={14} />
+                <span>Export PDF ({selectedProductIds.length})</span>
               </button>
 
               <RoleGuard allowedRoles={['super_admin']}>
