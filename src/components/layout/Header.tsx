@@ -448,7 +448,6 @@ export default function Header() {
     const baseItems = [
       { name: t('nav.home'), key: 'home', href: '/' },
       { name: t('nav.shop'), key: 'shop', href: '/search' },
-      { name: t('nav.blog') || (locale === 'bn' ? 'ব্লগ' : 'Blog'), key: 'blog', href: '/blog' },
     ];
     const allCats = categoriesList.map((cat: any) => ({
       name: translateCategoryName(cat, locale),
