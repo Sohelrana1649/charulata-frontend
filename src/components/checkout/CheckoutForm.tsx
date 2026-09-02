@@ -10,7 +10,7 @@ import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
+import { fbEvent, getCatalogProductId, getFbp, getFbc, generateMetaEventId } from '@/components/analytics/FacebookPixel';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
@@ -558,6 +558,10 @@ export default function CheckoutForm() {
       const finalSenderNumber = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? paymentSenderNumber.trim() : 'N/A';
       const finalTrxId = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? transactionId.trim() : 'COD';
 
+      const eventId = generateMetaEventId('purchase');
+      const fbp = getFbp();
+      const fbc = getFbc();
+
       if (isAuthenticated) {
         const payload = {
           shippingAddress: {
@@ -568,7 +572,10 @@ export default function CheckoutForm() {
           deliveryNotes: deliveryNotes.trim() || undefined,
           paymentMethod: selectedPaymentMethod,
           paymentSenderNumber: finalSenderNumber,
-          transactionId: finalTrxId
+          transactionId: finalTrxId,
+          _eventId: eventId,
+          _fbp: fbp,
+          _fbc: fbc
         };
         res = await placeOrder(payload).unwrap();
       } else {
@@ -595,7 +602,10 @@ export default function CheckoutForm() {
           deliveryNotes: deliveryNotes.trim() || undefined,
           paymentMethod: selectedPaymentMethod,
           paymentSenderNumber: finalSenderNumber,
-          transactionId: finalTrxId
+          transactionId: finalTrxId,
+          _eventId: eventId,
+          _fbp: fbp,
+          _fbc: fbc
         };
         res = await placeGuestOrder(guestPayload).unwrap();
       }
@@ -637,7 +647,7 @@ export default function CheckoutForm() {
           value: orderObj.totalAmount || totalAmount,
           currency: 'BDT',
           num_items: (orderObj.items || items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
-        });
+        }, { eventID: eventId });
       } else {
         setErrorMsg('Invalid checkout response from server.');
       }

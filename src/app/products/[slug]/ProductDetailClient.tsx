@@ -1391,7 +1391,7 @@ export default function ProductDetailClient({
             <h3 className="text-base font-bold text-foreground font-sans">Product Specifications</h3>
             <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border text-xs">
               <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Category</span><span className="w-2/3 font-semibold text-foreground">{categoryName}</span></div>
-              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Product SKU</span><span className="w-2/3 font-mono font-semibold text-primary">{matchedVariant?.sku || product.sku}</span></div>
+              <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Product SKU</span><span className="w-2/3 font-mono font-semibold text-primary">{product.sku || matchedVariant?.sku || 'N/A'}</span></div>
               <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Available Colors</span><span className="w-2/3 font-medium text-foreground">{product.colors?.join(', ') || selectedColor || 'Standard'}</span></div>
               <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Size / Length</span><span className="w-2/3 font-medium text-foreground">{product.sizes?.join(', ') || selectedSize || 'Standard Size'}</span></div>
               <div className="flex p-3.5"><span className="w-1/3 text-muted-foreground font-semibold uppercase">Care Instructions</span><span className="w-2/3 font-medium text-foreground">Dry Clean Recommended / Gentle Hand Wash</span></div>

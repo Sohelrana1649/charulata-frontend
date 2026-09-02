@@ -492,7 +492,7 @@ export default function AdminProductsPage() {
       });
 
       return {
-        sku: v.sku || `${form.sku}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+        sku: v.sku?.trim() || (form.sku ? `${form.sku.trim()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}` : `SKU-${Math.random().toString(36).substring(2, 6).toUpperCase()}`),
         price: v.price ? Number(v.price) : undefined,
         salePrice: v.salePrice ? Number(v.salePrice) : undefined,
         stockQuantity: Number(v.stockQuantity || 0),

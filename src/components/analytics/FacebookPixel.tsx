@@ -21,15 +21,44 @@ export const getCatalogProductId = (product: any): string => {
 };
 
 /**
+ * Helper to get cookie value by name (e.g. _fbp, _fbc)
+ */
+export const getCookie = (name: string): string | undefined => {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : undefined;
+};
+
+export const getFbp = (): string | undefined => getCookie('_fbp');
+export const getFbc = (): string | undefined => getCookie('_fbc');
+
+/**
+ * Generate a unique event ID for deduplication between Browser Pixel & Server CAPI
+ */
+export const generateMetaEventId = (prefix: string = 'evt'): string => {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+};
+
+/**
  * Tracks standard and custom events in Meta Pixel.
  * Safe to call from anywhere in client components.
+ * Supports passing eventID for proper deduplication with Meta Conversions API (CAPI).
  */
-export const fbEvent = (action: 'track' | 'trackCustom', name: string, options?: any) => {
+export const fbEvent = (
+  action: 'track' | 'trackCustom',
+  name: string,
+  options?: any,
+  eventParams?: { eventID?: string }
+) => {
   if (typeof window !== 'undefined' && (window as any).fbq) {
-    (window as any).fbq(action, name, options);
+    if (eventParams?.eventID) {
+      (window as any).fbq(action, name, options, { eventID: eventParams.eventID });
+    } else {
+      (window as any).fbq(action, name, options);
+    }
   } else {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Meta Pixel Log] ${action}: ${name}`, options || '');
+      console.log(`[Meta Pixel Log] ${action}: ${name}`, options || '', eventParams || '');
     }
   }
 };
