@@ -330,27 +330,15 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Banner */}
-        <div className="border-t border-zinc-800 pt-8 flex flex-col lg:flex-row justify-between items-center text-xs sm:text-sm font-bold text-zinc-400 gap-5 lg:gap-4">
-          
-          {/* Policy Links (Order 1 on mobile, Order 3 on Desktop) */}
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 order-1 lg:order-3">
-            <Link href="/privacy-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.privacyPolicy')}
-            </Link>
-            <Link href="/terms" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.termsConditions')}
-            </Link>
-            <Link href="/refund-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.refundPolicy')}
-            </Link>
-            <Link href="/faq" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
-              {t('footer.faq') || 'FAQ'}
-            </Link>
+        {/* Dedicated Secure Payment Methods Row */}
+        <div className="border-t border-zinc-800/80 pt-8 pb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-2 text-xs sm:text-sm font-extrabold text-zinc-300 uppercase tracking-wider">
+            <ShieldCheck size={18} className="text-primary shrink-0" />
+            <span>{locale === 'bn' ? '১০০% নিরাপদ পেমেন্ট পদ্ধতি' : '100% Secure Payment Methods'}</span>
           </div>
 
-          {/* Payment Method Badges (Order 2 on mobile, Order 2 on Desktop) */}
-          <div className="flex items-center justify-center gap-2 sm:gap-3 my-1 lg:my-0 flex-wrap order-2 lg:order-2">
+          {/* Payment Method Badges */}
+          <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
             {/* bKash */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
               <img src="/bKash-logo.svg" alt="bKash" className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
@@ -376,9 +364,13 @@ export default function Footer() {
               <img src="/Mastercard-Logo.wine.svg" alt="Mastercard" className="h-6.5 sm:h-7.5 w-auto object-contain max-w-[80px]" />
             </div>
           </div>
+        </div>
 
-          {/* Left / Bottom-most on Mobile: Copyright & Developer Attribution (Order 3 on mobile, Order 1 on Desktop) */}
-          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 text-center md:text-left order-3 lg:order-1 pt-2 lg:pt-0">
+        {/* Bottom Banner: Copyright & Policy Links */}
+        <div className="border-t border-zinc-800/60 pt-6 flex flex-col md:flex-row justify-between items-center text-xs sm:text-sm font-bold text-zinc-400 gap-4">
+          
+          {/* Left: Copyright & Developer Attribution */}
+          <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 text-center md:text-left order-2 md:order-1">
             <p>&copy; {new Date().getFullYear()} {t('footer.copyright')}</p>
             <span className="hidden sm:inline text-zinc-700">|</span>
             <p className="text-xs text-zinc-400 font-medium">
@@ -392,6 +384,22 @@ export default function Footer() {
                 Shipon Chowdhury
               </a>
             </p>
+          </div>
+
+          {/* Right: Policy Links */}
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 order-1 md:order-2">
+            <Link href="/privacy-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.privacyPolicy')}
+            </Link>
+            <Link href="/terms" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.termsConditions')}
+            </Link>
+            <Link href="/refund-policy" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.refundPolicy')}
+            </Link>
+            <Link href="/faq" className="hover:text-primary border-b-2 border-transparent hover:border-primary/70 pb-0.5 transition-all duration-300 ease-in-out">
+              {t('footer.faq') || 'FAQ'}
+            </Link>
           </div>
 
         </div>
