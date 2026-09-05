@@ -1,5 +1,6 @@
 import { toast } from 'react-toastify';
 import { HIND_SILIGURI_REGULAR_BASE64, HIND_SILIGURI_BOLD_BASE64 } from '@/lib/fonts/hindSiliguriBase64';
+import { formatOrderDisplayAddress } from '@/utils/orderAddress';
 
 /**
  * High-precision HTML & Base64 Embedded Bengali Font (Hind Siliguri) Invoice Generator.
@@ -215,7 +216,7 @@ export const downloadInvoicePdf = (order: any) => {
         <h4>গ্রাহক ও ডেলিভারি তথ্য</h4>
         <p><strong>নাম:</strong> ${addr.recipientName || 'N/A'}</p>
         <p><strong>মোবাইল:</strong> ${addr.recipientPhone || 'N/A'}</p>
-        <p><strong>ঠিকানা:</strong> ${addr.addressLine || ''}, ${addr.district || ''}</p>
+        <p><strong>ঠিকানা:</strong> ${formatOrderDisplayAddress(addr)}</p>
       </div>
       <div class="info-box">
         <h4>পেমেন্ট ও অর্ডার বিবরণ</h4>

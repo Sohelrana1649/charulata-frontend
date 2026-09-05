@@ -2,19 +2,21 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCheckoutMutation, useGuestCheckoutMutation, useValidateCouponMutation } from '@/store/api/orderApi';
-import { useGetCartQuery } from '@/store/api/cartApi';
+import { useGetCartQuery, useRemoveFromCartMutation, useUpdateCartQuantityMutation } from '@/store/api/cartApi';
 import { useGetDistrictsQuery, useCompleteProfileMutation } from '@/store/api/userApi';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/authSlice';
 import Link from 'next/link';
 import Image from '@/components/SafeImage';
-import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck } from 'lucide-react';
+import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck, X, Minus, Plus, CreditCard, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fbEvent, getCatalogProductId, getFbp, getFbc, generateMetaEventId } from '@/components/analytics/FacebookPixel';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
-import { getGuestCart, clearGuestCart } from '@/utils/guestCart';
+import { getGuestCart, removeFromGuestCart, clearGuestCart, updateGuestCartQuantity } from '@/utils/guestCart';
+import { getThanasForDistrict, IThana } from '@/data/bangladeshLocations';
+import { formatOrderDisplayAddress, parseAndFormatOrderAddress } from '@/utils/orderAddress';
 import confetti from 'canvas-confetti';
 
 const BANGLA_DISTRICT_MAP: Record<string, string> = {
@@ -119,6 +121,38 @@ export default function CheckoutForm() {
   const prepaymentRule3 = settings?.prepaymentRule3 || t('checkout.prepaymentNoticeLine3');
   const prepaymentHelpText = settings?.prepaymentHelpText || `যেকোনো সমস্যার জন্য আমাদের ${paymentPhoneNumber} নম্বরে ফোন করুন।`;
 
+  const checkoutSteps = useMemo(() => {
+    if (requireAdvancePayment) {
+      return [
+        { id: 1, label: locale === 'bn' ? 'কার্ট' : 'Cart', sub: locale === 'bn' ? 'পণ্য বাছাই' : 'Items', icon: ShoppingCart, href: '/cart' },
+        { id: 2, label: locale === 'bn' ? 'ডেলিভারি তথ্য' : 'Shipping', sub: locale === 'bn' ? 'ঠিকানা ও এলাকা' : 'Address', icon: MapPin },
+        { id: 3, label: locale === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Payment', sub: locale === 'bn' ? 'বিকাশ/নগদ' : 'bKash/Nagad', icon: CreditCard },
+        { id: 4, label: locale === 'bn' ? 'অর্ডার নিশ্চিত' : 'Confirmation', sub: locale === 'bn' ? 'অর্ডার গ্রহণ' : 'Completed', icon: CheckCircle2 }
+      ];
+    }
+    return [
+      { id: 1, label: locale === 'bn' ? 'কার্ট' : 'Cart', sub: locale === 'bn' ? 'পণ্য বাছাই' : 'Items', icon: ShoppingCart, href: '/cart' },
+      { id: 2, label: locale === 'bn' ? 'ডেলিভারি তথ্য' : 'Shipping', sub: locale === 'bn' ? 'ঠিকানা ও এলাকা' : 'Address', icon: MapPin },
+      { id: 3, label: locale === 'bn' ? 'অর্ডার নিশ্চিত' : 'Confirmation', sub: locale === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', icon: CheckCircle2 }
+    ];
+  }, [requireAdvancePayment, locale]);
+
+  const successSteps = useMemo(() => {
+    if (requireAdvancePayment) {
+      return [
+        { id: 1, label: locale === 'bn' ? 'কার্ট' : 'Cart', sub: locale === 'bn' ? 'সম্পন্ন' : 'Done' },
+        { id: 2, label: locale === 'bn' ? 'ডেলিভারি তথ্য' : 'Shipping', sub: locale === 'bn' ? 'গৃহীত' : 'Saved' },
+        { id: 3, label: locale === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Payment', sub: locale === 'bn' ? 'নিশ্চিত' : 'Verified' },
+        { id: 4, label: locale === 'bn' ? 'অর্ডার নিশ্চিত' : 'Confirmation', sub: locale === 'bn' ? 'সফল' : 'Success' }
+      ];
+    }
+    return [
+      { id: 1, label: locale === 'bn' ? 'কার্ট' : 'Cart', sub: locale === 'bn' ? 'সম্পন্ন' : 'Done' },
+      { id: 2, label: locale === 'bn' ? 'ডেলিভারি তথ্য' : 'Shipping', sub: locale === 'bn' ? 'গৃহীত' : 'Saved' },
+      { id: 3, label: locale === 'bn' ? 'অর্ডার নিশ্চিত' : 'Confirmation', sub: locale === 'bn' ? 'সফল' : 'Success' }
+    ];
+  }, [requireAdvancePayment, locale]);
+
   const [guestCartItems, setGuestCartItems] = useState<any[]>([]);
 
   useEffect(() => {
@@ -164,7 +198,24 @@ export default function CheckoutForm() {
   const [placeOrder, { isLoading: isPlacing }] = useCheckoutMutation();
   const [placeGuestOrder, { isLoading: isPlacingGuest }] = useGuestCheckoutMutation();
   const [completeProfile, { isLoading: isCompletingProfile }] = useCompleteProfileMutation();
+  const [removeCartItem, { isLoading: isRemovingCartItem }] = useRemoveFromCartMutation();
   const dispatch = useAppDispatch();
+
+  const handleRemoveCartItem = async (itemId: string) => {
+    if (!isAuthenticated) {
+      removeFromGuestCart(itemId);
+      setGuestCartItems(getGuestCart());
+      toast.info(locale === 'bn' ? 'পণ্যটি কার্ট থেকে সরানো হয়েছে' : 'Item removed from cart');
+      return;
+    }
+    try {
+      await removeCartItem(itemId).unwrap();
+      toast.info(locale === 'bn' ? 'পণ্যটি কার্ট থেকে সরানো হয়েছে' : 'Item removed from cart');
+    } catch (err) {
+      console.error('Failed to remove item from cart:', err);
+      toast.error(locale === 'bn' ? 'পণ্য সরাতে ব্যর্থ হয়েছে' : 'Failed to remove item');
+    }
+  };
 
   const [checkoutMode, setCheckoutMode] = useState<'guest' | 'login'>('guest');
   const [upgradePassword, setUpgradePassword] = useState('');
@@ -178,11 +229,80 @@ export default function CheckoutForm() {
     recipientName: '',
     recipientPhone: '',
     district: '',
+    thana: '',
     addressLine: ''
   });
 
   const [districtSearch, setDistrictSearch] = useState('');
   const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
+  const [thanaSearch, setThanaSearch] = useState('');
+  const [showThanaDropdown, setShowThanaDropdown] = useState(false);
+
+  const [updateQuantity, { isLoading: isUpdatingQuantity }] = useUpdateCartQuantityMutation();
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+
+  const getItemStock = (item: any): number => {
+    const product = typeof item?.product === 'object' ? item.product : null;
+    if (!product) return 99;
+
+    const selColor = item?.color || item?.selectedColor;
+    const selSize = item?.size || item?.selectedSize;
+    const selAttrs = item?.selectedAttributes
+      ? (item.selectedAttributes instanceof Map ? Object.fromEntries(item.selectedAttributes) : item.selectedAttributes)
+      : undefined;
+
+    if (Array.isArray(product?.variants) && product.variants.length > 0) {
+      const targetAttrs: Record<string, string> = { ...(selAttrs || {}) };
+      if (selColor && !targetAttrs['Color']) targetAttrs['Color'] = selColor;
+      if (selSize && !targetAttrs['Size']) targetAttrs['Size'] = selSize;
+
+      const matchedVariant = product.variants.find((v: any) => {
+        const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
+        const vColor = v.color || vAttrs['Color'] || vAttrs['color'];
+        const vSize = v.size || vAttrs['Size'] || vAttrs['size'];
+        const colorMatch = !selColor || vColor === selColor;
+        const sizeMatch = !selSize || vSize === selSize;
+        return colorMatch && sizeMatch;
+      });
+
+      if (matchedVariant && typeof matchedVariant.stockQuantity === 'number') {
+        return Math.max(0, matchedVariant.stockQuantity);
+      }
+    }
+
+    if (typeof product.stockQuantity === 'number') {
+      return Math.max(0, product.stockQuantity);
+    }
+
+    return 99;
+  };
+
+  const handleQuantityChange = async (itemId: string, currentQty: number, change: number, maxStock: number) => {
+    const newQty = currentQty + change;
+    if (newQty < 1) {
+      handleRemoveCartItem(itemId);
+      return;
+    }
+    if (change > 0 && newQty > maxStock) {
+      toast.warning(locale === 'bn' ? `স্টকে আছে মাত্র ${maxStock} পিস!` : `Only ${maxStock} items available in stock!`);
+      return;
+    }
+    setUpdatingItemId(itemId);
+    if (!isAuthenticated) {
+      updateGuestCartQuantity(itemId, newQty);
+      setGuestCartItems(getGuestCart());
+      setUpdatingItemId(null);
+      return;
+    }
+    try {
+      await updateQuantity({ itemId, quantity: newQty }).unwrap();
+    } catch (err) {
+      console.error('Failed to update quantity:', err);
+      toast.error(locale === 'bn' ? 'পরিমাণ পরিবর্তন করতে ব্যর্থ হয়েছে' : 'Failed to update quantity');
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
 
   const filteredDistricts = useMemo(() => {
     if (!districtSearch.trim()) return [];
@@ -195,6 +315,22 @@ export default function CheckoutForm() {
       return enName.includes(query) || enName.includes(mappedQuery) || bnName.includes(query);
     });
   }, [districtSearch, districtsList]);
+
+  const availableThanas = useMemo(() => {
+    const activeDist = (shippingAddress.district || districtSearch).trim();
+    if (!activeDist) return [];
+    const mappedDist = BANGLA_DISTRICT_MAP[activeDist] || activeDist;
+    return getThanasForDistrict(mappedDist);
+  }, [shippingAddress.district, districtSearch]);
+
+  const filteredThanas = useMemo(() => {
+    if (!availableThanas.length) return [];
+    if (!thanaSearch.trim()) return availableThanas;
+    const query = thanaSearch.trim().toLowerCase();
+    return availableThanas.filter((th: IThana) =>
+      th.bn.toLowerCase().includes(query) || th.en.toLowerCase().includes(query)
+    );
+  }, [availableThanas, thanaSearch]);
 
   const [couponCode, setCouponCode] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
@@ -432,7 +568,7 @@ export default function CheckoutForm() {
     return Math.max(0, regularSubTotal - subTotal);
   }, [regularSubTotal, subTotal]);
 
-  // Dynamically find shipping charge from DB districts
+  // Dynamically find shipping charge from DB districts (defaults to 0 until district selected)
   const activeDistrictQuery = (shippingAddress.district || districtSearch).trim();
   const mappedEnDistrict = BANGLA_DISTRICT_MAP[activeDistrictQuery] || activeDistrictQuery;
 
@@ -442,7 +578,10 @@ export default function CheckoutForm() {
   });
 
   const isDhakaDistrict = /dhaka|ঢাকা/i.test(activeDistrictQuery) || /dhaka/i.test(selectedDistrictObj?.district || '');
-  const shippingCharge = selectedDistrictObj ? selectedDistrictObj.shippingCharge : (isDhakaDistrict ? 70 : 120);
+  const hasDistrictSelected = Boolean(shippingAddress.district.trim());
+  const shippingCharge = hasDistrictSelected
+    ? (selectedDistrictObj ? selectedDistrictObj.shippingCharge : (isDhakaDistrict ? 60 : 120))
+    : (selectedDistrictObj ? selectedDistrictObj.shippingCharge : 0);
 
   const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
@@ -522,8 +661,19 @@ export default function CheckoutForm() {
       toast.error(locale === 'bn' ? 'অনুগ্রহ করে আপনার নাম প্রদান করুন।' : 'Please enter your full name.');
       return;
     }
-    if (!shippingAddress.recipientPhone.trim()) {
-      toast.error(locale === 'bn' ? 'অনুগ্রহ করে আপনার মোবাইল নম্বর প্রদান করুন।' : 'Please enter your phone number.');
+    const cleanPhone = shippingAddress.recipientPhone.replace(/[\s\-]/g, '');
+    if (!cleanPhone || !/^(?:\+8801|8801|01)[3-9]\d{8}$/.test(cleanPhone)) {
+      toast.error(locale === 'bn' ? 'অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)' : 'Please enter a valid 11-digit Bangladeshi mobile number.');
+      return;
+    }
+    const finalDistrict = (shippingAddress.district || districtSearch).trim();
+    if (!finalDistrict || finalDistrict.length < 2) {
+      toast.error(locale === 'bn' ? 'অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।' : 'Please select your district.');
+      return;
+    }
+    const finalThana = (shippingAddress.thana || thanaSearch).trim();
+    if (!finalThana) {
+      toast.error(locale === 'bn' ? 'অনুগ্রহ করে আপনার থানা বা উপজেলা নির্বাচন করুন।' : 'Please select your thana / upazila.');
       return;
     }
     if (!shippingAddress.addressLine.trim()) {
@@ -539,24 +689,23 @@ export default function CheckoutForm() {
         toast.error(locale === 'bn' ? 'অনুগ্রহ করে যে নম্বর থেকে টাকা পাঠিয়েছেন সেটি লিখুন।' : 'Please enter the sender phone number.');
         return;
       }
-      if (!transactionId.trim()) {
-        toast.error(locale === 'bn' ? 'অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) লিখুন।' : 'Please enter the Transaction ID.');
+      const cleanTrx = transactionId.trim().toUpperCase();
+      if (!cleanTrx || !/^[A-Z0-9]{8,12}$/.test(cleanTrx)) {
+        toast.error(locale === 'bn' ? 'অনুগ্রহ করে সঠিক আলফানিউমেরিক Transaction ID (TrxID) প্রদান করুন (যেমন: 9K20PLM910)' : 'Please enter a valid alphanumeric Transaction ID (e.g. 9K20PLM910).');
         return;
       }
     }
 
-    const finalDistrict = (shippingAddress.district || districtSearch).trim();
-
-    if (!finalDistrict || finalDistrict.length < 2) {
-      toast.error('Please select or enter your district.');
-      return;
-    }
+    const trimmedAddress = shippingAddress.addressLine.trim();
+    const finalAddressLine = finalThana && !trimmedAddress.toLowerCase().endsWith(finalThana.toLowerCase())
+      ? `${trimmedAddress}, ${finalThana}`
+      : trimmedAddress;
 
     try {
       let res: any;
       const selectedPaymentMethod = paymentMethod || (!requireAdvancePayment ? 'COD' : '');
       const finalSenderNumber = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? paymentSenderNumber.trim() : 'N/A';
-      const finalTrxId = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? transactionId.trim() : 'COD';
+      const finalTrxId = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? transactionId.trim().toUpperCase() : 'COD';
 
       const eventId = generateMetaEventId('purchase');
       const fbp = getFbp();
@@ -565,8 +714,11 @@ export default function CheckoutForm() {
       if (isAuthenticated) {
         const payload = {
           shippingAddress: {
-            ...shippingAddress,
-            district: finalDistrict
+            recipientName: shippingAddress.recipientName.trim(),
+            recipientPhone: cleanPhone,
+            district: finalDistrict,
+            thana: finalThana,
+            addressLine: finalAddressLine
           },
           couponCode: appliedCoupon ? appliedCoupon.code : (couponCode.trim() || undefined),
           deliveryNotes: deliveryNotes.trim() || undefined,
@@ -590,12 +742,13 @@ export default function CheckoutForm() {
 
         const guestPayload = {
           name: shippingAddress.recipientName.trim(),
-          phone: shippingAddress.recipientPhone.trim(),
+          phone: cleanPhone,
           shippingAddress: {
             recipientName: shippingAddress.recipientName.trim(),
-            recipientPhone: shippingAddress.recipientPhone.trim(),
+            recipientPhone: cleanPhone,
             district: finalDistrict,
-            addressLine: shippingAddress.addressLine.trim()
+            thana: finalThana,
+            addressLine: finalAddressLine
           },
           items: guestItems,
           couponCode: appliedCoupon ? appliedCoupon.code : (couponCode.trim() || undefined),
@@ -749,8 +902,15 @@ export default function CheckoutForm() {
 
       const recipientName = successOrder.shippingAddress?.recipientName || shippingAddress.recipientName || 'Customer';
       const recipientPhone = successOrder.shippingAddress?.recipientPhone || shippingAddress.recipientPhone || '';
-      const addressLine = successOrder.shippingAddress?.addressLine || shippingAddress.addressLine || '';
-      const district = successOrder.shippingAddress?.district || shippingAddress.district || '';
+      const formattedAddress = parseAndFormatOrderAddress(successOrder.shippingAddress || {
+        addressLine: shippingAddress.addressLine,
+        thana: shippingAddress.thana,
+        district: shippingAddress.district
+      });
+      const addressLine = formattedAddress.street || successOrder.shippingAddress?.addressLine || shippingAddress.addressLine || '';
+      const displayLocation = formattedAddress.thana 
+        ? `${formattedAddress.thana}, ${formattedAddress.district}` 
+        : (formattedAddress.district || successOrder.shippingAddress?.district || shippingAddress.district || '');
 
       const totalAmt = successOrder.totalAmount || totalAmount || 0;
       const deliveryAmt = (successOrder.shippingCharge !== undefined && successOrder.shippingCharge !== null)
@@ -819,7 +979,7 @@ export default function CheckoutForm() {
     <div>
       <div class="box-title">Shipping Address</div>
       <p class="box-val">${addressLine}</p>
-      <p style="font-size: 12px; color: #64748b; margin: 2px 0 0 0;">${district}</p>
+      <p style="font-size: 12px; color: #64748b; margin: 2px 0 0 0;">${displayLocation}</p>
     </div>
   </div>
 
@@ -899,27 +1059,57 @@ export default function CheckoutForm() {
     };
 
     return (
-      <div className="max-w-5xl mx-auto my-4 sm:my-8 bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-4">
+      <div className="max-w-5xl mx-auto my-4 sm:my-8 space-y-4">
+        {/* Dynamic Checkout Progress Indicator (Completed State) */}
+        <div className="w-full bg-card border border-border rounded-2xl p-3 sm:p-4 shadow-2xs">
+          <div className={`grid ${requireAdvancePayment ? 'grid-cols-4 max-w-2xl' : 'grid-cols-3 max-w-xl'} mx-auto`}>
+            {successSteps.map((step, idx, arr) => (
+              <div key={step.id} className="relative flex flex-col items-center text-center">
+                {/* Connector line to previous step (never extends before step 1) */}
+                {idx > 0 && (
+                  <div className="absolute top-4 sm:top-4.5 right-1/2 left-0 h-0.5 -translate-y-1/2 bg-emerald-500" />
+                )}
 
-        {/* Header Confirmation Banner */}
-        <div className="text-center pb-4 border-b border-border/80 relative">
-          <div className="relative w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-30"></span>
-            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 scale-105">
-              <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+                {/* Connector line to next step (never extends after last step) */}
+                {idx < arr.length - 1 && (
+                  <div className="absolute top-4 sm:top-4.5 left-1/2 right-0 h-0.5 -translate-y-1/2 bg-emerald-500" />
+                )}
+
+                <div className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm ring-4 ring-emerald-500/20">
+                  <Check size={16} className="stroke-[3]" />
+                </div>
+                <span className="text-[11px] sm:text-xs font-bold mt-1.5 px-1 text-emerald-600 dark:text-emerald-400 truncate max-w-full">
+                  {step.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground hidden sm:block font-medium px-1 truncate max-w-full">
+                  {step.sub}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-sm space-y-4">
+
+          {/* Header Confirmation Banner */}
+          <div className="text-center pb-4 border-b border-border/80 relative">
+            <div className="relative w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-30"></span>
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 scale-105">
+                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+              </div>
             </div>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 font-serif tracking-tight">
-            {t('checkout.orderConfirmed')}
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-semibold">
-            {t('checkout.thankYou')}
-          </p>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 font-serif tracking-tight">
+              {t('checkout.orderConfirmed')}
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-semibold">
+              {t('checkout.thankYou')}
+            </p>
 
-          <div className="mt-3.5 inline-flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs font-mono font-black shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
-            <span>Order ID: {orderIdVal}</span>
-          </div>
+            <div className="mt-3.5 inline-flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs font-mono font-black shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
+              <span>Order ID: {orderIdVal}</span>
+            </div>
 
           <button
             onClick={handlePrintInvoice}
@@ -962,11 +1152,24 @@ export default function CheckoutForm() {
                     {locale === 'bn' ? 'ডেলিভারি ঠিকানা' : 'Delivery Address'}
                   </span>
                 </div>
-                <p className="font-bold text-foreground text-[13px]">{successOrder.shippingAddress?.addressLine || shippingAddress.addressLine}</p>
-                <div className="flex items-center space-x-1 text-muted-foreground">
-                  <Truck size={11} className="shrink-0" />
-                  <span className="font-medium">{successOrder.shippingAddress?.district || shippingAddress.district}</span>
-                </div>
+                {(() => {
+                  const parsed = parseAndFormatOrderAddress(successOrder.shippingAddress || {
+                    addressLine: shippingAddress.addressLine,
+                    thana: shippingAddress.thana,
+                    district: shippingAddress.district
+                  });
+                  return (
+                    <>
+                      <p className="font-bold text-foreground text-[13px]">{parsed.street || shippingAddress.addressLine}</p>
+                      <div className="flex items-center space-x-1 text-muted-foreground">
+                        <Truck size={11} className="shrink-0" />
+                        <span className="font-medium">
+                          {parsed.thana ? `${parsed.thana}, ` : ''}{parsed.district || shippingAddress.district}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1308,8 +1511,9 @@ export default function CheckoutForm() {
         {/* ── END 2-COLUMN GRID ── */}
 
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="max-w-[1536px] mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 pb-20 lg:pb-8 w-full">
@@ -1344,6 +1548,77 @@ export default function CheckoutForm() {
         </div>
       </div>
 
+      {/* Dynamic Checkout Progress Indicator */}
+      <div className="w-full bg-card border border-border rounded-2xl p-3 sm:p-4 mb-4 sm:mb-5 shadow-2xs">
+        <div className={`grid ${requireAdvancePayment ? 'grid-cols-4 max-w-2xl' : 'grid-cols-3 max-w-xl'} mx-auto`}>
+          {checkoutSteps.map((step, idx, arr) => {
+            const isCompleted = step.id === 1;
+            const isCurrent = step.id === 2 || (requireAdvancePayment && step.id === 3);
+            const Icon = step.icon;
+
+            return (
+              <div key={step.id} className="relative flex flex-col items-center text-center">
+                {/* Connector line to previous step (never extends before step 1) */}
+                {idx > 0 && (
+                  <div
+                    className={`absolute top-4 sm:top-4.5 right-1/2 left-0 h-0.5 -translate-y-1/2 ${
+                      idx === 1 ? 'bg-emerald-500' : (requireAdvancePayment && idx === 2) ? 'bg-primary/50' : 'bg-border'
+                    }`}
+                  />
+                )}
+
+                {/* Connector line to next step (never extends after last step) */}
+                {idx < arr.length - 1 && (
+                  <div
+                    className={`absolute top-4 sm:top-4.5 left-1/2 right-0 h-0.5 -translate-y-1/2 ${
+                      idx === 0 ? 'bg-emerald-500' : (requireAdvancePayment && idx === 1) ? 'bg-primary/50' : 'bg-border'
+                    }`}
+                  />
+                )}
+
+                {/* Step Circle Button / Icon */}
+                {step.href ? (
+                  <Link
+                    href={step.href}
+                    className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm hover:scale-105 transition active:scale-95 cursor-pointer"
+                    title={locale === 'bn' ? 'কার্টে ফিরে যান' : 'Back to Cart'}
+                  >
+                    <Check size={16} className="stroke-[3]" />
+                  </Link>
+                ) : (
+                  <div
+                    className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      isCompleted
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : isCurrent
+                        ? 'bg-primary text-white ring-4 ring-primary/20 shadow-sm'
+                        : 'bg-muted text-muted-foreground border border-border'
+                    }`}
+                  >
+                    {isCompleted ? <Check size={16} className="stroke-[3]" /> : <Icon size={15} />}
+                  </div>
+                )}
+
+                <span
+                  className={`text-[11px] sm:text-xs font-bold mt-1.5 px-1 truncate max-w-full ${
+                    isCurrent
+                      ? 'text-primary'
+                      : isCompleted
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {step.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground hidden sm:block font-medium px-1 truncate max-w-full">
+                  {step.sub}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="pb-20 md:pb-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
           {/* Left Column: ALL-IN-ONE Master Shipping & Instructions Card */}
@@ -1357,11 +1632,11 @@ export default function CheckoutForm() {
                   <span>{t('checkout.shippingInfo')}</span>
                 </h2>
 
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-end">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start">
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
-                        {t('checkout.recipientName')}
+                        {t('checkout.recipientName')} <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
                       <div className="relative">
                         <User className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400" />
@@ -1377,96 +1652,178 @@ export default function CheckoutForm() {
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
-                        {t('checkout.mobileNumber')}
+                        {t('checkout.mobileNumber')} <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
                       <div className="relative">
                         <Phone className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400" />
                         <input
                           type="tel"
                           required
-                          placeholder={t('checkout.mobilePlaceholder')}
+                          placeholder="01XXXXXXXXX (১১ ডিজিট)"
                           value={shippingAddress.recipientPhone}
                           onChange={(e) => setShippingAddress({ ...shippingAddress, recipientPhone: e.target.value })}
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 transition-all min-h-[44px]"
                         />
                       </div>
+                      <div className="flex items-center justify-between text-[10px] mt-1 text-muted-foreground px-0.5">
+                        <span>{locale === 'bn' ? 'ফরম্যাট: 01XXXXXXXXX' : 'Format: 01XXXXXXXXX'}</span>
+                        {shippingAddress.recipientPhone && (
+                          /^(?:\+8801|8801|01)[3-9]\d{8}$/.test(shippingAddress.recipientPhone.replace(/[\s\-]/g, '')) ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ {locale === 'bn' ? 'সঠিক নম্বর' : 'Valid'}</span>
+                          ) : shippingAddress.recipientPhone.replace(/[\s\-]/g, '').length >= 11 ? (
+                            <span className="text-rose-500 font-bold">⚠ {locale === 'bn' ? 'সঠিক নম্বর দিন' : 'Invalid number'}</span>
+                          ) : null
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
-                      {t('checkout.district')}
-                    </label>
-                    <div className="relative">
-                      <Truck className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400 pointer-events-none z-10" />
-                      <input
-                        type="text"
-                        placeholder={t('checkout.searchDistrict')}
-                        value={districtSearch}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDistrictSearch(val);
-                          setShowDistrictDropdown(true);
-                        }}
-                        onFocus={() => setShowDistrictDropdown(true)}
-                        onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 placeholder-gray-400 transition-all min-h-[44px]"
-                      />
-                      {showDistrictDropdown && filteredDistricts.length > 0 && (
-                        <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40">
-                          {filteredDistricts.map((d: any) => {
-                            const enName = d.district;
-                            const bnName = ENGLISH_TO_BANGLA_DISTRICT_MAP[(enName || '').toLowerCase()];
+                  {/* District & Thana/Upazila Selector Side by Side */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start">
+                    {/* District Selector */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
+                        {t('checkout.district')} <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
+                      <div className="relative">
+                        <Truck className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          placeholder={t('checkout.searchDistrict')}
+                          value={districtSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDistrictSearch(val);
+                            setShowDistrictDropdown(true);
+                          }}
+                          onFocus={() => setShowDistrictDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
+                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 placeholder-gray-400 transition-all min-h-[44px]"
+                        />
+                        {showDistrictDropdown && filteredDistricts.length > 0 && (
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40 custom-scrollbar">
+                            {filteredDistricts.map((d: any) => {
+                              const enName = d.district;
+                              const bnName = ENGLISH_TO_BANGLA_DISTRICT_MAP[(enName || '').toLowerCase()];
 
-                            return (
-                              <div key={d._id || d.district} className="bg-card">
-                                {/* Bangla Option */}
-                                {bnName && (
+                              return (
+                                <div key={d._id || d.district} className="bg-card">
+                                  {/* Bangla Option */}
+                                  {bnName && (
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => {
+                                        setShippingAddress(prev => ({ ...prev, district: bnName, thana: '' }));
+                                        setDistrictSearch(bnName);
+                                        setThanaSearch('');
+                                        setShowDistrictDropdown(false);
+                                      }}
+                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === bnName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
+                                        }`}
+                                    >
+                                      <span className="font-semibold">{bnName} <span className="text-muted-foreground text-xs font-normal">({enName})</span></span>
+                                      <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
+                                    </button>
+                                  )}
+
+                                  {/* English Option */}
                                   <button
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
-                                      setShippingAddress(prev => ({ ...prev, district: bnName }));
-                                      setDistrictSearch(bnName);
+                                      setShippingAddress(prev => ({ ...prev, district: enName, thana: '' }));
+                                      setDistrictSearch(enName);
+                                      setThanaSearch('');
                                       setShowDistrictDropdown(false);
                                     }}
-                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === bnName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
+                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === enName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
                                       }`}
                                   >
-                                    <span className="font-semibold">{bnName} <span className="text-muted-foreground text-xs font-normal">({enName})</span></span>
+                                    <span className="font-semibold">{enName} {bnName && <span className="text-muted-foreground text-xs font-normal">({bnName})</span>}</span>
                                     <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
                                   </button>
-                                )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      {shippingAddress.district && (
+                        <p className="text-xs sm:text-sm text-primary mt-1 font-bold">✓ {shippingAddress.district} — ৳{shippingCharge} {t('checkout.shipping')}</p>
+                      )}
+                    </div>
 
-                                {/* English Option */}
+                    {/* Thana / Upazila Selector */}
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
+                        {locale === 'bn' ? 'থানা / উপজেলা' : 'Thana / Upazila'} <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3.5 top-3 h-4.5 w-4.5 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          required
+                          placeholder={locale === 'bn' ? 'থানা লিখুন...' : 'Enter thana...'}
+                          value={shippingAddress.thana || thanaSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setThanaSearch(val);
+                            setShippingAddress(prev => ({ ...prev, thana: val }));
+                            if (availableThanas.length > 0) {
+                              setShowThanaDropdown(true);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (availableThanas.length > 0) {
+                              setShowThanaDropdown(true);
+                            }
+                          }}
+                          onBlur={() => setTimeout(() => setShowThanaDropdown(false), 200)}
+                          className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 transition-all min-h-[44px]"
+                        />
+                        {availableThanas.length > 0 && (
+                          <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        )}
+
+                        {showThanaDropdown && availableThanas.length > 0 && (
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40 custom-scrollbar">
+                            {filteredThanas.length > 0 ? (
+                              filteredThanas.map((th, idx) => (
                                 <button
+                                  key={idx}
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => {
-                                    setShippingAddress(prev => ({ ...prev, district: enName }));
-                                    setDistrictSearch(enName);
-                                    setShowDistrictDropdown(false);
+                                    const selectedThana = locale === 'bn' ? th.bn : th.en;
+                                    setShippingAddress(prev => ({ ...prev, thana: selectedThana }));
+                                    setThanaSearch(selectedThana);
+                                    setShowThanaDropdown(false);
                                   }}
-                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === enName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
-                                    }`}
+                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
+                                    shippingAddress.thana === (locale === 'bn' ? th.bn : th.en) ? 'bg-primary/10 text-primary font-bold' : 'text-foreground'
+                                  }`}
                                 >
-                                  <span className="font-semibold">{enName} {bnName && <span className="text-muted-foreground text-xs font-normal">({bnName})</span>}</span>
-                                  <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
+                                  <span className="font-semibold">{th.bn} <span className="text-muted-foreground text-xs font-normal">({th.en})</span></span>
+                                  {shippingAddress.thana === (locale === 'bn' ? th.bn : th.en) && (
+                                    <Check size={14} className="text-primary stroke-[3]" />
+                                  )}
                                 </button>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              ))
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                      {shippingAddress.thana && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-bold">✓ {shippingAddress.thana}</p>
                       )}
                     </div>
-                    {shippingAddress.district && (
-                      <p className="text-xs sm:text-sm text-primary mt-1 font-bold">✓ {shippingAddress.district} — ৳{shippingCharge} {t('checkout.shipping')}</p>
-                    )}
                   </div>
 
+                  {/* Full Delivery Address */}
                   <div>
                     <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90 mb-1">
-                      {t('checkout.fullAddress')}
+                      {t('checkout.fullAddress')} <span className="text-rose-500 font-bold ml-0.5">*</span>
                     </label>
                     <textarea
                       required
@@ -1509,19 +1866,31 @@ export default function CheckoutForm() {
               {/* 2. Order Instructions / Rules Section */}
               <div className="pt-3 border-t border-[var(--border)]">
                 {!requireAdvancePayment ? (
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 space-y-2">
+                  <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 space-y-3 shadow-2xs">
                     <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs sm:text-sm">
-                      <CheckCircle2 size={16} className="shrink-0" />
+                      <CheckCircle2 size={18} className="shrink-0" />
                       <span className="tracking-wide uppercase font-serif">
                         {locale === 'bn' ? 'ক্যাশ অন ডেলিভারি সার্ভিস সচল রয়েছে (Cash on Delivery)' : 'Cash on Delivery Available'}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed font-medium">
+
+                    <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium">
                       {locale === 'bn'
                         ? 'বর্তমানে কোনো অগ্রিম পেমেন্ট ছাড়াই সরাসরি অর্ডার সম্পন্ন করতে পারবেন। ডেলিভারিম্যান থেকে পণ্য বুঝে পেয়ে সম্পূর্ণ মূল্য পরিশোধ করুন।'
                         : 'Place your order without any advance payment! You can pay the full bill upon receiving your order from the delivery agent.'}
                     </p>
-                    <div className="pt-2 border-t border-emerald-500/20 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2">
+
+                    {/* Clean Normal Text Delivery Charge Note */}
+                    <div className="pt-2 border-t border-emerald-500/20 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 flex items-center space-x-2 leading-relaxed">
+                      <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>
+                        {locale === 'bn'
+                          ? 'নোট: ডেলিভারি চার্জ ঢাকার ভেতরে ৬০ টাকা এবং ঢাকার বাইরে ১২০ টাকা।'
+                          : 'Note: Delivery charge is 60 BDT inside Dhaka and 120 BDT outside Dhaka.'}
+                      </span>
+                    </div>
+
+                    <div className="pt-1.5 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2">
                       <Phone className="w-3.5 h-3.5 shrink-0" />
                       <span>{highlightPhoneNumber(prepaymentHelpText)}</span>
                     </div>
@@ -1566,6 +1935,16 @@ export default function CheckoutForm() {
                           {highlightPhoneNumber(prepaymentRule3)}
                         </div>
                       </div>
+
+                      {/* Clean Normal Text Delivery Charge Note inside Advance Payment Box */}
+                      <div className="pt-2 border-t border-[var(--border)] text-xs sm:text-sm font-bold text-[var(--foreground)] flex items-center space-x-2 leading-relaxed">
+                        <Truck className="w-4 h-4 text-[var(--brand)] shrink-0" />
+                        <span>
+                          {locale === 'bn'
+                            ? 'নোট: ডেলিভারি চার্জ ঢাকার ভেতরে ৬০ টাকা এবং ঢাকার বাইরে ১২০ টাকা।'
+                            : 'Note: Delivery charge is 60 BDT inside Dhaka and 120 BDT outside Dhaka.'}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="pt-2 border-t border-[var(--border)] text-xs sm:text-sm font-bold text-[var(--brand)] flex items-center space-x-2">
@@ -1591,26 +1970,21 @@ export default function CheckoutForm() {
                 </label>
 
                 {!requireAdvancePayment ? (
-                  /* Cash on Delivery Only Card when Advance Payment is ৳0 or Disabled by Admin */
-                  <div className="p-3.5 rounded-xl border border-emerald-500/80 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-between shadow-2xs">
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                        <Truck size={17} className="text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs sm:text-sm font-extrabold">
-                          {locale === 'bn' ? 'ক্যাশ অন ডেলিভারি (Cash on Delivery)' : 'Cash on Delivery'}
-                        </p>
-                        <p className="text-xs text-foreground/75 font-medium mt-0.5">
-                          {locale === 'bn'
-                            ? 'অগ্রিম পেমেন্ট: ৳০ (কোনো অগ্রিম দেওয়া লাগবে না)। ডেলিভারিম্যান থেকে পণ্য পেয়ে ফুল বিল পরিশোধ করুন।'
-                            : 'Advance Payment Required: ৳0 (No advance payment required). Pay full bill upon receiving order.'}
-                        </p>
-                      </div>
+                  /* Informative Cash on Delivery Message (No confusing ACTIVE badge or fake selectable card) */
+                  <div className="p-3.5 rounded-xl bg-muted/40 border border-border flex items-start space-x-3 text-xs sm:text-sm">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <Truck size={17} />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-emerald-500 text-white rounded-full shrink-0">
-                      Active
-                    </span>
+                    <div className="space-y-1">
+                      <p className="font-extrabold text-foreground">
+                        {locale === 'bn' ? 'এই মুহূর্তে শুধু ক্যাশ অন ডেলিভারি available' : 'Cash on Delivery is currently available'}
+                      </p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        {locale === 'bn'
+                          ? 'কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। নিশ্চিন্তে অর্ডার সম্পন্ন করুন, ডেলিভারির সময় পণ্য হাতে পেয়ে মূল্য পরিশোধ করবেন।'
+                          : 'No advance payment required. Place your order and pay when your package arrives at your doorstep.'}
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   /* bKash, Nagad & Rocket options when Advance Payment is Required (> ৳0) */
@@ -1680,10 +2054,10 @@ export default function CheckoutForm() {
                 )}
 
                 {requireAdvancePayment && paymentMethod && paymentMethod !== 'COD' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn items-end pt-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn items-start pt-1.5">
                     <div>
                       <label className="block text-xs font-bold text-[var(--foreground)] opacity-90 mb-1">
-                        {t('checkout.senderNumber')} *
+                        {t('checkout.senderNumber')} <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
                       <input
                         type="tel"
@@ -1696,16 +2070,24 @@ export default function CheckoutForm() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-[var(--foreground)] opacity-90 mb-1">
-                        {t('checkout.transactionId')} *
+                        {t('checkout.transactionId')} <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder={t('checkout.transactionIdPlaceholder')}
+                        maxLength={12}
+                        placeholder="যেমন: 9K20PLM910"
                         value={transactionId}
-                        onChange={(e) => setTransactionId(e.target.value)}
+                        onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 uppercase font-mono min-h-[44px]"
                       />
+                      <div className="mt-1 text-[10px] text-muted-foreground">
+                        {transactionId && !/^[A-Z0-9]{8,12}$/.test(transactionId.trim()) ? (
+                          <span className="text-rose-500 font-bold">⚠ {locale === 'bn' ? 'সঠিক ১০ ক্যারেক্টারের আলফানিউমেরিক TrxID দিন' : 'Alphanumeric TrxID required'}</span>
+                        ) : (
+                          <span>{locale === 'bn' ? '১০ ক্যারেক্টার আলফানিউমেরিক TrxID' : '10-char alphanumeric TrxID'}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1729,11 +2111,12 @@ export default function CheckoutForm() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {/* Cart Items List - Compact scrollable container with product thumbnails */}
-                    <div className="max-h-[160px] sm:max-h-[190px] overflow-y-auto divide-y divide-[var(--border)] pr-1.5 text-xs sm:text-sm custom-scrollbar">
+                    {/* Cart Items List - Compact scrollable container with product thumbnails & quantity steppers */}
+                    <div className="max-h-[190px] sm:max-h-[220px] overflow-y-auto divide-y divide-[var(--border)] pr-1.5 text-xs sm:text-sm custom-scrollbar">
                       {items.map((item: any) => {
                         const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
                         const qty = item.quantity || 1;
+                        const maxStock = getItemStock(item);
                         const itemTotal = effectivePrice * qty;
                         const itemImg = item.product?.productImages?.[0] || item.product?.images?.[0] || item.product?.image || item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
 
@@ -1751,10 +2134,10 @@ export default function CheckoutForm() {
                         const specsSummary = attrParts.length > 0 ? `| ${attrParts.join(', ')}` : '';
 
                         return (
-                          <div key={item._id} className="py-2 flex items-center justify-between gap-3">
+                          <div key={item._id} className="py-2.5 flex items-center justify-between gap-3">
                             <div className="flex items-center space-x-3 min-w-0 flex-1">
                               {/* Product Left Thumbnail Image */}
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl border border-border overflow-hidden bg-muted relative shrink-0 shadow-2xs">
+                              <div className="w-12 h-12 rounded-xl border border-border overflow-hidden bg-muted relative shrink-0 shadow-2xs">
                                 <Image
                                   src={itemImg}
                                   alt={item.product?.title || 'Product'}
@@ -1764,27 +2147,71 @@ export default function CheckoutForm() {
                                 />
                               </div>
 
-                              {/* Product Title & Specifications */}
+                              {/* Product Title & Interactive Quantity Stepper */}
                               <div className="min-w-0 flex-1 pr-1">
                                 <p className="font-bold text-[var(--foreground)] truncate text-xs sm:text-sm leading-snug">{item.product?.title || 'Product'}</p>
-                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                  {t('checkout.qty')}: {qty} {specsSummary}
-                                </p>
+                                
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                  {/* Stepper */}
+                                  <div className="inline-flex items-center border border-border rounded-lg bg-muted/40 p-0.5 shadow-2xs">
+                                    <button
+                                      type="button"
+                                      disabled={updatingItemId === item._id || isRemovingCartItem}
+                                      onClick={() => handleQuantityChange(item._id, qty, -1, maxStock)}
+                                      className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition cursor-pointer disabled:opacity-40 active:scale-95"
+                                      title={locale === 'bn' ? 'কমান' : 'Decrease'}
+                                    >
+                                      <Minus size={11} />
+                                    </button>
+                                    <span className="px-2 text-xs font-bold font-mono min-w-[20px] text-center text-foreground">
+                                      {updatingItemId === item._id ? <Loader2 size={11} className="animate-spin inline text-primary" /> : qty}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={updatingItemId === item._id || isRemovingCartItem || qty >= maxStock}
+                                      onClick={() => handleQuantityChange(item._id, qty, 1, maxStock)}
+                                      className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                                      title={qty >= maxStock ? (locale === 'bn' ? 'সর্বোচ্চ স্টক সংখ্যায় পৌঁছেছেন' : 'Max stock reached') : (locale === 'bn' ? 'বাড়ান' : 'Increase')}
+                                    >
+                                      <Plus size={11} />
+                                    </button>
+                                  </div>
+
+                                  {qty >= maxStock && (
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 whitespace-nowrap">
+                                      {locale === 'bn' ? `স্টকে আছে মাত্র ${maxStock} পিস` : `Only ${maxStock} in stock`}
+                                    </span>
+                                  )}
+
+                                  {specsSummary && <span className="text-[10px] text-muted-foreground truncate">{specsSummary}</span>}
+                                </div>
                               </div>
                             </div>
 
-                            {/* Total Item Price */}
-                            <div className="text-right shrink-0">
-                              <div className="flex items-center space-x-1.5 justify-end">
-                                {isSale && (
-                                  <span className="text-[11px] text-gray-400 line-through font-mono">
-                                    ৳{(regularPrice * qty).toLocaleString('en-IN')}
+                            {/* Total Item Price & Remove Button */}
+                            <div className="flex items-center space-x-2 shrink-0">
+                              <div className="text-right">
+                                <div className="flex items-center space-x-1.5 justify-end">
+                                  {isSale && (
+                                    <span className="text-[11px] text-gray-400 line-through font-mono">
+                                      ৳{(regularPrice * qty).toLocaleString('en-IN')}
+                                    </span>
+                                  )}
+                                  <span className="font-extrabold text-[var(--foreground)] shrink-0 text-xs sm:text-sm font-mono">
+                                    ৳{itemTotal.toLocaleString('en-IN')}
                                   </span>
-                                )}
-                                <span className="font-extrabold text-[var(--foreground)] shrink-0 text-xs sm:text-sm font-mono">
-                                  ৳{itemTotal.toLocaleString('en-IN')}
-                                </span>
+                                </div>
                               </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCartItem(item._id)}
+                                disabled={isRemovingCartItem}
+                                className="p-1 sm:p-1.5 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                                title={locale === 'bn' ? 'কার্ট থেকে মুছুন' : 'Remove from cart'}
+                              >
+                                <X size={15} />
+                              </button>
                             </div>
                           </div>
                         );
@@ -1841,7 +2268,7 @@ export default function CheckoutForm() {
                       )}
                     </div>
 
-                    {/* Financial Totals */}
+                    {/* Single Merged Financial Totals (Zero Repetition) */}
                     <div className="border-t border-[var(--border)] pt-3 space-y-2 text-xs sm:text-sm">
                       {productOfferDiscount > 0 && (
                         <div className="flex justify-between text-[var(--foreground)] font-medium opacity-80">
@@ -1858,7 +2285,7 @@ export default function CheckoutForm() {
                       )}
 
                       <div className="flex justify-between text-[var(--foreground)] font-semibold">
-                        <span>{locale === 'bn' ? 'অফার সাবটোটাল (Subtotal)' : 'Subtotal'}</span>
+                        <span>{locale === 'bn' ? 'পণ্যসমূহের মূল্য (Subtotal)' : 'Subtotal'}</span>
                         <span className="font-bold text-[var(--foreground)] font-mono">৳{subTotal.toLocaleString('en-IN')}</span>
                       </div>
 
@@ -1879,69 +2306,47 @@ export default function CheckoutForm() {
                         </div>
                       )}
 
-                      <div className="border-t border-b border-[var(--border)] py-2 my-1 flex justify-between items-center text-[var(--foreground)] font-black text-sm sm:text-base">
-                        <span>{t('checkout.totalPayable')}</span>
-                        <span className="text-base sm:text-lg font-black font-mono text-[var(--foreground)]">৳{totalAmount.toLocaleString()}</span>
-                      </div>
+                      {/* Single Unified Prominent Payment Banner */}
+                      {requireAdvancePayment && activeAdvanceAmount > 0 ? (
+                        <div className="mt-3 pt-2.5 border-t border-[var(--border)] space-y-2">
+                          <div className="flex justify-between items-center text-sm font-bold text-foreground">
+                            <span>{locale === 'bn' ? 'মোট বিল (Total Amount):' : 'Total Amount:'}</span>
+                            <span className="font-mono text-base font-black">৳{totalAmount.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="p-3 bg-[var(--brand)]/10 border border-[var(--brand)]/20 rounded-xl space-y-1.5">
+                            <div className="flex justify-between items-center text-xs font-bold text-[var(--brand)]">
+                              <span>{locale === 'bn' ? '১. এখন অগ্রিম দেবেন (bKash/Nagad):' : '1. Advance Payment Now:'}</span>
+                              <span className="font-mono font-black">৳{activeAdvanceAmount.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs sm:text-sm font-black text-foreground pt-1 border-t border-[var(--brand)]/20">
+                              <span>{locale === 'bn' ? '২. ডেলিভারিতে বাকি ক্যাশ (COD):' : '2. Due on Delivery (COD):'}</span>
+                              <span className="font-mono text-base font-black text-rose-600 dark:text-rose-400">
+                                ৳{Math.max(0, totalAmount - activeAdvanceAmount).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 pt-2.5 border-t border-[var(--border)]">
+                          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                            <div>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                                {locale === 'bn' ? 'ক্যাশ অন ডেলিভারি (মোট প্রদেয়)' : 'Cash on Delivery (Total Due)'}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                                {locale === 'bn' ? 'পণ্য হাতে পেয়ে ডেলিভারিম্যানকে পরিশোধ করবেন' : 'Pay when you receive the product'}
+                              </p>
+                            </div>
+                            <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono shrink-0">
+                              ৳{totalAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Dynamic Payment Breakdown Box (Advance vs Remaining COD) */}
-              {requireAdvancePayment && activeAdvanceAmount > 0 ? (
-                <div className="bg-[var(--brand)]/5 border border-[var(--brand)]/20 rounded-xl p-3 sm:p-3.5 space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-border/40 pb-1.5">
-                    <span>{locale === 'bn' ? 'পণ্যের মোট মূল্য:' : 'Product Subtotal:'}</span>
-                    <span className="font-mono font-bold text-foreground">৳{subTotal.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-border/40 pb-1.5">
-                    <span>{locale === 'bn' ? 'ডেলিভারি চার্জ:' : 'Delivery Fee:'}</span>
-                    <span className="font-mono font-bold text-foreground">+৳{shippingCharge.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 pt-0.5">
-                    <span className="flex items-center space-x-1.5">
-                      <Sparkles size={14} className="shrink-0" />
-                      <span>{locale === 'bn' ? '১. এখন বিকাশ/নগদ/রকেটে অগ্রিম দেবেন:' : '1. Advance Payment Now:'}</span>
-                    </span>
-                    <span className="font-mono font-extrabold text-sm">৳{activeAdvanceAmount.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div className="border-t border-[var(--brand)]/15 pt-2 flex justify-between items-center font-black text-[var(--brand)] gap-2">
-                    <span className="flex items-center space-x-1.5 min-w-0">
-                      <Truck size={15} className="shrink-0" />
-                      <span className="text-xs sm:text-sm font-extrabold truncate">
-                        {locale === 'bn' ? '২. ডেলিভারিতে বাকি ক্যাশ:' : '2. Due on Delivery:'}
-                      </span>
-                    </span>
-                    <span className="font-mono text-base font-black shrink-0">
-                      ৳{Math.max(0, totalAmount - activeAdvanceAmount).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 sm:p-3.5 space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-emerald-500/20 pb-1.5">
-                    <span>{locale === 'bn' ? 'পণ্যের মোট মূল্য:' : 'Product Price:'}</span>
-                    <span className="font-mono font-bold text-foreground">৳{subTotal.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-muted-foreground text-[11px] font-medium border-b border-emerald-500/20 pb-1.5">
-                    <span>{locale === 'bn' ? 'ডেলিভারি চার্জ:' : 'Delivery Charge:'}</span>
-                    <span className="font-mono font-bold text-foreground">+৳{shippingCharge.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center font-black text-emerald-600 dark:text-emerald-400 pt-0.5 gap-2">
-                    <span className="flex items-center space-x-1.5 min-w-0">
-                      <Truck size={16} className="shrink-0" />
-                      <span className="text-xs sm:text-sm font-extrabold truncate">
-                        {locale === 'bn' ? 'ডেলিভারিতে ক্যাশ দেবেন (COD):' : 'Cash on Delivery (COD):'}
-                      </span>
-                    </span>
-                    <span className="font-mono text-base sm:text-lg font-black shrink-0">৳{totalAmount.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              )}
 
               {/* Embedded Confirm Order Button (Desktop Only to prevent duplicate button on mobile) */}
               <div className="pt-1.5 hidden md:block">

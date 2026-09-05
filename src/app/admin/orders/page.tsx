@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Image from '@/components/SafeImage';
+import { parseAndFormatOrderAddress, formatOrderDisplayAddress } from '@/utils/orderAddress';
 
 const STATUS_TABS = ['All', 'Pending', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 const ORDER_STEPS = ['Pending', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Delivered'];
@@ -123,7 +124,7 @@ export default function AdminOrdersPage() {
 
     const recipientName = order.shippingAddress?.recipientName || order.customer?.name || 'Guest Customer';
     const recipientPhone = order.shippingAddress?.recipientPhone || order.customer?.phone || 'N/A';
-    const address = `${order.shippingAddress?.addressLine || ''}, ${order.shippingAddress?.district || ''}`;
+    const address = formatOrderDisplayAddress(order.shippingAddress);
     const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : '';
 
     const itemsHtml = (order.items || []).map((item: any, idx: number) => {
@@ -292,7 +293,7 @@ export default function AdminOrdersPage() {
         escapeCsvCell(order.orderId),
         escapeCsvCell(order.shippingAddress?.recipientName || order.customer?.name || 'Guest'),
         escapeCsvCell(order.shippingAddress?.recipientPhone || 'N/A'),
-        escapeCsvCell(`${order.shippingAddress?.addressLine || ''}, ${order.shippingAddress?.district || ''}`),
+        escapeCsvCell(formatOrderDisplayAddress(order.shippingAddress)),
         escapeCsvCell(new Date(order.createdAt).toLocaleDateString()),
         escapeCsvCell(itemsSummary),
         escapeCsvCell(order.totalAmount),
@@ -689,7 +690,7 @@ export default function AdminOrdersPage() {
 
                   <div className="flex items-start space-x-1 text-[11px] text-muted-foreground pt-0.5">
                     <MapPin size={12} className="text-muted-foreground shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{addressLine}{district ? `, ${district}` : ''}</span>
+                    <span className="line-clamp-2">{formatOrderDisplayAddress(order.shippingAddress)}</span>
                   </div>
 
                   {order.deliveryNotes && (
@@ -865,11 +866,20 @@ export default function AdminOrdersPage() {
 
                       {/* Customer info */}
                       <td className="py-3.5 px-4">
-                        <div className="flex flex-col max-w-[180px]">
-                          <span className="font-bold text-foreground text-xs truncate">{recipientName}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono truncate">{recipientPhone}</span>
-                          {district && <span className="text-[10px] text-muted-foreground truncate">{district}</span>}
-                        </div>
+                        {(() => {
+                          const parsed = parseAndFormatOrderAddress(order.shippingAddress);
+                          return (
+                            <div className="flex flex-col max-w-[180px]">
+                              <span className="font-bold text-foreground text-xs truncate">{recipientName}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono truncate">{recipientPhone}</span>
+                              {parsed.district && (
+                                <span className="text-[10px] text-muted-foreground truncate">
+                                  {parsed.thana ? `${parsed.thana}, ${parsed.district}` : parsed.district}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Ordered Items & Prominent Sizes */}
@@ -1128,21 +1138,28 @@ export default function AdminOrdersPage() {
                     </div>
                   )}
 
-                  <div className="flex items-start justify-between gap-1">
-                    <div>
-                      <span className="text-muted-foreground text-[10px] block">Delivery Address:</span>
-                      <span className="font-medium text-foreground text-xs">
-                        {selectedOrder.shippingAddress?.addressLine}, <strong className="text-primary">{selectedOrder.shippingAddress?.district}</strong>
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => copyToClipboard(`${selectedOrder.shippingAddress?.addressLine || ''}, ${selectedOrder.shippingAddress?.district || ''}`, 'Address')}
-                      className="p-1 text-muted-foreground hover:text-primary transition cursor-pointer shrink-0 mt-2"
-                      title="Copy Address"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
+                  {(() => {
+                    const parsed = parseAndFormatOrderAddress(selectedOrder.shippingAddress);
+                    return (
+                      <div className="flex items-start justify-between gap-1">
+                        <div>
+                          <span className="text-muted-foreground text-[10px] block">Delivery Address:</span>
+                          <span className="font-medium text-foreground text-xs">
+                            {parsed.street ? `${parsed.street}, ` : ''}
+                            {parsed.thana ? `${parsed.thana}, ` : ''}
+                            <strong className="text-primary">{parsed.district}</strong>
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => copyToClipboard(parsed.fullText, 'Address')}
+                          className="p-1 text-muted-foreground hover:text-primary transition cursor-pointer shrink-0 mt-2"
+                          title="Copy Address"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {selectedOrder.deliveryNotes && (
                     <div className="pt-1">
