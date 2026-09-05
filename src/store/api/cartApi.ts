@@ -20,6 +20,29 @@ export const cartApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body: { quantity },
       }),
+      async onQueryStarted({ itemId, quantity }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          cartApi.util.updateQueryData('getCart', undefined, (draft: any) => {
+            const cart = draft?.data?.cart || draft?.cart || draft?.data || draft;
+            if (cart?.items && Array.isArray(cart.items)) {
+              const targetId = String(itemId);
+              const item = cart.items.find((i: any) => 
+                String(i._id) === targetId || 
+                String(i.product?._id) === targetId || 
+                String(i.product) === targetId
+              );
+              if (item) {
+                item.quantity = quantity;
+              }
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: ['Cart'],
     }),
     removeFromCart: builder.mutation({

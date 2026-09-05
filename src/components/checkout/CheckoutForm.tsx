@@ -154,6 +154,9 @@ export default function CheckoutForm() {
   }, [requireAdvancePayment, locale]);
 
   const [guestCartItems, setGuestCartItems] = useState<any[]>([]);
+  const [optimisticQuantities, setOptimisticQuantities] = useState<Record<string, number>>({});
+  const debounceTimersRef = React.useRef<Record<string, NodeJS.Timeout>>({});
+  const pendingUpdatesRef = React.useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -170,18 +173,19 @@ export default function CheckoutForm() {
     const rawItems = isAuthenticated ? (cartData?.items || []) : guestCartItems;
     if (!rawItems.length) return [];
 
-    // Dynamically sync cart items with fresh MongoDB product prices if available
+    // Dynamically sync cart items with fresh MongoDB product prices and apply instant optimistic quantity
     return rawItems
       .map((item: any) => {
         const prodId = typeof item.product === 'object' ? (item.product?._id || item.product?.id) : item.product;
         const dbProd = Array.isArray(dbProductsList) ? dbProductsList.find((p: any) => String(p._id || p.id) === String(prodId)) : null;
-        if (dbProd) {
-          return {
-            ...item,
-            product: dbProd
-          };
-        }
-        return item;
+        const targetKey = item._id ? String(item._id) : String(prodId);
+        const overrideQty = optimisticQuantities[targetKey] ?? (prodId ? optimisticQuantities[String(prodId)] : undefined);
+
+        return {
+          ...item,
+          product: dbProd || item.product,
+          quantity: overrideQty !== undefined ? overrideQty : (item.quantity || 1)
+        };
       })
       .filter((item: any) => {
         const p = item?.product;
@@ -192,7 +196,7 @@ export default function CheckoutForm() {
         }
         return true;
       });
-  }, [isAuthenticated, cartData, guestCartItems, dbProductsList]);
+  }, [isAuthenticated, cartData, guestCartItems, dbProductsList, optimisticQuantities]);
 
   const districtsList = useMemo(() => districtsResponse?.data || districtsResponse || [], [districtsResponse]);
   const [placeOrder, { isLoading: isPlacing }] = useCheckoutMutation();
@@ -202,6 +206,17 @@ export default function CheckoutForm() {
   const dispatch = useAppDispatch();
 
   const handleRemoveCartItem = async (itemId: string) => {
+    const targetKey = String(itemId);
+    setOptimisticQuantities(prev => {
+      const next = { ...prev };
+      delete next[targetKey];
+      return next;
+    });
+    delete pendingUpdatesRef.current[itemId];
+    if (debounceTimersRef.current[itemId]) {
+      clearTimeout(debounceTimersRef.current[itemId]);
+    }
+
     if (!isAuthenticated) {
       removeFromGuestCart(itemId);
       setGuestCartItems(getGuestCart());
@@ -241,67 +256,48 @@ export default function CheckoutForm() {
   const [updateQuantity, { isLoading: isUpdatingQuantity }] = useUpdateCartQuantityMutation();
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
 
-  const getItemStock = (item: any): number => {
-    const product = typeof item?.product === 'object' ? item.product : null;
-    if (!product) return 99;
-
-    const selColor = item?.color || item?.selectedColor;
-    const selSize = item?.size || item?.selectedSize;
-    const selAttrs = item?.selectedAttributes
-      ? (item.selectedAttributes instanceof Map ? Object.fromEntries(item.selectedAttributes) : item.selectedAttributes)
-      : undefined;
-
-    if (Array.isArray(product?.variants) && product.variants.length > 0) {
-      const targetAttrs: Record<string, string> = { ...(selAttrs || {}) };
-      if (selColor && !targetAttrs['Color']) targetAttrs['Color'] = selColor;
-      if (selSize && !targetAttrs['Size']) targetAttrs['Size'] = selSize;
-
-      const matchedVariant = product.variants.find((v: any) => {
-        const vAttrs = v.attributes ? (v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes) : {};
-        const vColor = v.color || vAttrs['Color'] || vAttrs['color'];
-        const vSize = v.size || vAttrs['Size'] || vAttrs['size'];
-        const colorMatch = !selColor || vColor === selColor;
-        const sizeMatch = !selSize || vSize === selSize;
-        return colorMatch && sizeMatch;
-      });
-
-      if (matchedVariant && typeof matchedVariant.stockQuantity === 'number') {
-        return Math.max(0, matchedVariant.stockQuantity);
-      }
-    }
-
-    if (typeof product.stockQuantity === 'number') {
-      return Math.max(0, product.stockQuantity);
-    }
-
-    return 99;
-  };
-
-  const handleQuantityChange = async (itemId: string, currentQty: number, change: number, maxStock: number) => {
-    const newQty = currentQty + change;
-    if (newQty < 1) {
-      handleRemoveCartItem(itemId);
+  const handleQuantityChange = (itemId: string, currentQty: number, change: number) => {
+    const targetKey = String(itemId);
+    const effectiveCurrentQty = optimisticQuantities[targetKey] ?? currentQty;
+    const newQty = effectiveCurrentQty + change;
+    // Minimum 1: cannot decrease below 1, never delete item on minus
+    if (newQty < 1) return;
+    if (newQty > 99) {
+      toast.warning(locale === 'bn' ? 'একসাথে সর্বোচ্চ ৯৯ টি অর্ডার করা যাবে' : 'Maximum order quantity is 99');
       return;
     }
-    if (change > 0 && newQty > maxStock) {
-      toast.warning(locale === 'bn' ? `স্টকে আছে মাত্র ${maxStock} পিস!` : `Only ${maxStock} items available in stock!`);
-      return;
-    }
-    setUpdatingItemId(itemId);
+
+    // 1. Instant 0ms local state update (UI updates on the exact click frame)
+    setOptimisticQuantities(prev => ({ ...prev, [targetKey]: newQty }));
+
+    // 2. If guest user, persist to localStorage immediately
     if (!isAuthenticated) {
       updateGuestCartQuantity(itemId, newQty);
       setGuestCartItems(getGuestCart());
-      setUpdatingItemId(null);
       return;
     }
-    try {
-      await updateQuantity({ itemId, quantity: newQty }).unwrap();
-    } catch (err) {
-      console.error('Failed to update quantity:', err);
-      toast.error(locale === 'bn' ? 'পরিমাণ পরিবর্তন করতে ব্যর্থ হয়েছে' : 'Failed to update quantity');
-    } finally {
-      setUpdatingItemId(null);
+
+    // 3. If authenticated user, debounce backend sync to allow rapid clicking
+    pendingUpdatesRef.current[itemId] = newQty;
+    if (debounceTimersRef.current[itemId]) {
+      clearTimeout(debounceTimersRef.current[itemId]);
     }
+
+    debounceTimersRef.current[itemId] = setTimeout(async () => {
+      try {
+        await updateQuantity({ itemId, quantity: newQty }).unwrap();
+        delete pendingUpdatesRef.current[itemId];
+      } catch (err) {
+        console.error('Failed to update quantity:', err);
+        toast.error(locale === 'bn' ? 'পরিমাণ পরিবর্তন করতে ব্যর্থ হয়েছে' : 'Failed to update quantity');
+        setOptimisticQuantities(prev => {
+          const next = { ...prev };
+          delete next[targetKey];
+          return next;
+        });
+        delete pendingUpdatesRef.current[itemId];
+      }
+    }, 250);
   };
 
   const filteredDistricts = useMemo(() => {
@@ -340,6 +336,57 @@ export default function CheckoutForm() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentSenderNumber, setPaymentSenderNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
+
+  // Step 2 (ডেলিভারি তথ্য) completion condition:
+  // 1. প্রাপকের নাম (Recipient Name >= 2 chars)
+  // 2. মোবাইল নম্বর (11-digit Bangladeshi mobile number e.g. 01XXXXXXXXX)
+  // 3. জেলা (District selected or typed >= 2 chars)
+  // 4. থানা / উপজেলা (Thana selected or typed >= 2 chars)
+  // 5. পুরো ডেলিভারি ঠিকানা (Detailed address >= 3 chars)
+  const isStep2Complete = useMemo(() => {
+    const name = (shippingAddress.recipientName || '').trim();
+
+    // Normalize Bengali numerals (০-৯) to standard digits (0-9)
+    const bnToEnMap: Record<string, string> = {
+      '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+      '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+    };
+    const cleanPhone = (shippingAddress.recipientPhone || '')
+      .replace(/[০-৯]/g, (d) => bnToEnMap[d] || d)
+      .replace(/[\s\-]/g, '');
+    const isPhoneValid = Boolean(cleanPhone && /^(?:\+8801|8801|01)[3-9]\d{8}$/.test(cleanPhone));
+
+    const district = (shippingAddress.district || districtSearch || '').trim();
+    const thana = (shippingAddress.thana || thanaSearch || '').trim();
+    const address = (shippingAddress.addressLine || '').trim();
+
+    return Boolean(
+      name.length >= 2 &&
+      isPhoneValid &&
+      district.length >= 2 &&
+      thana.length >= 2 &&
+      address.length >= 3
+    );
+  }, [
+    shippingAddress.recipientName,
+    shippingAddress.recipientPhone,
+    shippingAddress.district,
+    districtSearch,
+    shippingAddress.thana,
+    thanaSearch,
+    shippingAddress.addressLine
+  ]);
+
+  const isStep3Complete = useMemo(() => {
+    if (!requireAdvancePayment) return false;
+    const cleanTrx = (transactionId || '').trim().toUpperCase();
+    return Boolean(
+      paymentMethod &&
+      paymentMethod !== 'COD' &&
+      paymentSenderNumber.trim().length >= 11 &&
+      cleanTrx.length >= 8
+    );
+  }, [requireAdvancePayment, paymentMethod, paymentSenderNumber, transactionId]);
 
   useEffect(() => {
     if (!requireAdvancePayment) {
@@ -712,6 +759,20 @@ export default function CheckoutForm() {
       const fbc = getFbc();
 
       if (isAuthenticated) {
+        // Flush any pending debounced quantity updates before submitting order
+        const pendingEntries = Object.entries(pendingUpdatesRef.current);
+        if (pendingEntries.length > 0) {
+          Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
+          try {
+            await Promise.all(
+              pendingEntries.map(([iId, q]) => updateQuantity({ itemId: iId, quantity: q }).unwrap())
+            );
+            pendingUpdatesRef.current = {};
+          } catch (e) {
+            console.error('Failed to sync pending cart quantities before order:', e);
+          }
+        }
+
         const payload = {
           shippingAddress: {
             recipientName: shippingAddress.recipientName.trim(),
@@ -1552,8 +1613,18 @@ export default function CheckoutForm() {
       <div className="w-full bg-card border border-border rounded-2xl p-3 sm:p-4 mb-4 sm:mb-5 shadow-2xs">
         <div className={`grid ${requireAdvancePayment ? 'grid-cols-4 max-w-2xl' : 'grid-cols-3 max-w-xl'} mx-auto`}>
           {checkoutSteps.map((step, idx, arr) => {
-            const isCompleted = step.id === 1;
-            const isCurrent = step.id === 2 || (requireAdvancePayment && step.id === 3);
+            const isCompleted =
+              step.id === 1 ||
+              (step.id === 2 && isStep2Complete) ||
+              (requireAdvancePayment && step.id === 3 && isStep3Complete);
+
+            const isCurrent =
+              !isCompleted &&
+              ((!isStep2Complete && step.id === 2) ||
+                (isStep2Complete && !requireAdvancePayment && step.id === 3) ||
+                (isStep2Complete && requireAdvancePayment && !isStep3Complete && step.id === 3) ||
+                (isStep2Complete && requireAdvancePayment && isStep3Complete && step.id === 4));
+
             const Icon = step.icon;
 
             return (
@@ -1561,8 +1632,18 @@ export default function CheckoutForm() {
                 {/* Connector line to previous step (never extends before step 1) */}
                 {idx > 0 && (
                   <div
-                    className={`absolute top-4 sm:top-4.5 right-1/2 left-0 h-0.5 -translate-y-1/2 ${
-                      idx === 1 ? 'bg-emerald-500' : (requireAdvancePayment && idx === 2) ? 'bg-primary/50' : 'bg-border'
+                    className={`absolute top-4 sm:top-4.5 right-1/2 left-0 h-0.5 -translate-y-1/2 transition-colors duration-300 ${
+                      idx === 1
+                        ? 'bg-emerald-500'
+                        : idx === 2
+                        ? isStep2Complete
+                          ? 'bg-emerald-500'
+                          : 'bg-border'
+                        : idx === 3 && requireAdvancePayment
+                        ? isStep3Complete
+                          ? 'bg-emerald-500'
+                          : 'bg-border'
+                        : 'bg-border'
                     }`}
                   />
                 )}
@@ -1570,8 +1651,18 @@ export default function CheckoutForm() {
                 {/* Connector line to next step (never extends after last step) */}
                 {idx < arr.length - 1 && (
                   <div
-                    className={`absolute top-4 sm:top-4.5 left-1/2 right-0 h-0.5 -translate-y-1/2 ${
-                      idx === 0 ? 'bg-emerald-500' : (requireAdvancePayment && idx === 1) ? 'bg-primary/50' : 'bg-border'
+                    className={`absolute top-4 sm:top-4.5 left-1/2 right-0 h-0.5 -translate-y-1/2 transition-colors duration-300 ${
+                      idx === 0
+                        ? 'bg-emerald-500'
+                        : idx === 1
+                        ? isStep2Complete
+                          ? 'bg-emerald-500'
+                          : 'bg-border'
+                        : idx === 2 && requireAdvancePayment
+                        ? isStep3Complete
+                          ? 'bg-emerald-500'
+                          : 'bg-border'
+                        : 'bg-border'
                     }`}
                   />
                 )}
@@ -1586,31 +1677,45 @@ export default function CheckoutForm() {
                     <Check size={16} className="stroke-[3]" />
                   </Link>
                 ) : (
-                  <div
-                    className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (step.id === 2) {
+                        document.getElementById('shipping-info-section')?.scrollIntoView({ behavior: 'smooth' });
+                      } else if (step.id === 3 && requireAdvancePayment) {
+                        document.getElementById('advance-payment-section')?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all cursor-pointer ${
                       isCompleted
-                        ? 'bg-emerald-500 text-white shadow-sm'
+                        ? 'bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-500/20'
                         : isCurrent
                         ? 'bg-primary text-white ring-4 ring-primary/20 shadow-sm'
                         : 'bg-muted text-muted-foreground border border-border'
                     }`}
                   >
                     {isCompleted ? <Check size={16} className="stroke-[3]" /> : <Icon size={15} />}
-                  </div>
+                  </button>
                 )}
 
                 <span
-                  className={`text-[11px] sm:text-xs font-bold mt-1.5 px-1 truncate max-w-full ${
-                    isCurrent
+                  className={`text-[11px] sm:text-xs font-bold mt-1.5 px-1 truncate max-w-full transition-colors ${
+                    isCompleted
+                      ? 'text-emerald-600 dark:text-emerald-400 font-extrabold'
+                      : isCurrent
                       ? 'text-primary'
-                      : isCompleted
-                      ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-muted-foreground'
                   }`}
                 >
                   {step.label}
                 </span>
-                <span className="text-[10px] text-muted-foreground hidden sm:block font-medium px-1 truncate max-w-full">
+                <span
+                  className={`text-[10px] hidden sm:block font-medium px-1 truncate max-w-full transition-colors ${
+                    isCompleted
+                      ? 'text-emerald-600/90 dark:text-emerald-400/90 font-semibold'
+                      : 'text-muted-foreground'
+                  }`}
+                >
                   {step.sub}
                 </span>
               </div>
@@ -1626,10 +1731,18 @@ export default function CheckoutForm() {
             <div className="bg-[var(--card)] text-[var(--foreground)] p-4 sm:p-5 rounded-2xl border border-[var(--border)] shadow-md space-y-4">
 
               {/* 1. Shipping Information Section */}
-              <div className="space-y-3">
-                <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)] mb-2.5 flex items-center space-x-2 border-b border-[var(--border)] pb-2">
-                  <MapPin size={18} className="text-[var(--brand)]" />
-                  <span>{t('checkout.shippingInfo')}</span>
+              <div className="space-y-3" id="shipping-info-section">
+                <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)] mb-2.5 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                  <div className="flex items-center space-x-2">
+                    <MapPin size={18} className={isStep2Complete ? "text-emerald-500" : "text-[var(--brand)]"} />
+                    <span>{t('checkout.shippingInfo')}</span>
+                  </div>
+                  {isStep2Complete && (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full animate-in fade-in zoom-in duration-200">
+                      <Check size={12} className="stroke-[3]" />
+                      <span>{locale === 'bn' ? '✓ সম্পন্ন' : '✓ Completed'}</span>
+                    </span>
+                  )}
                 </h2>
 
                 <div className="space-y-3">
@@ -1962,7 +2075,7 @@ export default function CheckoutForm() {
             <div className="bg-[var(--card)] text-[var(--foreground)] p-4 sm:p-5 rounded-2xl border border-[var(--border)] shadow-md space-y-3.5">
 
               {/* 1. Payment Method Selection Section */}
-              <div className="space-y-2.5 border-b border-[var(--border)] pb-3">
+              <div id="advance-payment-section" className="space-y-2.5 border-b border-[var(--border)] pb-3">
                 <label className="block text-xs sm:text-sm font-bold text-[var(--foreground)] opacity-90">
                   {requireAdvancePayment
                     ? (locale === 'bn' ? 'আপনি কোন মাধ্যমে টাকা পাঠিয়েছেন সেটি সিলেক্ট করুন *' : 'Select the payment method you used *')
@@ -2116,7 +2229,6 @@ export default function CheckoutForm() {
                       {items.map((item: any) => {
                         const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
                         const qty = item.quantity || 1;
-                        const maxStock = getItemStock(item);
                         const itemTotal = effectivePrice * qty;
                         const itemImg = item.product?.productImages?.[0] || item.product?.images?.[0] || item.product?.image || item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
 
@@ -2156,32 +2268,26 @@ export default function CheckoutForm() {
                                   <div className="inline-flex items-center border border-border rounded-lg bg-muted/40 p-0.5 shadow-2xs">
                                     <button
                                       type="button"
-                                      disabled={updatingItemId === item._id || isRemovingCartItem}
-                                      onClick={() => handleQuantityChange(item._id, qty, -1, maxStock)}
-                                      className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition cursor-pointer disabled:opacity-40 active:scale-95"
+                                      disabled={qty <= 1 || isRemovingCartItem}
+                                      onClick={() => handleQuantityChange(item._id, qty, -1)}
+                                      className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
                                       title={locale === 'bn' ? 'কমান' : 'Decrease'}
                                     >
                                       <Minus size={11} />
                                     </button>
-                                    <span className="px-2 text-xs font-bold font-mono min-w-[20px] text-center text-foreground">
-                                      {updatingItemId === item._id ? <Loader2 size={11} className="animate-spin inline text-primary" /> : qty}
+                                    <span className="px-2 text-xs font-bold font-mono min-w-[20px] text-center text-foreground select-none">
+                                      {qty}
                                     </span>
                                     <button
                                       type="button"
-                                      disabled={updatingItemId === item._id || isRemovingCartItem || qty >= maxStock}
-                                      onClick={() => handleQuantityChange(item._id, qty, 1, maxStock)}
+                                      disabled={qty >= 99 || isRemovingCartItem}
+                                      onClick={() => handleQuantityChange(item._id, qty, 1)}
                                       className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-                                      title={qty >= maxStock ? (locale === 'bn' ? 'সর্বোচ্চ স্টক সংখ্যায় পৌঁছেছেন' : 'Max stock reached') : (locale === 'bn' ? 'বাড়ান' : 'Increase')}
+                                      title={locale === 'bn' ? 'বাড়ান' : 'Increase'}
                                     >
                                       <Plus size={11} />
                                     </button>
                                   </div>
-
-                                  {qty >= maxStock && (
-                                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 whitespace-nowrap">
-                                      {locale === 'bn' ? `স্টকে আছে মাত্র ${maxStock} পিস` : `Only ${maxStock} in stock`}
-                                    </span>
-                                  )}
 
                                   {specsSummary && <span className="text-[10px] text-muted-foreground truncate">{specsSummary}</span>}
                                 </div>
