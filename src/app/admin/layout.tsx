@@ -47,7 +47,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sliders,
-  BookOpen
+  BookOpen,
+  UserCheck
 } from 'lucide-react';
 import Image from '@/components/SafeImage';
 
@@ -72,6 +73,7 @@ const allSidebarSections = [
   {
     title: 'CUSTOMERS & COMMUNITY',
     links: [
+      { label: 'Leads (Recovery)', href: '/admin/leads', icon: UserCheck, minRole: 2 },
       { label: 'Customers', href: '/admin/customers', icon: Users, minRole: 3 },
       { label: 'Reviews', href: '/admin/reviews', icon: Star, minRole: 2 },
     ]
@@ -365,7 +367,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="text-[10px] text-center text-muted-foreground/80 font-medium py-0.5">
               Developed by{' '}
               <a
-                href="https://www.linkedin.com/in/shipon-chowdhury/"
+                href="https://shipon-chowdhury.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-bold text-primary hover:underline transition-all"

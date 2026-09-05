@@ -376,7 +376,7 @@ export default function Footer() {
             <p className="text-xs text-zinc-400 font-medium">
               Developed by{' '}
               <a
-                href="https://www.linkedin.com/in/shipon-chowdhury/"
+                href="https://shipon-chowdhury.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-bold hover:underline transition-all"

@@ -9,8 +9,14 @@ const getDynamicBaseUrl = () => {
   if (url.includes('charulata-backend.onrender.com')) {
     url = url.replace('charulata-backend.onrender.com', 'charulata-database.onrender.com');
   }
-  if (typeof window !== 'undefined' && url.includes('localhost')) {
-    url = url.replace('localhost', window.location.hostname);
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `http://${hostname}:5000/api/v1`;
+    }
+    if (url.includes('localhost')) {
+      url = url.replace('localhost', hostname);
+    }
   }
   return url;
 };
@@ -70,7 +76,7 @@ const baseQueryWithReauth: BaseQueryFn<
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['User', 'Cart', 'Order', 'Product', 'Coupon', 'Analytics', 'Address', 'Wishlist', 'Notification', 'Review', 'Banner', 'Role', 'Delivery', 'Subscriber', 'Contact', 'Landing', 'Settings', 'Campaign', 'Attribute', 'Blog'],
+  tagTypes: ['User', 'Cart', 'Order', 'Product', 'Coupon', 'Analytics', 'Address', 'Wishlist', 'Notification', 'Review', 'Banner', 'Role', 'Delivery', 'Subscriber', 'Contact', 'Landing', 'Settings', 'Campaign', 'Attribute', 'Blog', 'Lead'],
   endpoints: () => ({}),
 });
 

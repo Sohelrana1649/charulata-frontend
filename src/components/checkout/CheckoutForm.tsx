@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCheckoutMutation, useGuestCheckoutMutation, useValidateCouponMutation } from '@/store/api/orderApi';
+import { useSaveLeadMutation } from '@/store/api/leadApi';
 import { useGetCartQuery, useRemoveFromCartMutation, useUpdateCartQuantityMutation } from '@/store/api/cartApi';
 import { useGetDistrictsQuery, useCompleteProfileMutation } from '@/store/api/userApi';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -662,6 +663,82 @@ export default function CheckoutForm() {
   // coupon discount logic
   const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const totalAmount = subTotal + shippingCharge - discount;
+
+  // Lead capture (Abandoned Cart Recovery) with 800ms debounce
+  const [saveLead] = useSaveLeadMutation();
+  const lastSavedLeadRef = React.useRef<{ name?: string; phone?: string; cartCount?: number; cartTotal?: number }>({});
+
+  useEffect(() => {
+    const rawPhone = (shippingAddress.recipientPhone || '').trim();
+    const bnToEnMap: Record<string, string> = {
+      '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+      '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+    };
+    const cleanPhone = rawPhone
+      .replace(/[০-৯]/g, (d) => bnToEnMap[d] || d)
+      .replace(/[\s\-]/g, '');
+
+    // Validate phone number format (standard 11-digit BD mobile)
+    const isValidPhone = /^(?:\+8801|8801|01)[3-9]\d{8}$/.test(cleanPhone);
+    if (!isValidPhone) return;
+
+    const trimmedName = (shippingAddress.recipientName || '').trim();
+    const cartSnapshot = items.map((it: any) => {
+      const rawProdId = it.product?._id || it.product || it._id;
+      const prodId = rawProdId ? String(rawProdId) : undefined;
+      const img = it.image || it.product?.productImages?.[0] || it.productImages?.[0];
+      return {
+        productId: prodId && prodId.length === 24 ? prodId : undefined,
+        name: it.title || it.product?.title || it.name || 'Product',
+        quantity: Number(it.quantity) || 1,
+        price: Number(it.price || it.salePrice || 0),
+        image: typeof img === 'string' ? img : undefined,
+        selectedColor: it.selectedColor ? String(it.selectedColor) : undefined,
+        selectedSize: it.selectedSize ? String(it.selectedSize) : undefined
+      };
+    });
+    const cartTotal = subTotal || 0;
+
+    // Avoid duplicate network call if phone, name, and cart state are unchanged
+    const lastSaved = lastSavedLeadRef.current;
+    if (
+      lastSaved.phone === cleanPhone &&
+      lastSaved.name === trimmedName &&
+      lastSaved.cartCount === cartSnapshot.length &&
+      lastSaved.cartTotal === cartTotal
+    ) {
+      return;
+    }
+
+    // 800ms debounce after user pauses typing
+    const timer = setTimeout(async () => {
+      try {
+        await saveLead({
+          name: trimmedName,
+          phone: cleanPhone,
+          cartSnapshot,
+          cartTotal
+        }).unwrap();
+
+        lastSavedLeadRef.current = {
+          name: trimmedName,
+          phone: cleanPhone,
+          cartCount: cartSnapshot.length,
+          cartTotal
+        };
+      } catch (err) {
+        console.error('[Lead Capture Error]:', err);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [
+    shippingAddress.recipientPhone,
+    shippingAddress.recipientName,
+    items,
+    subTotal,
+    saveLead
+  ]);
 
   const initiateCheckoutTracked = React.useRef(false);
   useEffect(() => {
