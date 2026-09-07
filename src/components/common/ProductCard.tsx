@@ -29,6 +29,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const salePrice = Number(product?.salePrice) || 0;
   const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
   const isSale = !isDiscountExpired && salePrice > 0 && price > 0 && salePrice < price;
+  const discountPercent = isSale ? Math.floor(((price - salePrice) / price) * 100) : 0;
   const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : '');
   const productAlt = `${product?.title || 'Product'}${categoryName ? ` - ${categoryName}` : ''} | চারুলতা লাইফস্টাইল (Charulata Lifestyle)`;
 
