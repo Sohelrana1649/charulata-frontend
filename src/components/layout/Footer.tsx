@@ -341,27 +341,27 @@ export default function Footer() {
           <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
             {/* bKash */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
-              <img src="/bKash-logo.svg" alt="bKash" className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
+              <Image src="/bKash-logo.svg" alt="bKash Payment Gateway" width={75} height={24} className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
             </div>
 
             {/* Nagad */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
-              <img src="/nAgad-logo.svg" alt="Nagad" className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
+              <Image src="/nAgad-logo.svg" alt="Nagad Payment Gateway" width={75} height={24} className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
             </div>
 
             {/* Rocket */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-[#8C3493] rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer overflow-hidden">
-              <img src="/rOcket-logo.svg" alt="Rocket" className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
+              <Image src="/rOcket-logo.svg" alt="Rocket Payment Gateway" width={75} height={24} className="h-5 sm:h-6 w-auto object-contain max-w-[75px]" />
             </div>
 
             {/* Visa */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
-              <img src="/Visa_Inc.-Logo.wine.svg" alt="Visa" className="h-6.5 sm:h-7.5 w-auto object-contain max-w-[80px]" />
+              <Image src="/Visa_Inc.-Logo.wine.svg" alt="Visa Card Gateway" width={80} height={28} className="h-6.5 sm:h-7.5 w-auto object-contain max-w-[80px]" />
             </div>
 
             {/* Mastercard */}
             <div className="h-8.5 sm:h-9.5 px-3 sm:px-3.5 bg-white rounded-xl flex items-center justify-center border border-zinc-700/60 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer">
-              <img src="/Mastercard-Logo.wine.svg" alt="Mastercard" className="h-6.5 sm:h-7.5 w-auto object-contain max-w-[80px]" />
+              <Image src="/Mastercard-Logo.wine.svg" alt="Mastercard Gateway" width={80} height={28} className="h-6.5 sm:h-7.5 w-auto object-contain max-w-[80px]" />
             </div>
           </div>
         </div>

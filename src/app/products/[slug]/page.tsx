@@ -99,9 +99,22 @@ export async function generateMetadata({
     const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Ethnic Wear');
     const effectivePrice = Number(product?.salePrice || product?.price) || 0;
     const productTitle = product?.title || 'Product';
-    const title = `${productTitle} - ৳${effectivePrice.toLocaleString()}`;
-    const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, '').trim() : '';
-    const description = `Buy ${productTitle} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh. ${plainDesc ? plainDesc.slice(0, 120) : ''}`;
+    
+    // Clean plain text and word-boundary truncation for fallback description
+    const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    let fallbackDesc = `Buy ${productTitle} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh.`;
+    if (plainDesc) {
+      if (plainDesc.length <= 155) {
+        fallbackDesc = plainDesc;
+      } else {
+        const truncated = plainDesc.slice(0, 155);
+        const lastSpace = truncated.lastIndexOf(' ');
+        fallbackDesc = (lastSpace > 30 ? truncated.slice(0, lastSpace).trim() : truncated) + '...';
+      }
+    }
+
+    const title = product?.metaTitle?.trim() || `${productTitle} - ৳${effectivePrice.toLocaleString()} | Charulata Lifestyle`;
+    const description = product?.metaDescription?.trim() || fallbackDesc;
     
     const images = (Array.isArray(product?.productImages) ? product.productImages : [])
       .concat(Array.isArray(product?.images) ? product.images : [])
@@ -130,7 +143,7 @@ export async function generateMetadata({
         },
       },
       openGraph: {
-        title: `${productTitle} | Charulata Lifestyle`,
+        title: product?.metaTitle?.trim() || `${productTitle} | Charulata Lifestyle`,
         description,
         url: `${SITE_URL}/products/${product?.slug || slug}`,
         siteName: 'Charulata Lifestyle',
@@ -140,12 +153,12 @@ export async function generateMetadata({
           url: imgUrl,
           width: 1200,
           height: 1200,
-          alt: `${productTitle} - চারুলতা লাইফস্টাইল`,
+          alt: `${productTitle} - ${categoryName} | চারুলতা লাইফস্টাইল`,
         })),
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${productTitle} | Charulata Lifestyle`,
+        title: product?.metaTitle?.trim() || `${productTitle} | Charulata Lifestyle`,
         description,
         images: [validImages[0]],
       },

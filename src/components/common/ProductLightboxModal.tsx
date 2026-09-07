@@ -336,7 +336,7 @@ export default function ProductLightboxModal({
         >
           <Image
             src={getOptimizedImageUrl(currentImage, 1200)}
-            alt={`${productTitle} - Fullscreen View`}
+            alt={`${productTitle} - Fullscreen View | চারুলতা লাইফস্টাইল`}
             fill
             unoptimized={true}
             className="object-contain pointer-events-none drop-shadow-2xl"
@@ -389,7 +389,7 @@ export default function ProductLightboxModal({
               >
                 <Image 
                   src={getOptimizedImageUrl(img, 150)} 
-                  alt={`Thumbnail ${idx + 1}`} 
+                  alt={`${productTitle} Angle ${idx + 1} Thumbnail | চারুলতা লাইফস্টাইল`} 
                   fill 
                   className="object-cover" 
                   unoptimized={true}

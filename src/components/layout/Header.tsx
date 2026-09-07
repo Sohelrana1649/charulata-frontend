@@ -336,7 +336,7 @@ export default function Header() {
                     <div className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl overflow-hidden border border-border shrink-0 bg-muted shadow-sm">
                       <Image 
                         src={img} 
-                        alt={product.title} 
+                        alt={`${product.title} | চারুলতা লাইফস্টাইল`} 
                         fill 
                         className="object-cover group-hover:scale-105 transition-transform duration-300" 
                       />
@@ -727,10 +727,11 @@ export default function Header() {
                 aria-label={t('header.myProfile')}
               >
                 <div className="w-full h-full rounded-[10px] overflow-hidden relative flex items-center justify-center bg-primary/10 shrink-0">
-                  <img 
+                  <Image 
                     src={getFallbackAvatarUrl(user)} 
-                    alt={user?.name || 'User'} 
-                    className="h-full w-full object-cover"
+                    alt={user?.name || 'User Avatar'} 
+                    fill
+                    className="object-cover"
                   />
                 </div>
               </button>

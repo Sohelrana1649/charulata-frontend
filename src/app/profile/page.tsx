@@ -497,10 +497,11 @@ function ProfileContent() {
           <div className="flex items-center space-x-4">
             <div className="relative group shrink-0">
               <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-primary/10 border-2 border-primary/40 overflow-hidden relative flex items-center justify-center shadow-md bg-muted">
-                <img
+                <Image
                   src={currentAvatar}
-                  alt={user?.name || 'User'}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                  alt={user?.name || 'User Avatar'}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
 
@@ -726,10 +727,11 @@ function ProfileContent() {
                           {/* Avatar Thumbnail */}
                           <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-2xl overflow-hidden border-2 border-border shadow-xs bg-muted shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform">
                             {currentAvatar ? (
-                              <img
+                              <Image
                                 src={currentAvatar}
                                 alt="Profile Preview"
-                                className="h-full w-full object-cover"
+                                fill
+                                className="object-cover"
                               />
                             ) : (
                               <Camera size={24} className="text-muted-foreground group-hover:text-primary transition-colors" />

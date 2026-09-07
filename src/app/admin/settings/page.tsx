@@ -1021,7 +1021,7 @@ export default function AdminSettingsPage() {
                   <div className="flex items-center space-x-3">
                     <div className="relative h-12 w-12 rounded-xl overflow-hidden border border-border shadow-xs bg-muted shrink-0 flex items-center justify-center">
                       {editForm.profileImage ? (
-                        <img src={editForm.profileImage} alt="Avatar Preview" className="h-full w-full object-cover" />
+                        <Image src={editForm.profileImage} alt="Avatar Preview" fill className="object-cover" />
                       ) : (
                         <Camera size={20} className="text-muted-foreground" />
                       )}

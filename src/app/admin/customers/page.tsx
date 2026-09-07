@@ -50,6 +50,7 @@ import { getFallbackAvatarUrl, defaultTeamAvatars } from '@/utils/avatarHelper';
 import { toast } from 'react-toastify';
 import { useRole } from '@/hooks/useRole';
 import RoleGuard from '@/components/admin/RoleGuard';
+import Image from '@/components/SafeImage';
 
 export default function AdminCustomersPage() {
   const { isSuperAdmin } = useRole();
@@ -689,15 +690,14 @@ export default function AdminCustomersPage() {
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 font-bold text-foreground font-serif text-sm">
                         <div className="flex items-center space-x-3">
                           <div className="relative shrink-0">
-                            <img
-                              src={getUserAvatar(u)}
-                              alt={u.name || 'User'}
-                              className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover border border-border shadow-2xs bg-muted"
-                              onError={(e: any) => {
-                                const bg = u.role === 'super_admin' ? 'f43f5e' : (u.role === 'admin' ? 'f59e0b' : (u.role === 'staff' ? '3b82f6' : '64748b'));
-                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'U')}&background=${bg}&color=fff&size=128&bold=true`;
-                              }}
-                            />
+                            <div className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-xl overflow-hidden border border-border shadow-2xs bg-muted">
+                              <Image
+                                src={getUserAvatar(u)}
+                                alt={u.name || 'User Avatar'}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-foreground font-serif text-sm truncate">{u.name}</p>
@@ -770,15 +770,14 @@ export default function AdminCustomersPage() {
                       <td className="py-2.5 px-2.5 sm:py-3.5 sm:px-4 font-bold text-foreground font-serif text-sm">
                         <div className="flex items-center space-x-3">
                           <div className="relative shrink-0">
-                            <img
-                              src={getUserAvatar(u)}
-                              alt={u.name || 'Team Member'}
-                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl object-cover border border-border shadow-2xs bg-muted"
-                              onError={(e: any) => {
-                                const bg = u.role === 'super_admin' ? 'f43f5e' : (u.role === 'admin' ? 'f59e0b' : (u.role === 'staff' ? '3b82f6' : '64748b'));
-                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'U')}&background=${bg}&color=fff&size=128&bold=true`;
-                              }}
-                            />
+                            <div className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl overflow-hidden border border-border shadow-2xs bg-muted">
+                              <Image
+                                src={getUserAvatar(u)}
+                                alt={u.name || 'Team Member Avatar'}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
                             <span
                               className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${
                                 u.role === 'super_admin'
@@ -949,11 +948,14 @@ export default function AdminCustomersPage() {
 
             <div className="bg-muted/50 border border-border rounded-2xl p-4 space-y-3 text-xs">
               <div className="flex items-center space-x-3 bg-card p-3 rounded-xl border border-border shadow-2xs">
-                <img
-                  src={getUserAvatar(confirmRoleModal.user)}
-                  alt={confirmRoleModal.user.name}
-                  className="h-10 w-10 rounded-xl object-cover border border-border shadow-2xs bg-muted"
-                />
+                <div className="relative h-10 w-10 rounded-xl overflow-hidden border border-border shadow-2xs bg-muted shrink-0">
+                  <Image
+                    src={getUserAvatar(confirmRoleModal.user)}
+                    alt={confirmRoleModal.user.name || 'User Avatar'}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <div className="min-w-0">
                   <p className="font-extrabold text-foreground text-sm font-serif truncate">{confirmRoleModal.user.name}</p>
                   <p className="text-[11px] text-muted-foreground font-mono truncate">{confirmRoleModal.user.email}</p>
@@ -1023,11 +1025,14 @@ export default function AdminCustomersPage() {
             <form onSubmit={handleCreateTeamMember} className="space-y-4">
               {/* Photo Upload & Preview */}
               <div className="flex items-center space-x-4 p-3 bg-muted/40 border border-border rounded-2xl">
-                <img
-                  src={newTeamMember.profileImage || defaultTeamAvatars[0]}
-                  alt="Preview"
-                  className="h-12 w-12 rounded-xl object-cover border border-border shadow-xs bg-muted"
-                />
+                <div className="relative h-12 w-12 rounded-xl overflow-hidden border border-border shadow-xs bg-muted shrink-0">
+                  <Image
+                    src={newTeamMember.profileImage || defaultTeamAvatars[0]}
+                    alt="Member Preview Photo"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <div className="flex-1">
                   <p className="text-xs font-bold text-foreground">Member Photo (Optional)</p>
                   <label className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-primary hover:underline cursor-pointer mt-0.5">

@@ -732,7 +732,7 @@ export default function ProductDetailClient({
           ) : (
             <ProductImageMagnifier
               src={mainImage}
-              alt={`${product.title} - চারুলতা লাইফস্টাইল`}
+              alt={`${product.title} - ${categoryName} | চারুলতা লাইফস্টাইল (Charulata Lifestyle)`}
               zoomLevel={2.5}
               isSale={isSale}
               discountPercent={discountPercent}
@@ -791,7 +791,7 @@ export default function ProductDetailClient({
                               : 'border-border hover:border-primary/50 opacity-85 hover:opacity-100'
                           }`}
                         >
-                          <Image src={img} alt={`${product.title} - Image ${idx + 1} | চারুলতা লাইফস্টাইল`} fill sizes="120px" className="object-cover" />
+                          <Image src={img} alt={`${product.title} - ${categoryName} Angle ${idx + 1} | চারুলতা লাইফস্টাইল`} fill sizes="120px" className="object-cover" />
                           <span className="absolute bottom-1.5 right-1.5 bg-black/75 text-white font-mono text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
                             #{idx + 1}
                           </span>

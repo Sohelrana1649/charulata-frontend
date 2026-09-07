@@ -319,7 +319,7 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
                     >
                       <Image 
                         src={item.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400'} 
-                        alt={item.title || 'Product'} 
+                        alt={`${item.title || 'Product'} | চারুলতা লাইফস্টাইল`} 
                         fill 
                         sizes="80px" 
                         className="object-cover group-hover:scale-105 transition-transform" 

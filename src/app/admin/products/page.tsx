@@ -44,7 +44,8 @@ import {
   Folder,
   Video,
   Play,
-  FileText
+  FileText,
+  Globe
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Image from '@/components/SafeImage';
@@ -83,6 +84,8 @@ interface ProductForm {
   discountEndDate?: string;
   discountDurationPreset?: string;
   isActive: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
 }
 
 const initialForm: ProductForm = {
@@ -104,7 +107,9 @@ const initialForm: ProductForm = {
   newArrival: false,
   flashSale: false,
   discountDurationPreset: '24h',
-  isActive: true
+  isActive: true,
+  metaTitle: '',
+  metaDescription: ''
 };
 
 export default function AdminProductsPage() {
@@ -320,7 +325,9 @@ export default function AdminProductsPage() {
       discountStartDate: prod.discountStartDate ? new Date(prod.discountStartDate).toISOString() : undefined,
       discountEndDate: prod.discountEndDate ? new Date(prod.discountEndDate).toISOString().substring(0, 16) : undefined,
       discountDurationPreset: prod.discountEndDate ? 'custom' : '24h',
-      isActive: prod.isActive !== undefined ? !!prod.isActive : true
+      isActive: prod.isActive !== undefined ? !!prod.isActive : true,
+      metaTitle: prod.metaTitle || '',
+      metaDescription: prod.metaDescription || ''
     });
     setIsModalOpen(true);
   };
@@ -1928,6 +1935,134 @@ export default function AdminProductsPage() {
                     onChange={(html) => setForm(prev => ({ ...prev, description: html }))}
                     placeholder="Describe the product, key features, specifications, and care instructions..."
                   />
+                </div>
+
+                {/* ── SEARCH ENGINE OPTIMIZATION (SEO) & SOCIAL PREVIEW ── */}
+                <div className="bg-gradient-to-br from-primary/5 via-card to-primary/5 border border-primary/20 rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <Globe size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-foreground font-serif flex items-center space-x-1.5">
+                          <span>Search Engine Optimization (SEO) & Social Meta</span>
+                          <span className="text-[10px] bg-primary/10 text-primary font-mono font-bold px-2 py-0.5 rounded-full">Google & Social</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          গুগল সার্চ ও সোশ্যাল মিডিয়া শেয়ারের জন্য মেটা টাইটেল ও ডেসক্রিপশন কাস্টমাইজ করুন।
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3.5">
+                    {/* Meta Title Field */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                        <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
+                          <span>SEO Meta Title</span>
+                          <span className="text-[10px] text-muted-foreground lowercase font-normal">(optional)</span>
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (form.title) {
+                                const generated = `${form.title.trim()} | Charulata Lifestyle`.slice(0, 70);
+                                setForm(prev => ({ ...prev, metaTitle: generated }));
+                              }
+                            }}
+                            className="text-[11px] text-primary hover:underline font-bold cursor-pointer"
+                          >
+                            ⚡ Auto-generate from Title
+                          </button>
+                          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                            Array.from(form.metaTitle || '').length > 60
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                            {Array.from(form.metaTitle || '').length}/60 recommended {Array.from(form.metaTitle || '').length > 60 ? '(max 70)' : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        maxLength={70}
+                        placeholder={form.title ? `${form.title} | Charulata Lifestyle` : 'Enter SEO title for search engines (up to 60-70 characters)'}
+                        value={form.metaTitle || ''}
+                        onChange={(e) => setForm(prev => ({ ...prev, metaTitle: e.target.value }))}
+                        className="w-full bg-card border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition min-h-[42px]"
+                      />
+                      {Array.from(form.metaTitle || '').length > 60 && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
+                          ⚠️ Note: Google search typically truncates titles after ~60 characters on mobile/desktop.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Meta Description Field */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                        <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
+                          <span>SEO Meta Description</span>
+                          <span className="text-[10px] text-muted-foreground lowercase font-normal">(optional)</span>
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const plainText = form.description ? form.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+                              if (plainText) {
+                                if (plainText.length <= 155) {
+                                  setForm(prev => ({ ...prev, metaDescription: plainText }));
+                                } else {
+                                  const truncated = plainText.slice(0, 155);
+                                  const lastSpace = truncated.lastIndexOf(' ');
+                                  const finalCut = (lastSpace > 30 ? truncated.slice(0, lastSpace).trim() : truncated) + '...';
+                                  setForm(prev => ({ ...prev, metaDescription: finalCut }));
+                                }
+                              } else if (form.title) {
+                                setForm(prev => ({ ...prev, metaDescription: `Buy ${form.title} online at Charulata Lifestyle BD. Premium quality & 1-Click Cash on Delivery.` }));
+                              }
+                            }}
+                            className="text-[11px] text-primary hover:underline font-bold cursor-pointer"
+                          >
+                            ⚡ Auto-generate from Description
+                          </button>
+                          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                            Array.from(form.metaDescription || '').length > 155
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                            {Array.from(form.metaDescription || '').length}/160 characters
+                          </span>
+                        </div>
+                      </div>
+                      <textarea
+                        rows={2}
+                        maxLength={160}
+                        placeholder="Enter 150-160 character meta description summarizing the product for Google Search snippets..."
+                        value={form.metaDescription || ''}
+                        onChange={(e) => setForm(prev => ({ ...prev, metaDescription: e.target.value }))}
+                        className="w-full bg-card border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition resize-none min-h-[64px]"
+                      />
+                    </div>
+
+                    {/* Google Search Live Preview Card */}
+                    <div className="mt-1 p-3.5 bg-card border border-border rounded-xl space-y-1 shadow-2xs">
+                      <div className="flex items-center space-x-2 text-[11px] text-muted-foreground font-mono">
+                        <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold text-[9px]">G</span>
+                        <span className="truncate">https://www.charulatalifestyle.com › products › {form.slug || 'product-slug'}</span>
+                      </div>
+                      <h5 className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate">
+                        {form.metaTitle || (form.title ? `${form.title} | Charulata Lifestyle` : 'Product Title - Buy Online | Charulata Lifestyle')}
+                      </h5>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {form.metaDescription || (form.description ? form.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150) + '...' : 'Buy premium quality sarees, kurtis, panjabis and fashion accessories online at Charulata Lifestyle Bangladesh. Fast shipping and 1-Click Cash on Delivery.')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Dynamic Attributes & Product Variants Section */}

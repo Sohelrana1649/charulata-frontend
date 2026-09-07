@@ -29,7 +29,9 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const salePrice = Number(product?.salePrice) || 0;
   const isDiscountExpired = product?.discountEndDate && new Date() > new Date(product.discountEndDate);
   const isSale = !isDiscountExpired && salePrice > 0 && price > 0 && salePrice < price;
-  const discountPercent = isSale ? Math.floor(((price - salePrice) / price) * 100) : 0;
+  const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : '');
+  const productAlt = `${product?.title || 'Product'}${categoryName ? ` - ${categoryName}` : ''} | চারুলতা লাইফস্টাইল (Charulata Lifestyle)`;
+
   const img = (Array.isArray(product?.productImages) ? product.productImages : [])
     .concat(Array.isArray(product?.images) ? product.images : [])
     .concat(product?.image ? [product.image] : [])
@@ -210,7 +212,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       <Link href={`/products/${product.slug}`} prefetch={false} className="aspect-square overflow-hidden bg-muted relative block group/img cursor-pointer">
         <Image 
           src={img} 
-          alt={`${product?.title || 'Product'} - চারুলতা লাইফস্টাইল (Charulata Lifestyle)`} 
+          alt={productAlt} 
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className="transition duration-500 group-hover:scale-105 object-cover" 

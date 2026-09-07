@@ -17,6 +17,25 @@ export default function Providers({
   children: React.ReactNode;
   initialLocale?: Locale;
 }) {
+  React.useEffect(() => {
+    // Suppress intrusive third-party Chrome extension runtime errors (e.g. Urban VPN, adblockers)
+    // from triggering Next.js development error modal overlays
+    const handleExtensionError = (event: ErrorEvent) => {
+      if (
+        event.filename?.includes('chrome-extension://') ||
+        event.message?.includes('chrome-extension://') ||
+        event.filename?.includes('moz-extension://') ||
+        event.message?.includes("reading 'M_ID'")
+      ) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('error', handleExtensionError, true);
+    return () => window.removeEventListener('error', handleExtensionError, true);
+  }, []);
+
   return (
     <Provider store={store}>
       <GoogleOAuthProvider clientId={googleClientId}>

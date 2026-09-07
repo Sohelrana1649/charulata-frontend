@@ -76,8 +76,8 @@ export async function generateMetadata({
 
   const categoryName = category?.name || slug?.replace(/-/g, ' ') || 'Collection';
   const categoryNameBn = category?.nameBn || '';
-  const title = `${categoryName} ${categoryNameBn ? `(${categoryNameBn})` : ''} Collection | Charulata Lifestyle`;
-  const description = category?.description || `Shop exclusive ${categoryName} online at Charulata Lifestyle BD. Best prices, premium quality & 1-Click Cash on Delivery in Bangladesh.`;
+  const title = category?.metaTitle?.trim() || `${categoryName} ${categoryNameBn ? `(${categoryNameBn})` : ''} Collection | Charulata Lifestyle`;
+  const description = category?.metaDescription?.trim() || category?.description || `Shop exclusive ${categoryName} online at Charulata Lifestyle BD. Best prices, premium quality & 1-Click Cash on Delivery in Bangladesh.`;
   const image = category?.image || '/logo.png';
 
   return {

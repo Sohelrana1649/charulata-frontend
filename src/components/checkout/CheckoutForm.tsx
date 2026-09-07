@@ -1331,7 +1331,7 @@ export default function CheckoutForm() {
                     <div key={idx} className="p-3 flex items-center justify-between gap-3 hover:bg-muted/20 transition">
                       <div className="flex items-center space-x-3 min-w-0">
                         <div className="w-14 h-14 rounded-xl border-2 border-border overflow-hidden bg-muted relative shrink-0 shadow-sm">
-                          <Image src={prodImg} alt={prodTitle} fill className="object-cover" />
+                          <Image src={prodImg} alt={`${prodTitle} | চারুলতা লাইফস্টাইল`} fill className="object-cover" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-[13px] font-bold text-foreground truncate">{prodTitle}</p>
@@ -2191,7 +2191,7 @@ export default function CheckoutForm() {
                             }`}
                         >
                           <div className="h-7 w-full flex items-center justify-center bg-white dark:bg-zinc-800 rounded-lg px-1.5 py-0.5 border border-pink-500/20 shadow-2xs">
-                            <img src="/bKash-logo.svg" alt="bKash Logo" className="h-5.5 w-auto object-contain max-w-[85px]" />
+                            <Image src="/bKash-logo.svg" alt="bKash Payment Option" width={85} height={22} className="h-5.5 w-auto object-contain max-w-[85px]" />
                           </div>
                           <div className="space-y-0.5">
                             <p className="text-xs font-extrabold leading-tight">bKash</p>
@@ -2211,7 +2211,7 @@ export default function CheckoutForm() {
                             }`}
                         >
                           <div className="h-7 w-full flex items-center justify-center bg-white dark:bg-zinc-800 rounded-lg px-1.5 py-0.5 border border-orange-500/20 shadow-2xs">
-                            <img src="/nAgad-logo.svg" alt="Nagad Logo" className="h-5.5 w-auto object-contain max-w-[85px]" />
+                            <Image src="/nAgad-logo.svg" alt="Nagad Payment Option" width={85} height={22} className="h-5.5 w-auto object-contain max-w-[85px]" />
                           </div>
                           <div className="space-y-0.5">
                             <p className="text-xs font-extrabold leading-tight">Nagad</p>
@@ -2231,7 +2231,7 @@ export default function CheckoutForm() {
                             }`}
                         >
                           <div className="h-7 w-full flex items-center justify-center bg-[#8C3493] rounded-lg px-1.5 py-0.5 border border-purple-500/20 shadow-2xs overflow-hidden">
-                            <img src="/rOcket-logo.svg" alt="Rocket Logo" className="h-5.5 w-auto object-contain max-w-[85px]" />
+                            <Image src="/rOcket-logo.svg" alt="Rocket Payment Option" width={85} height={22} className="h-5.5 w-auto object-contain max-w-[85px]" />
                           </div>
                           <div className="space-y-0.5">
                             <p className="text-xs font-extrabold leading-tight">Rocket</p>
@@ -2329,7 +2329,7 @@ export default function CheckoutForm() {
                               <div className="w-12 h-12 rounded-xl border border-border overflow-hidden bg-muted relative shrink-0 shadow-2xs">
                                 <Image
                                   src={itemImg}
-                                  alt={item.product?.title || 'Product'}
+                                  alt={`${item.product?.title || 'Product'} | চারুলতা লাইফস্টাইল`}
                                   fill
                                   sizes="60px"
                                   className="object-cover"
