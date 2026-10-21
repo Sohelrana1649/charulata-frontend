@@ -147,7 +147,15 @@ export default function Header() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [openMobileCategories, setOpenMobileCategories] = useState<Record<string, boolean>>({});
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  const toggleMobileCategory = (key: string) => {
+    setOpenMobileCategories(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -392,70 +400,88 @@ export default function Header() {
     );
   };
 
-  const sortedCategories = React.useMemo(() => {
-    if (!Array.isArray(categoriesList)) return [];
+  // Group Categories into Parents (Level 0) and Subcategories (Level 1)
+  const { parentCategories, topParentCategories, moreParentCategories } = React.useMemo(() => {
+    if (!Array.isArray(categoriesList) || categoriesList.length === 0) {
+      return { parentCategories: [], topParentCategories: [], moreParentCategories: [] };
+    }
 
-    // Priority keywords for main navbar display (Women's Fashion, Men's Fashion, Sarees, Panjabi, Kurtis)
-    const priorityKeywords = [
-      'women', 'men', 'saree', 'sharee', 'panjabi', 'kurti', 'shirt', 'shart', 'tshirt', 't-shirt',
-      'jewelry', 'beauty', 'gadget', 'আতর', 'ব্যাগ'
-    ];
+    const parents: any[] = [];
+    const subs: any[] = [];
 
-    const getPriority = (cat: any) => {
-      const nameLower = (cat.name || '').toLowerCase();
-      const slugLower = (cat.slug || '').toLowerCase();
-      const nameBnLower = (cat.nameBn || '').toLowerCase();
-
-      for (let i = 0; i < priorityKeywords.length; i++) {
-        const kw = priorityKeywords[i];
-        if (nameLower.includes(kw) || slugLower.includes(kw) || nameBnLower.includes(kw)) {
-          return i;
-        }
+    categoriesList.forEach((cat: any) => {
+      if (cat.level === 0 || !cat.parentCategory) {
+        parents.push(cat);
+      } else {
+        subs.push(cat);
       }
-      return 999;
+    });
+
+    // Sort parents by order: 1, then name: 1
+    parents.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.name || '').localeCompare(b.name || ''));
+
+    // Sort subs by order: 1, then name: 1
+    subs.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.name || '').localeCompare(b.name || ''));
+
+    // Group subcategories by parent identifier (parent ID and slug)
+    const subMap: Record<string, any[]> = {};
+    subs.forEach((sub: any) => {
+      const parentId = typeof sub.parentCategory === 'object' && sub.parentCategory !== null
+        ? String(sub.parentCategory._id || sub.parentCategory.slug || '')
+        : String(sub.parentCategory || '');
+
+      const parentSlug = typeof sub.parentCategory === 'object' && sub.parentCategory !== null
+        ? String(sub.parentCategory.slug || '')
+        : '';
+
+      if (parentId) {
+        if (!subMap[parentId]) subMap[parentId] = [];
+        subMap[parentId].push(sub);
+      }
+      if (parentSlug && parentSlug !== parentId) {
+        if (!subMap[parentSlug]) subMap[parentSlug] = [];
+        subMap[parentSlug].push(sub);
+      }
+    });
+
+    const enrichedParents = parents.map((parent) => {
+      const idKey = String(parent._id || '');
+      const slugKey = String(parent.slug || '');
+      const childSubs = subMap[idKey] || subMap[slugKey] || [];
+      return {
+        ...parent,
+        displayName: translateCategoryName(parent, locale),
+        subcategories: childSubs.map((s) => ({
+          ...s,
+          displayName: translateCategoryName(s, locale)
+        }))
+      };
+    });
+
+    // Top 6 Parent Categories on Navbar Strip
+    const topParents = enrichedParents.slice(0, 6);
+    // Remaining Parent Categories in "More..." Dropdown
+    const moreParents = enrichedParents.slice(6);
+
+    return {
+      parentCategories: enrichedParents,
+      topParentCategories: topParents,
+      moreParentCategories: moreParents
     };
+  }, [categoriesList, locale]);
 
-    return [...categoriesList].sort((a: any, b: any) => getPriority(a) - getPriority(b));
-  }, [categoriesList]);
-
-  const topCategories = React.useMemo(() => {
-    // Show top 5 core departments for a spacious, luxury, non-cluttered navbar strip
-    return sortedCategories.slice(0, 5).map((cat: any) => ({
-      name: translateCategoryName(cat, locale),
-      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
-    }));
-  }, [sortedCategories, locale]);
-
-  const moreCategories = React.useMemo(() => {
-    // All other categories in clean "More..." dropdown
-    return sortedCategories.slice(5).map((cat: any) => ({
-      name: translateCategoryName(cat, locale),
-      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
-    }));
-  }, [sortedCategories, locale]);
-
-  const menuItems = React.useMemo(() => {
-    const baseItems = [
-      { name: t('nav.home'), key: 'home', href: '/' },
-      { name: t('nav.shop'), key: 'shop', href: '/search' },
-    ];
-    return [...baseItems, ...topCategories];
-  }, [topCategories, t]);
-
-  const mobileMenuItems = React.useMemo(() => {
-    const baseItems = [
-      { name: t('nav.home'), key: 'home', href: '/' },
-      { name: t('nav.shop'), key: 'shop', href: '/search' },
-    ];
-    const allCats = categoriesList.map((cat: any) => ({
-      name: translateCategoryName(cat, locale),
-      key: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-      href: `/search?category=${encodeURIComponent(cat.slug || cat.name)}`
-    }));
-    return [...baseItems, ...allCats];
-  }, [categoriesList, t, locale]);
+  // Check if a category (or any of its subcategories) is currently active in search
+  const isCategoryActive = React.useCallback((item: any) => {
+    if (pathname !== '/search' || !currentCategory) return false;
+    const cur = currentCategory.toLowerCase();
+    if ((item.slug || '').toLowerCase() === cur || (item.name || '').toLowerCase() === cur) return true;
+    if (Array.isArray(item.subcategories)) {
+      return item.subcategories.some(
+        (sub: any) => (sub.slug || '').toLowerCase() === cur || (sub.name || '').toLowerCase() === cur
+      );
+    }
+    return false;
+  }, [pathname, currentCategory]);
 
   const isAdminPage = pathname?.startsWith('/admin');
   const isCheckoutPage = pathname === '/checkout';
@@ -888,15 +914,15 @@ export default function Header() {
                   <ChevronDown size={14} className="text-white-force group-hover:text-[#c99a3c] group-hover:rotate-180 transition-transform duration-200" />
                 </button>
 
-                {/* Premium Site-Matching Dropdown Overlay with Zero-Gap Hover Bridge */}
+                {/* Premium Flyout Mega Dropdown */}
                 <div className="absolute top-full left-0 pt-1 w-64 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="w-full bg-card/98 dark:bg-card/98 backdrop-blur-xl text-foreground border border-border/80 rounded-xl shadow-2xl overflow-hidden">
-                    <div className="bg-muted/40 px-4 py-2.5 flex items-center justify-between border-b border-border/60">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{locale === 'bn' ? 'সকল ক্যাটাগরি' : 'All Categories'}</span>
+                  <div className="w-full bg-card/98 dark:bg-card/98 backdrop-blur-xl text-foreground border border-border/80 rounded-xl shadow-2xl overflow-visible">
+                    <div className="bg-muted/40 px-4 py-2.5 flex items-center justify-between border-b border-border/60 rounded-t-xl">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{locale === 'bn' ? 'সকল বিভাগ' : 'All Departments'}</span>
                       <Sparkles size={13} className="text-primary" />
                     </div>
                     
-                    <div className="max-h-80 overflow-y-auto divide-y divide-border/30 no-scrollbar">
+                    <div className="max-h-[380px] overflow-y-auto divide-y divide-border/30 no-scrollbar rounded-b-xl">
                       <Link
                         href="/search"
                         className="px-4 py-2.5 bg-primary/5 hover:bg-primary hover:text-white text-primary font-bold text-xs flex items-center justify-between transition-colors group/all"
@@ -905,17 +931,61 @@ export default function Header() {
                         <ChevronRight size={14} className="group-hover/all:translate-x-1 transition-transform" />
                       </Link>
 
-                      {categoriesList.length > 0 ? (
-                        categoriesList.map((cat: any) => (
-                          <Link
-                            key={cat._id || cat.slug}
-                            href={`/search?category=${encodeURIComponent(cat.slug || cat.name)}`}
-                            className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors group/item"
-                          >
-                            <span className="group-hover/item:translate-x-0.5 transition-transform truncate">{translateCategoryName(cat, locale)}</span>
-                            <ChevronRight size={13} className="text-muted-foreground group-hover/item:text-primary opacity-50 group-hover/item:opacity-100 transition-all shrink-0" />
-                          </Link>
-                        ))
+                      {parentCategories.length > 0 ? (
+                        parentCategories.map((parent: any) => {
+                          const hasSubs = parent.subcategories && parent.subcategories.length > 0;
+                          return (
+                            <div key={parent._id || parent.slug} className="relative group/parent">
+                              <Link
+                                href={`/search?category=${encodeURIComponent(parent.slug || parent.name)}`}
+                                className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors"
+                              >
+                                <span className="truncate">{parent.displayName}</span>
+                                {hasSubs ? (
+                                  <div className="flex items-center space-x-1 text-muted-foreground group-hover/parent:text-primary">
+                                    <span className="text-[10px] font-medium opacity-60">({parent.subcategories.length})</span>
+                                    <ChevronRight size={13} />
+                                  </div>
+                                ) : (
+                                  <ChevronRight size={13} className="text-muted-foreground opacity-40" />
+                                )}
+                              </Link>
+
+                              {/* Subcategory Flyout to Right on Hover */}
+                              {hasSubs && (
+                                <div className="absolute top-0 left-full pl-1.5 w-60 hidden group-hover/parent:block z-50">
+                                  <div className="bg-card/98 dark:bg-card/98 backdrop-blur-xl text-foreground border border-border/80 rounded-xl shadow-2xl overflow-hidden py-1.5 divide-y divide-border/20">
+                                    <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center justify-between bg-muted/40">
+                                      <span className="truncate">{parent.displayName}</span>
+                                      <span className="text-[10px] text-primary font-bold shrink-0">{parent.subcategories.length} {locale === 'bn' ? 'টি' : 'Items'}</span>
+                                    </div>
+                                    <div className="py-1 max-h-72 overflow-y-auto no-scrollbar">
+                                      {parent.subcategories.map((sub: any) => (
+                                        <Link
+                                          key={sub._id || sub.slug}
+                                          href={`/search?category=${encodeURIComponent(sub.slug || sub.name)}`}
+                                          className="px-4 py-2 hover:bg-muted text-foreground hover:text-primary font-medium text-xs flex items-center justify-between transition-colors group/subitem"
+                                        >
+                                          <span className="truncate group-hover/subitem:translate-x-0.5 transition-transform">{sub.displayName}</span>
+                                          <ChevronRight size={12} className="text-muted-foreground opacity-50 group-hover/subitem:opacity-100 group-hover/subitem:text-primary shrink-0" />
+                                        </Link>
+                                      ))}
+                                    </div>
+                                    <div className="p-1.5 bg-muted/30">
+                                      <Link
+                                        href={`/search?category=${encodeURIComponent(parent.slug || parent.name)}`}
+                                        className="px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary hover:text-white text-primary text-[11px] font-bold flex items-center justify-between transition-all"
+                                      >
+                                        <span>{locale === 'bn' ? `সকল ${parent.displayName}` : `All ${parent.displayName}`}</span>
+                                        <ChevronRight size={12} />
+                                      </Link>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : (
                         <div className="px-4 py-3 text-xs text-muted-foreground text-center">
                           {locale === 'bn' ? 'কোন ক্যাটাগরি পাওয়া যায়নি' : 'No categories found'}
@@ -928,36 +998,91 @@ export default function Header() {
 
               {/* Dynamic Categories Navbar Strip */}
               <div className="flex items-center space-x-7 sm:space-x-8 lg:space-x-9 text-xs sm:text-sm font-extrabold w-full overflow-visible flex-nowrap tracking-wide">
-                {menuItems.map((item) => {
-                  let isActive = false;
-                  if (item.key === 'home') {
-                    isActive = pathname === '/';
-                  } else if (item.key === 'shop') {
-                    isActive = pathname === '/search' && !currentCategory;
-                  } else {
-                    isActive = pathname === '/search' && currentCategory.toLowerCase() === item.key.toLowerCase();
-                  }
-                  
+                {/* Home Link */}
+                <Link
+                  href="/"
+                  onClick={handleHomeClick}
+                  className={`transition-colors py-2 border-b-2 hover-gold shrink-0 whitespace-nowrap ${
+                    pathname === '/' ? 'text-active-gold border-b-2 font-black' : 'border-transparent text-white-force'
+                  }`}
+                >
+                  {t('nav.home')}
+                </Link>
+
+                {/* Shop Link */}
+                <Link
+                  href="/search"
+                  className={`transition-colors py-2 border-b-2 hover-gold shrink-0 whitespace-nowrap ${
+                    pathname === '/search' && !currentCategory ? 'text-active-gold border-b-2 font-black' : 'border-transparent text-white-force'
+                  }`}
+                >
+                  {t('nav.shop')}
+                </Link>
+
+                {/* Top 6 Parent Categories with Subcategory Dropdowns */}
+                {topParentCategories.map((item: any) => {
+                  const isActive = isCategoryActive(item);
+                  const hasSubs = item.subcategories && item.subcategories.length > 0;
+
                   return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      onClick={(e) => {
-                        if (item.key === 'home') {
-                          handleHomeClick(e);
-                        }
-                      }}
-                      className={`transition-colors py-2 border-b-2 hover-gold shrink-0 whitespace-nowrap ${
-                        isActive ? 'text-active-gold border-b-2 font-black' : 'border-transparent text-white-force'
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
+                    <div key={item.slug || item._id} className="relative group shrink-0">
+                      <Link
+                        href={`/search?category=${encodeURIComponent(item.slug || item.name)}`}
+                        className={`transition-colors py-2 border-b-2 hover-gold shrink-0 whitespace-nowrap flex items-center space-x-1 ${
+                          isActive ? 'text-active-gold border-b-2 font-black' : 'border-transparent text-white-force'
+                        }`}
+                      >
+                        <span>{item.displayName}</span>
+                        {hasSubs && (
+                          <ChevronDown size={13} className="text-white-force/80 group-hover:text-[#c99a3c] group-hover:rotate-180 transition-transform duration-200" />
+                        )}
+                      </Link>
+
+                      {/* Dropdown for child subcategories */}
+                      {hasSubs && (
+                        <div className="absolute top-full left-0 pt-1.5 w-60 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                          <div className="w-full bg-card/98 dark:bg-card/98 backdrop-blur-xl text-foreground border border-border/80 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-border/20">
+                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center justify-between bg-muted/40">
+                              <span className="truncate">{item.displayName}</span>
+                              <span className="text-[10px] text-primary font-bold shrink-0">{item.subcategories.length} {locale === 'bn' ? 'টি ক্যাটাগরি' : 'Items'}</span>
+                            </div>
+                            <div className="py-1">
+                              {item.subcategories.map((sub: any) => {
+                                const isSubActive = pathname === '/search' && currentCategory.toLowerCase() === (sub.slug || '').toLowerCase();
+                                return (
+                                  <Link
+                                    key={sub._id || sub.slug}
+                                    href={`/search?category=${encodeURIComponent(sub.slug || sub.name)}`}
+                                    className={`px-4 py-2 hover:bg-muted text-xs font-semibold flex items-center justify-between transition-colors group/sub ${
+                                      isSubActive ? 'text-primary font-black bg-primary/10' : 'text-foreground hover:text-primary'
+                                    }`}
+                                  >
+                                    <span className="group-hover/sub:translate-x-1 transition-transform truncate">
+                                      {sub.displayName}
+                                    </span>
+                                    <ChevronRight size={13} className="text-muted-foreground/50 group-hover/sub:text-primary group-hover/sub:translate-x-0.5 transition-all shrink-0" />
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                            <div className="p-1.5 bg-muted/30">
+                              <Link
+                                href={`/search?category=${encodeURIComponent(item.slug || item.name)}`}
+                                className="px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary hover:text-white text-primary text-[11px] font-bold flex items-center justify-between transition-all"
+                              >
+                                <span>{locale === 'bn' ? `সকল ${item.displayName} দেখুন` : `View All ${item.displayName}`}</span>
+                                <ChevronRight size={13} />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
 
-                {/* "More..." Dropdown for extra categories */}
-                {moreCategories.length > 0 && (
+                {/* "More..." Dropdown for extra parent categories */}
+                {moreParentCategories.length > 0 && (
                   <div ref={moreDropdownRef} className="relative group/more shrink-0">
                     <button
                       type="button"
@@ -968,16 +1093,16 @@ export default function Header() {
                       <ChevronDown size={14} className={`text-white-force group-hover/more:text-[#c99a3c] transition-transform duration-200 ${isMoreOpen ? 'rotate-180 text-[#c99a3c]' : 'group-hover/more:rotate-180'}`} />
                     </button>
 
-                    <div className={`absolute top-full right-0 pt-2 w-56 z-[100] transition-all duration-200 ${isMoreOpen ? 'block' : 'hidden group-hover/more:block'}`}>
+                    <div className={`absolute top-full right-0 pt-2 w-60 z-[100] transition-all duration-200 ${isMoreOpen ? 'block' : 'hidden group-hover/more:block'}`}>
                       <div className="bg-card dark:bg-card text-foreground border border-border/80 rounded-2xl shadow-2xl overflow-hidden py-2 max-h-80 overflow-y-auto no-scrollbar divide-y divide-border/30">
-                        {moreCategories.map((item) => (
+                        {moreParentCategories.map((item: any) => (
                           <Link
-                            key={item.key}
-                            href={item.href}
+                            key={item.slug || item._id}
+                            href={`/search?category=${encodeURIComponent(item.slug || item.name)}`}
                             onClick={() => setIsMoreOpen(false)}
                             className="px-4 py-2.5 hover:bg-muted text-foreground hover:text-primary font-semibold text-xs flex items-center justify-between transition-colors group/sub"
                           >
-                            <span className="group-hover/sub:translate-x-0.5 transition-transform truncate">{item.name}</span>
+                            <span className="group-hover/sub:translate-x-0.5 transition-transform truncate">{item.displayName}</span>
                             <ChevronRight size={13} className="text-muted-foreground group-hover/sub:text-primary opacity-50 group-hover/sub:opacity-100 transition-all shrink-0" />
                           </Link>
                         ))}
@@ -1006,36 +1131,120 @@ export default function Header() {
 
       {/* Mobile Menu Drawer */}
       {isMobileMenuOpen && (
-        <div className="border-t border-border bg-card px-5 py-4 md:hidden space-y-4 shadow-lg animate-fadeIn">
+        <div className="border-t border-border bg-card px-5 py-4 md:hidden space-y-4 shadow-lg animate-fadeIn max-h-[85vh] overflow-y-auto no-scrollbar">
           <div className="flex flex-col space-y-1 w-full">
-            {mobileMenuItems.map((item) => {
-              let isActive = false;
-              if (item.key === 'home') {
-                isActive = pathname === '/';
-              } else if (item.key === 'shop') {
-                isActive = pathname === '/search' && !currentCategory;
-              } else {
-                isActive = pathname === '/search' && currentCategory.toLowerCase() === item.key.toLowerCase();
+            {/* Home */}
+            <Link
+              href="/"
+              onClick={(e) => {
+                setIsMobileMenuOpen(false);
+                handleHomeClick(e);
+              }}
+              className={`py-3 min-h-[44px] text-base font-extrabold border-b border-border/60 transition-colors flex items-center justify-between ${
+                pathname === '/' ? 'text-primary font-black' : 'text-foreground hover:text-primary'
+              }`}
+            >
+              <span>{t('nav.home')}</span>
+            </Link>
+
+            {/* Shop */}
+            <Link
+              href="/search"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`py-3 min-h-[44px] text-base font-extrabold border-b border-border/60 transition-colors flex items-center justify-between ${
+                pathname === '/search' && !currentCategory ? 'text-primary font-black' : 'text-foreground hover:text-primary'
+              }`}
+            >
+              <span>{t('nav.shop')}</span>
+            </Link>
+
+            {/* Categories Header */}
+            <div className="pt-3 pb-1 flex items-center justify-between text-xs font-black uppercase tracking-wider text-muted-foreground border-b border-border/40">
+              <div className="flex items-center space-x-1.5">
+                <LayoutGrid size={14} className="text-primary" />
+                <span>{locale === 'bn' ? 'ক্যাটাগরি সমূহ' : 'Categories'}</span>
+              </div>
+              <span className="text-[11px] font-bold text-primary">{parentCategories.length} {locale === 'bn' ? 'টি বিভাগ' : 'Depts'}</span>
+            </div>
+
+            {/* Parent Categories with Accordions */}
+            {parentCategories.map((parent: any) => {
+              const parentKey = parent.slug || parent._id;
+              const hasSubs = parent.subcategories && parent.subcategories.length > 0;
+              const isOpen = !!openMobileCategories[parentKey];
+              const isParentActive = isCategoryActive(parent);
+
+              if (!hasSubs) {
+                return (
+                  <Link
+                    key={parentKey}
+                    href={`/search?category=${encodeURIComponent(parent.slug || parent.name)}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`py-3 min-h-[44px] text-sm sm:text-base font-bold border-b border-border/40 transition-colors flex items-center justify-between ${
+                      isParentActive ? 'text-primary font-black' : 'text-foreground hover:text-primary'
+                    }`}
+                  >
+                    <span>{parent.displayName}</span>
+                    <ChevronRight size={16} className="text-muted-foreground/60" />
+                  </Link>
+                );
               }
 
               return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  onClick={(e) => {
-                    setIsMobileMenuOpen(false);
-                    if (item.key === 'home') {
-                      handleHomeClick(e);
-                    }
-                  }}
-                  className={`py-3 min-h-[44px] text-base sm:text-lg font-extrabold border-b border-border/60 transition-colors flex items-center justify-between ${
-                    isActive ? 'text-primary font-black' : 'text-foreground hover:text-primary'
-                  }`}
-                >
-                  <span>{item.name}</span>
-                </Link>
+                <div key={parentKey} className="border-b border-border/40">
+                  <div className="flex items-center justify-between min-h-[44px]">
+                    <Link
+                      href={`/search?category=${encodeURIComponent(parent.slug || parent.name)}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`py-2.5 text-sm sm:text-base font-bold transition-colors flex-1 truncate ${
+                        isParentActive ? 'text-primary font-black' : 'text-foreground hover:text-primary'
+                      }`}
+                    >
+                      <span>{parent.displayName}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleMobileCategory(parentKey)}
+                      className="p-2.5 text-muted-foreground hover:text-primary cursor-pointer transition-colors"
+                      aria-label={`Toggle ${parent.displayName} subcategories`}
+                    >
+                      <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div className="pb-2.5 pl-3 pr-1 space-y-1 bg-muted/20 rounded-lg mb-2 pt-1 border border-border/30 animate-in fade-in duration-150">
+                      <Link
+                        href={`/search?category=${encodeURIComponent(parent.slug || parent.name)}`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="py-1.5 px-2.5 text-xs font-bold text-primary flex items-center justify-between hover:bg-primary/10 rounded-md transition-colors"
+                      >
+                        <span>{locale === 'bn' ? `সকল ${parent.displayName} পণ্য দেখুন` : `View All ${parent.displayName}`}</span>
+                        <ChevronRight size={13} />
+                      </Link>
+                      {parent.subcategories.map((sub: any) => {
+                        const isSubActive = pathname === '/search' && currentCategory.toLowerCase() === (sub.slug || '').toLowerCase();
+                        return (
+                          <Link
+                            key={sub._id || sub.slug}
+                            href={`/search?category=${encodeURIComponent(sub.slug || sub.name)}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`py-1.5 px-2.5 text-xs font-semibold rounded-md flex items-center justify-between transition-colors ${
+                              isSubActive ? 'bg-primary text-white font-bold' : 'text-foreground/90 hover:bg-muted hover:text-primary'
+                            }`}
+                          >
+                            <span className="truncate">{sub.displayName}</span>
+                            <ChevronRight size={12} className={isSubActive ? 'text-white' : 'text-muted-foreground/50'} />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
+
+            {/* Admin Panel Link */}
             {mounted && isAuthenticated && ['super_admin', 'admin', 'staff'].includes(user?.role || '') && (
               <Link
                 href="/admin"
