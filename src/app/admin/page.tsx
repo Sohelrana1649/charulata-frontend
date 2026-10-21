@@ -57,23 +57,27 @@ const TIMEFRAME_LABELS: Record<string, string> = {
   'all': 'All Time Data'
 };
 
-const mockPieData = [
-  { name: 'Saree', value: 38 },
-  { name: 'Panjabi', value: 22 },
-  { name: 'Jewelry', value: 18 },
-  { name: 'Beauty', value: 14 },
-  { name: 'Gadgets', value: 8 },
-];
-
 export default function AdminDashboardPage() {
-  const { isSuperAdmin } = useRole();
-  const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery({}, { pollingInterval: 30000 });
+  const { isSuperAdmin, isStaffOrAbove } = useRole();
+  const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery(
+    {}, 
+    { skip: !isStaffOrAbove, pollingInterval: isStaffOrAbove ? 30000 : 0 }
+  );
   const [chartTimeframe, setChartTimeframe] = useState('30days');
   const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
   
-  const { data: chartResponse, isLoading: chartLoading } = useGetSalesChartDataQuery(chartTimeframe);
-  const { data: catResponse } = useGetCategoryDistributionQuery({});
-  const { data: ordersResponse, isLoading: ordersLoading, refetch: refetchOrders } = useGetRecentOrdersQuery({}, { pollingInterval: 15000 });
+  const { data: chartResponse, isLoading: chartLoading } = useGetSalesChartDataQuery(
+    chartTimeframe, 
+    { skip: !isStaffOrAbove }
+  );
+  const { data: catResponse } = useGetCategoryDistributionQuery(
+    {}, 
+    { skip: !isStaffOrAbove }
+  );
+  const { data: ordersResponse, isLoading: ordersLoading, refetch: refetchOrders } = useGetRecentOrdersQuery(
+    {}, 
+    { skip: !isStaffOrAbove, pollingInterval: isStaffOrAbove ? 15000 : 0 }
+  );
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
 
   // Live Stats parsing from GET /api/v1/analytics/overview
@@ -96,15 +100,7 @@ export default function AdminDashboardPage() {
         revenue: d.sales || d.revenue || 0,
         orders: d.orders || 1
       }))
-    : [
-        { date: 'Mon', revenue: 35000, orders: 8 },
-        { date: 'Tue', revenue: 55000, orders: 12 },
-        { date: 'Wed', revenue: 65000, orders: 15 },
-        { date: 'Thu', revenue: 80000, orders: 18 },
-        { date: 'Fri', revenue: 72000, orders: 14 },
-        { date: 'Sat', revenue: 130000, orders: 25 },
-        { date: 'Sun', revenue: 95000, orders: 20 }
-      ];
+    : [];
 
   // Reactive Filtered Metrics for KPI Stat Cards (Calculated directly from active timeframe data)
   const filteredMetrics = React.useMemo(() => {
@@ -134,7 +130,7 @@ export default function AdminDashboardPage() {
         name: c.name,
         value: c.revenue || c.salesCount || 0
       }))
-    : mockPieData;
+    : [];
 
   // Recent orders parsing from GET /api/v1/analytics/recent-orders
   const recentOrders = Array.isArray(ordersResponse?.data) ? ordersResponse?.data : [];
@@ -531,6 +527,10 @@ export default function AdminDashboardPage() {
                 <Loader2 className="animate-spin text-primary mr-2 h-4 w-4" />
                 Loading timeline chart...
               </div>
+            ) : chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+                No sales data available yet
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
@@ -568,6 +568,11 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="h-36 sm:h-48">
+            {catData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+                No category sales yet
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -587,6 +592,7 @@ export default function AdminDashboardPage() {
                 <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 pt-2 border-t border-border">

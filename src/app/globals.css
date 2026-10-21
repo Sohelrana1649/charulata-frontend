@@ -394,7 +394,6 @@ a[class*="bg-[#151B26]"]:hover {
 /* --- Header, Sidebar tweaks --- */
 header,
 aside,
-nav,
 .bg-\[\#0B0F19\]\/90 {
   background-color: var(--card) !important;
   border-color: var(--border) !important;
@@ -542,10 +541,9 @@ table thead td {
   border-color: #FCD34D !important;
 }
 
-/* Fix secondary navbar hover color by overriding the pink brand theme override */
-.bg-primary a:hover,
-.bg-primary .hover\:text-\[\#c99a3c\]:hover {
-  color: #c99a3c !important;
+/* Secondary navbar hover color - ensure it does not affect white dropdown menus */
+.bg-primary .bg-card a:hover {
+  color: var(--primary) !important;
 }
 
 /* --- Hide scrollbar utility class --- */

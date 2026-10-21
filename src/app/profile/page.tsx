@@ -236,28 +236,6 @@ function ProfileContent() {
     }));
   }, [user]);
 
-  // Wishlist state
-  const [wishlist, setWishlist] = useState([
-    {
-      id: 'wish-1',
-      title: 'Katan Banarasi Crimson',
-      price: 18900,
-      image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500'
-    },
-    {
-      id: 'wish-2',
-      title: 'Monsoon Diamond Pendant',
-      price: 24500,
-      image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500'
-    },
-    {
-      id: 'wish-3',
-      title: 'Rose Attar Luxe 50ml',
-      price: 4250,
-      image: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=500'
-    }
-  ]);
-
   // Map Backend Wishlist if available
   const wishlistArray = Array.isArray(wishlistResponse?.data?.products)
     ? wishlistResponse.data.products
@@ -275,11 +253,11 @@ function ProfileContent() {
       id: p._id || p.id || w._id,
       slug: p.slug || p._id || p.id,
       title: p.title || 'Charulata Item',
-      price: p.salePrice || p.price || 12000,
+      price: p.salePrice || p.price || 0,
       image: p.productImages?.[0] || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=500'
     };
   }) : null;
-  const activeWishlist = dbWishlist !== null ? dbWishlist : wishlist;
+  const activeWishlist = dbWishlist !== null ? dbWishlist : [];
 
   // Map Real Backend Notifications
   const notificationsArray = useMemo(() => {
@@ -430,17 +408,11 @@ function ProfileContent() {
   };
 
   const handleRemoveWishlist = async (id: string) => {
-    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
-      setWishlist(wishlist.filter(w => w.id !== id));
-      toast.success('Item removed from wishlist');
-      return;
-    }
     try {
       await removeFromWishlistMutation(id).unwrap();
       toast.success('Item removed from wishlist');
-    } catch (err) {
-      setWishlist(wishlist.filter(w => w.id !== id));
-      toast.success('Item removed from wishlist');
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to remove item from wishlist');
     }
   };
 

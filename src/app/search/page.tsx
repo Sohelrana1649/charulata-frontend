@@ -226,6 +226,7 @@ function SearchResults() {
   const [sortBy, setSortBy] = useState('price-desc');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [openParents, setOpenParents] = useState<Record<string, boolean>>({});
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -304,8 +305,13 @@ function SearchResults() {
   const { data: categoriesResponse } = useGetCategoriesQuery({});
   const { data: allProductsResponse } = useGetProductsQuery({ limit: 500 });
 
-  const categories = categoriesResponse?.data?.categories || categoriesResponse?.data || categoriesResponse || [];
-  const allProductsList = allProductsResponse?.data?.products || allProductsResponse?.data || allProductsResponse?.products || [];
+  const categories = React.useMemo(() => {
+    return categoriesResponse?.data?.categories || categoriesResponse?.data || categoriesResponse || [];
+  }, [categoriesResponse]);
+
+  const allProductsList = React.useMemo(() => {
+    return allProductsResponse?.data?.products || allProductsResponse?.data || allProductsResponse?.products || [];
+  }, [allProductsResponse]);
 
   const totalProducts = productsResponse?.total || productsResponse?.data?.total || productsResponse?.data?.products?.length || accumulatedProducts.length || 0;
   const totalPages = productsResponse?.pages || productsResponse?.data?.pages || Math.ceil(totalProducts / itemsPerPage) || 1;
@@ -481,18 +487,117 @@ function SearchResults() {
     }))
   ];
 
-  // Compute live category count from all master products
-  const getCategoryProductCount = (catId: string) => {
+  // Group categories into Parents (level 0) and Child subcategories (level 1)
+  const enrichedParents = React.useMemo(() => {
+    const list = Array.isArray(categories) ? categories : [];
+    const parents: any[] = [];
+    const subs: any[] = [];
+
+    list.forEach((cat: any) => {
+      if (cat.level === 0 || !cat.parentCategory) {
+        parents.push(cat);
+      } else {
+        subs.push(cat);
+      }
+    });
+
+    parents.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.name || '').localeCompare(b.name || ''));
+    subs.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.name || '').localeCompare(b.name || ''));
+
+    const subMap: Record<string, any[]> = {};
+    subs.forEach((sub: any) => {
+      const parentRef = sub.parentCategory;
+      const pid = typeof parentRef === 'object' && parentRef !== null
+        ? String(parentRef._id || parentRef.slug || '')
+        : String(parentRef || '');
+      const pslug = typeof parentRef === 'object' && parentRef !== null
+        ? String(parentRef.slug || '')
+        : '';
+
+      if (pid) {
+        if (!subMap[pid]) subMap[pid] = [];
+        subMap[pid].push(sub);
+      }
+      if (pslug && pslug !== pid) {
+        if (!subMap[pslug]) subMap[pslug] = [];
+        subMap[pslug].push(sub);
+      }
+    });
+
+    return parents.map((parent) => {
+      const idKey = String(parent._id || '');
+      const slugKey = String(parent.slug || '');
+      const childSubs = subMap[idKey] || subMap[slugKey] || [];
+      return {
+        ...parent,
+        subcategories: childSubs
+      };
+    });
+  }, [categories]);
+
+  // Automatically expand parent category dropdown when selectedCategory matches parent or child
+  useEffect(() => {
+    if (!selectedCategory || selectedCategory === 'all') return;
+    const cur = selectedCategory.toLowerCase();
+
+    enrichedParents.forEach((parent: any) => {
+      const isParentMatch = (parent.slug || '').toLowerCase() === cur || String(parent._id || '').toLowerCase() === cur;
+      const isChildMatch = (parent.subcategories || []).some((sub: any) =>
+        (sub.slug || '').toLowerCase() === cur || String(sub._id || '').toLowerCase() === cur
+      );
+
+      if (isParentMatch || isChildMatch) {
+        setOpenParents(prev => ({
+          ...prev,
+          [String(parent.slug)]: true,
+          [String(parent._id)]: true
+        }));
+      }
+    });
+  }, [selectedCategory, enrichedParents]);
+
+  const toggleParent = (slug?: string, id?: string) => {
+    const k1 = String(slug || '');
+    const k2 = String(id || '');
+    setOpenParents(prev => {
+      const isCurrentlyOpen = Boolean(prev[k1] || prev[k2]);
+      return {
+        ...prev,
+        [k1]: !isCurrentlyOpen,
+        [k2]: !isCurrentlyOpen
+      };
+    });
+  };
+
+  // Compute live category count from all master products (parent includes all its children products)
+  const getCategoryProductCount = React.useCallback((catId: string, isParent: boolean = false, childSlugsOrIds: string[] = []) => {
     if (catId === 'all') {
       return allProductsList.length || totalProducts || 0;
     }
+    const target = catId.toLowerCase();
+    const targetSet = new Set([target, ...childSlugsOrIds.map(s => s.toLowerCase())]);
+
     return allProductsList.filter((p: any) => {
       const pCat = getProductCategory(p).toLowerCase();
-      const pCatId = typeof p.category === 'object' ? p.category?._id?.toString() : p.category?.toString();
-      const target = catId.toLowerCase();
-      return pCat === target || pCatId === catId || pCat.includes(target);
+      const pCatId = (typeof p.category === 'object' ? p.category?._id?.toString() : p.category?.toString() || '').toLowerCase();
+
+      if (!isParent) {
+        return pCat === target || pCatId === target;
+      }
+
+      const pParentCat = (typeof p.parentCategory === 'object' ? (p.parentCategory?.slug || p.parentCategory?.name || '') : (p.parentCategory?.toString() || '')).toLowerCase();
+      const pParentId = (typeof p.parentCategory === 'object' ? (p.parentCategory?._id?.toString() || '') : '').toLowerCase();
+
+      return (
+        pParentCat === target ||
+        pParentId === target ||
+        pCat === target ||
+        pCatId === target ||
+        targetSet.has(pCat) ||
+        targetSet.has(pCatId)
+      );
     }).length;
-  };
+  }, [allProductsList, totalProducts]);
 
   return (
     <div className="max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 py-8 sm:py-10 flex-1 w-full bg-background text-foreground min-h-screen">
@@ -541,63 +646,254 @@ function SearchResults() {
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Categories with Parent-Child Dropdown Accordion */}
           {(() => {
-            const filteredCategoryOptions = categoryOptions.filter((cat) =>
-              cat.label.toLowerCase().includes(categorySearchQuery.toLowerCase().trim())
+            const query = categorySearchQuery.toLowerCase().trim();
+            const totalAllCount = getCategoryProductCount('all');
+            const isAllActive = !selectedCategory || selectedCategory.toLowerCase() === 'all';
+
+            // Filter parent categories: include if parent name matches OR any of its children match
+            const filteredParents = enrichedParents.filter((parent: any) => {
+              if (!query) return true;
+              const parentName = (translateCategoryName(parent, locale) || parent.name || '').toLowerCase();
+              if (parentName.includes(query)) return true;
+              return (parent.subcategories || []).some((sub: any) => {
+                const subName = (translateCategoryName(sub, locale) || sub.name || '').toLowerCase();
+                return subName.includes(query);
+              });
+            });
+
+            const allAreExpanded = filteredParents.length > 0 && filteredParents.every((p: any) =>
+              Boolean(openParents[String(p.slug)] || openParents[String(p._id)])
             );
-            const displayedCategoryOptions = showAllCategories
-              ? filteredCategoryOptions
-              : filteredCategoryOptions.slice(0, 6);
+
+            const handleToggleAll = () => {
+              if (allAreExpanded) {
+                setOpenParents({});
+              } else {
+                const next: Record<string, boolean> = {};
+                filteredParents.forEach((p: any) => {
+                  next[String(p.slug)] = true;
+                  next[String(p._id)] = true;
+                });
+                setOpenParents(next);
+              }
+            };
 
             return (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-foreground opacity-90">{t('search.category')}</label>
-                  {categoryOptions.length > 6 && (
+                  <label className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-foreground opacity-90">
+                    {t('search.category')}
+                  </label>
+                  {filteredParents.some((p: any) => (p.subcategories || []).length > 0) && (
                     <button
                       type="button"
-                      onClick={() => setShowAllCategories(!showAllCategories)}
+                      onClick={handleToggleAll}
                       className="text-xs font-extrabold text-primary hover:underline transition cursor-pointer"
                     >
-                      {showAllCategories ? 'Less -' : `View All (${categoryOptions.length - 1}) +`}
+                      {allAreExpanded
+                        ? (locale === 'bn' ? 'সব বন্ধ করুন -' : 'Collapse All -')
+                        : (locale === 'bn' ? 'সব খুলুন +' : 'Expand All +')}
                     </button>
                   )}
                 </div>
 
-                {categoryOptions.length > 8 && showAllCategories && (
+                {/* Category Search Filter Input */}
+                <div className="relative">
                   <input
                     type="text"
-                    placeholder="Filter categories..."
+                    placeholder={locale === 'bn' ? 'ক্যাটাগরি খুঁজুন...' : 'Filter categories...'}
                     value={categorySearchQuery}
                     onChange={(e) => setCategorySearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-muted/60 px-3.5 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none mb-1"
+                    className="w-full rounded-xl border border-border bg-muted/60 px-3.5 py-2 pl-8 pr-7 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none mb-1 transition-all"
                   />
-                )}
+                  <Search className="absolute left-2.5 top-2.5 text-muted-foreground pointer-events-none" size={14} />
+                  {categorySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
 
-                <div className={`space-y-1.5 ${showAllCategories && categoryOptions.length > 6 ? 'max-h-64 overflow-y-auto pr-1' : ''}`}>
-                  {displayedCategoryOptions.map((cat) => {
-                    const isAll = cat.id === 'all';
-                    const isActive = isAll
-                      ? !selectedCategory || selectedCategory.toLowerCase() === 'all'
-                      : (selectedCategory || '').toLowerCase() === cat.id.toLowerCase();
-                    const count = getCategoryProductCount(cat.id);
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1 no-scrollbar">
+                  {/* All Pieces Button */}
+                  <button
+                    key="all-pieces"
+                    onClick={() => handleCategorySelect('all')}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isAllActive
+                        ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs font-black'
+                        : 'text-foreground/85 hover:bg-muted hover:text-foreground border border-transparent'
+                    }`}
+                  >
+                    <span className="capitalize truncate mr-2 font-serif">{t('search.allPieces')}</span>
+                    <span
+                      className={`text-xs px-2.5 py-0.5 rounded-full font-black shrink-0 ${
+                        isAllActive ? 'bg-primary text-white shadow-xs' : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {totalAllCount}
+                    </span>
+                  </button>
+
+                  {/* Parent Categories with nested children dropdowns */}
+                  {filteredParents.map((parent: any) => {
+                    const pKey = parent.slug || parent._id;
+                    const pId = parent.slug || parent._id;
+                    const pSubs = parent.subcategories || [];
+                    const hasChildren = pSubs.length > 0;
+                    const childIds = pSubs.map((s: any) => s.slug || s._id);
+
+                    const isParentActive = (selectedCategory || '').toLowerCase() === (parent.slug || '').toLowerCase() || (selectedCategory || '').toLowerCase() === String(parent._id || '').toLowerCase();
+                    const isChildActive = pSubs.some(
+                      (sub: any) => (selectedCategory || '').toLowerCase() === (sub.slug || '').toLowerCase() || (selectedCategory || '').toLowerCase() === String(sub._id || '').toLowerCase()
+                    );
+
+                    // When searching, auto-expand if any child matches the search query
+                    const isSearching = Boolean(query);
+                    const matchingSubs = isSearching
+                      ? pSubs.filter((sub: any) => {
+                          const subName = (translateCategoryName(sub, locale) || sub.name || '').toLowerCase();
+                          return subName.includes(query);
+                        })
+                      : pSubs;
+
+                    const isOpen = Boolean(openParents[String(parent.slug)] || openParents[String(parent._id)]) || (isSearching && matchingSubs.length > 0);
+                    const parentLabel = translateCategoryName(parent, locale);
+                    const parentCount = getCategoryProductCount(pId, true, childIds);
 
                     return (
-                      <button
-                        key={cat.id}
-                        onClick={() => handleCategorySelect(cat.id)}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${isActive
-                            ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs font-black'
-                            : 'text-foreground/80 hover:bg-muted hover:text-foreground'
-                          }`}
+                      <div
+                        key={pKey}
+                        className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                          isParentActive
+                            ? 'border-primary/40 bg-primary/5 shadow-2xs'
+                            : isChildActive
+                            ? 'border-primary/25 bg-muted/20'
+                            : 'border-border/60 bg-card hover:border-border'
+                        }`}
                       >
-                        <span className="capitalize truncate mr-2 font-serif">{cat.label}</span>
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-black shrink-0 ${isActive ? 'bg-primary text-white-force shadow-xs' : 'bg-muted text-muted-foreground'
-                          }`}>
-                          {count}
-                        </span>
-                      </button>
+                        {/* Parent Category Header Row */}
+                        <div
+                          className={`w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm font-bold transition-colors ${
+                            isParentActive ? 'text-primary font-black' : isChildActive ? 'text-primary font-extrabold' : 'text-foreground/90'
+                          }`}
+                        >
+                          {/* Clickable Category Name (Filters by this parent & opens dropdown) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleCategorySelect(pId);
+                              if (hasChildren) {
+                                setOpenParents(prev => ({
+                                  ...prev,
+                                  [String(parent.slug)]: true,
+                                  [String(parent._id)]: true
+                                }));
+                              }
+                            }}
+                            className="flex-1 flex items-center space-x-2 text-left truncate mr-2 cursor-pointer group/title py-1"
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform ${
+                                isParentActive ? 'bg-primary scale-125' : isChildActive ? 'bg-primary/70' : 'bg-transparent'
+                              }`}
+                            />
+                            <span className="truncate capitalize font-serif group-hover/title:text-primary transition-colors">
+                              {parentLabel}
+                            </span>
+                          </button>
+
+                          {/* Right: Count Badge & Dropdown Chevron Toggle */}
+                          <div className="flex items-center space-x-1 shrink-0">
+                            <span
+                              onClick={() => {
+                                handleCategorySelect(pId);
+                                if (hasChildren) {
+                                  setOpenParents(prev => ({
+                                    ...prev,
+                                    [String(parent.slug)]: true,
+                                    [String(parent._id)]: true
+                                  }));
+                                }
+                              }}
+                              className={`text-xs px-2.5 py-0.5 rounded-full font-black cursor-pointer transition-colors ${
+                                isParentActive
+                                  ? 'bg-primary text-white shadow-xs'
+                                  : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                              }`}
+                            >
+                              {parentCount}
+                            </span>
+
+                            {hasChildren && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  toggleParent(parent.slug, parent._id);
+                                }}
+                                aria-label={isOpen ? `Collapse ${parentLabel}` : `Expand ${parentLabel}`}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/80 transition-all cursor-pointer"
+                              >
+                                <ChevronDown
+                                  size={16}
+                                  className={`transition-transform duration-200 stroke-[2.2] ${
+                                    isOpen ? 'rotate-180 text-primary' : ''
+                                  }`}
+                                />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Nested Subcategories Dropdown */}
+                        {hasChildren && isOpen && (
+                          <div className="border-t border-border/40 bg-muted/25 px-2.5 py-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                            {matchingSubs.map((sub: any) => {
+                              const subId = sub.slug || sub._id;
+                              const isSubSelected = (selectedCategory || '').toLowerCase() === subId.toLowerCase();
+                              const subLabel = translateCategoryName(sub, locale);
+                              const subCount = getCategoryProductCount(subId, false);
+
+                              return (
+                                <button
+                                  key={sub._id || sub.slug}
+                                  type="button"
+                                  onClick={() => handleCategorySelect(subId)}
+                                  className={`w-full flex items-center justify-between pl-3 pr-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                                    isSubSelected
+                                      ? 'bg-primary text-white font-black shadow-xs'
+                                      : 'text-foreground/80 hover:bg-background hover:text-primary font-medium'
+                                  }`}
+                                >
+                                  <div className="flex items-center space-x-2 truncate mr-2">
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                        isSubSelected ? 'bg-white' : 'bg-primary/40'
+                                      }`}
+                                    />
+                                    <span className="truncate">{subLabel}</span>
+                                  </div>
+                                  <span
+                                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                                      isSubSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+                                    }`}
+                                  >
+                                    {subCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

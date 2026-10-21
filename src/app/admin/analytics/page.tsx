@@ -37,20 +37,13 @@ import { useRole } from '@/hooks/useRole';
 import RoleGuard from '@/components/admin/RoleGuard';
 
 const PIE_COLORS = ['#e11d48', '#f59e0b', '#10b981', '#6366f1', '#8b5cf6'];
-const mockPieData = [
-  { name: 'Saree', value: 38 },
-  { name: 'Panjabi', value: 22 },
-  { name: 'Jewelry', value: 18 },
-  { name: 'Beauty', value: 14 },
-  { name: 'Gadgets', value: 8 },
-];
 
 export default function AdminAnalyticsPage() {
-  const { isSuperAdmin } = useRole();
-  const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery({});
+  const { isSuperAdmin, isStaffOrAbove } = useRole();
+  const { data: statsResponse, isLoading: statsLoading } = useGetOverviewStatsQuery({}, { skip: !isStaffOrAbove });
   const [timeframe, setTimeframe] = useState('30days');
-  const { data: chartResponse, isLoading: chartLoading } = useGetSalesChartDataQuery(timeframe);
-  const { data: catResponse } = useGetCategoryDistributionQuery({});
+  const { data: chartResponse, isLoading: chartLoading } = useGetSalesChartDataQuery(timeframe, { skip: !isStaffOrAbove });
+  const { data: catResponse } = useGetCategoryDistributionQuery({}, { skip: !isStaffOrAbove });
 
   const [triggerExport, { isFetching: isExporting }] = useLazyExportAnalyticsQuery();
 
@@ -69,15 +62,7 @@ export default function AdminAnalyticsPage() {
         date: d.month || d.date,
         revenue: d.sales || d.revenue || 0
       }))
-    : [
-        { date: 'Mon', revenue: 35000 },
-        { date: 'Tue', revenue: 55000 },
-        { date: 'Wed', revenue: 65000 },
-        { date: 'Thu', revenue: 80000 },
-        { date: 'Fri', revenue: 72000 },
-        { date: 'Sat', revenue: 130000 },
-        { date: 'Sun', revenue: 95000 }
-      ];
+    : [];
 
   const rawCatData = catResponse?.data?.topCategories || catResponse?.data?.categorySales || [];
   const catData = Array.isArray(rawCatData) && rawCatData.length > 0
@@ -85,7 +70,7 @@ export default function AdminAnalyticsPage() {
         name: c.name,
         value: c.revenue || c.salesCount || 0
       }))
-    : mockPieData;
+    : [];
 
   const handleExportCSV = async () => {
     try {
@@ -282,6 +267,10 @@ export default function AdminAnalyticsPage() {
                 <Loader2 className="animate-spin text-primary mr-2 h-4 w-4" />
                 Loading analytics data...
               </div>
+            ) : chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+                No sales data available yet
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
@@ -309,6 +298,11 @@ export default function AdminAnalyticsPage() {
           </div>
 
           <div className="h-36 sm:h-48">
+            {catData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+                No category sales yet
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -328,6 +322,7 @@ export default function AdminAnalyticsPage() {
                 <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 pt-2 border-t border-border">
@@ -351,6 +346,11 @@ export default function AdminAnalyticsPage() {
         </div>
 
         <div className="h-48 sm:h-64">
+          {chartData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+              No sales data available yet
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <XAxis dataKey="date" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
@@ -359,6 +359,7 @@ export default function AdminAnalyticsPage() {
               <Bar dataKey="revenue" fill="#e11d48" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 

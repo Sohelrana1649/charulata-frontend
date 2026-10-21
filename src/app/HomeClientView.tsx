@@ -9,6 +9,7 @@ import ProductSlider from '@/components/common/ProductSlider';
 import { useGetLandingDataQuery } from '@/store/api/landingApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { toast } from 'react-toastify';
+import { useGetProductsQuery } from '@/store/api/productApi';
 import {
   ShoppingBag,
   ArrowRight,
@@ -35,7 +36,6 @@ import {
   Share2,
   Check,
   Users,
-  Award,
   Clock,
   ExternalLink,
   MessageCircle
@@ -102,7 +102,7 @@ const SectionSkeleton = ({ count = 5 }: { count?: number }) => (
 );
 
 const BannerSkeleton = () => (
-  <div className="relative overflow-hidden bg-muted/70 dark:bg-neutral-900/70 aspect-[2.8/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[120px] sm:min-h-[240px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] shadow-none border border-border/40 shimmer-bg flex items-center justify-center">
+  <div className="relative overflow-hidden bg-muted/60 dark:bg-neutral-900/60 aspect-[2.2/1] sm:aspect-[2.5/1] md:aspect-[2.65/1] lg:aspect-[2.7/1] min-h-[150px] sm:min-h-[220px] md:min-h-[280px] lg:min-h-[340px] xl:min-h-[380px] max-h-[240px] sm:max-h-[340px] md:max-h-[420px] lg:max-h-[500px] w-full rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-none border border-border/40 shimmer-bg flex items-center justify-center">
     <div className="flex flex-col items-center justify-center gap-1.5 opacity-40 text-muted-foreground select-none">
       <Sparkles className="w-7 h-7 sm:w-9 sm:h-9 text-primary/70 animate-pulse" />
       <span className="text-[10px] sm:text-xs font-semibold tracking-widest uppercase text-muted-foreground/80">
@@ -293,39 +293,15 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
     return () => clearInterval(interval);
   }, [campaignTargetDate]);
 
-  const DEFAULT_BANNERS = useMemo(() => [
-    {
-      _id: "6a325e753cbc95710761451d",
-      title: "Premium Fashion Collection 2026",
-      subtitle: "COLLECTION 2026",
-      image: "https://res.cloudinary.com/dau8sazoh/image/upload/v1781661676/Font_slider_eezplq.jpg",
-      link: "/shop"
-    },
-    {
-      _id: "6a325e753cbc95710761451e",
-      title: "Exclusive Ladies Collection - New Arrival",
-      subtitle: "NEW ARRIVALS",
-      image: "https://res.cloudinary.com/dau8sazoh/image/upload/v1781661675/Font_slider_diptia.jpg",
-      link: "/category/women-fashion"
-    },
-    {
-      _id: "6a325e763cbc95710761451f",
-      title: "Best Deals & Trending Styles",
-      subtitle: "EXCLUSIVES",
-      image: "https://res.cloudinary.com/dau8sazoh/image/upload/v1781661676/Font_slider2_poppa5.jpg",
-      link: "/offers"
-    }
-  ], []);
-
+  // Banners come strictly from the backend (admin > banners). No hardcoded fallback.
   const banners = useMemo(() => {
-    const raw = (Array.isArray(landingData?.banners) ? landingData.banners : [])
+    return (Array.isArray(landingData?.banners) ? landingData.banners : [])
       .filter((b: any) => b && typeof b === 'object' && b.isActive !== false && (
         (typeof b.image === 'string' && b.image.trim() !== '') ||
         (typeof b.imageUrl === 'string' && b.imageUrl.trim() !== '') ||
         (typeof b.img === 'string' && b.img.trim() !== '')
       ));
-    return raw.length > 0 ? raw : DEFAULT_BANNERS;
-  }, [landingData?.banners, DEFAULT_BANNERS]);
+  }, [landingData]);
 
   const categories = useMemo(() => {
     return landingData?.categories || [];
@@ -366,12 +342,15 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
 
   const isProductsLoading = !landingData && isLandingLoading;
 
-  // Carousel State & Auto-Slide (every 6s)
+  // Carousel State & Auto-Slide (every 6s) with pause on hover & touch swipe
   const [currentSlide, setCurrentSlide] = useState(0);
   const [animate, setAnimate] = useState(true);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
   useEffect(() => {
-    if (banners.length <= 1) return;
+    if (banners.length <= 1 || isBannerPaused) return;
     const timer = setInterval(() => {
       setAnimate(false);
       setTimeout(() => {
@@ -379,7 +358,7 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
       }, 300);
     }, 6000);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [banners.length, isBannerPaused]);
 
   useEffect(() => {
     setAnimate(true);
@@ -401,46 +380,29 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
     }, 300);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > 50) {
+      handleNextSlide();
+    } else if (distance < -50) {
+      handlePrevSlide();
+    }
+  };
+
   const approvedReviews = useMemo(() =>
     landingData?.reviews || [],
     [landingData?.reviews]
   );
-
-  const staticTestimonials = useMemo(() => [
-    {
-      quote: locale === 'bn'
-        ? "ঘড়িটা হাতে পাওয়ার পর সত্যিই অনেক ভালো লেগেছে। ছবিতে যেমন দেখেছিলাম, বাস্তবে তার থেকেও সুন্দর দেখতে। ডিজাইনটা খুবই এলিগেন্ট এবং ফিনিশিং অনেক ভালো। হাতে পরলে বেশ প্রিমিয়াম একটা লুক আসে এবং দীর্ঘসময় পরেও আরামদায়ক লাগে। দামের তুলনায় কোয়ালিটি সত্যিই অসাধারণ। পুরো প্রোডাক্ট নিয়ে আমি অনেক সন্তুষ্ট।"
-        : "I was really delighted after receiving the watch! It looks even more beautiful in hand than in the pictures. The design is very elegant and the finishing is top-notch. It gives a truly premium feel on the wrist and remains comfortable even after long hours. The quality is outstanding for the price. Overall, I am extremely satisfied with the product.",
-      author: locale === 'bn' ? "সোহেল রানা" : "Sohel Rana",
-      role: locale === 'bn' ? "প্রিমিয়াম ওয়াচ বায়ার" : "Premium Watch Buyer",
-      productName: locale === 'bn' ? "প্রিমিয়াম ওয়াচ" : "Premium Watch",
-      productSlug: "/search",
-      rating: 5,
-      profileImage: ""
-    },
-    {
-      quote: locale === 'bn'
-        ? "অনলাইনে ঘড়ি অর্ডার করার সময় একটু চিন্তা ছিল, কিন্তু হাতে পাওয়ার পর সব চিন্তা দূর হয়ে গেছে। ঘড়ির ডিজাইন, কালার এবং ফিনিশিং সবকিছুই খুব সুন্দর। ছবির সঙ্গে প্রোডাক্টের বেশ ভালো মিল রয়েছে। হাতে পরলে দেখতে অনেক স্টাইলিশ লাগে এবং বিভিন্ন পোশাকের সাথেও সুন্দরভাবে মানিয়ে যায়। প্যাকেজিংও ভালো ছিল। সব মিলিয়ে দামের তুলনায় খুবই ভালো একটি প্রোডাক্ট পেয়েছি।"
-        : "I was a bit hesitant while ordering a watch online, but all my worries vanished once I held it! The design, color, and finishing are absolutely stunning. The product matches the pictures perfectly. It looks stylish on the wrist and pairs effortlessly with different outfits. The packaging was also great. A fantastic value for money!",
-      author: locale === 'bn' ? "সাদিয়া ইসলাম" : "Sadia Islam",
-      role: locale === 'bn' ? "ডিজাইনার ওয়াচ বায়ার" : "Designer Watch Buyer",
-      productName: locale === 'bn' ? "ডিজাইনার ওয়াচ" : "Designer Watch",
-      productSlug: "/search",
-      rating: 5,
-      profileImage: ""
-    },
-    {
-      quote: locale === 'bn'
-        ? "প্রোডাক্ট হাতে পেয়ে সত্যিই অনেক ভালো লেগেছে। ঘড়িটা দেখতে খুব সুন্দর এবং প্রিমিয়াম কোয়ালিটির মনে হয়েছে। ডিজাইনটা সিম্পল কিন্তু একই সাথে বেশ আকর্ষণীয়, তাই দৈনন্দিন ব্যবহার থেকে শুরু করে কোনো অনুষ্ঠানেও পরা যাবে। ফিনিশিং সুন্দর, হাতে পরতেও আরামদায়ক এবং ছবির মতোই পেয়েছি। ডেলিভারিও সময়মতো পেয়েছি এবং প্যাকেজিং ভালো ছিল। সবকিছু মিলিয়ে আমার কেনাকাটার অভিজ্ঞতা খুবই ভালো হয়েছে। অবশ্যই আবার অর্ডার করব।"
-        : "I am truly happy with the product! The watch looks gorgeous and feels genuinely premium. The design is simple yet eye-catching, making it perfect for both daily wear and special occasions. Comfortable on the wrist, exactly like shown in pictures. Timely delivery and excellent packaging. Overall a wonderful shopping experience—I will definitely order again!",
-      author: locale === 'bn' ? "নাবিলা তাবাসসুম" : "Nabila Tabassum",
-      role: locale === 'bn' ? "ক্লাসিক ওয়াচ বায়ার" : "Classic Watch Buyer",
-      productName: locale === 'bn' ? "ক্লাসিক ওয়াচ" : "Classic Watch",
-      productSlug: "/search",
-      rating: 5,
-      profileImage: ""
-    }
-  ], [locale]);
 
   const dbTestimonials = useMemo(() => {
     if (!Array.isArray(approvedReviews) || approvedReviews.length === 0) return [];
@@ -464,83 +426,111 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
     });
   }, [approvedReviews, locale]);
 
-  const slideItems = useMemo(() => {
-    return dbTestimonials.length > 0 ? dbTestimonials : staticTestimonials;
-  }, [dbTestimonials, staticTestimonials]);
+  // Testimonials come strictly from approved backend reviews. No hardcoded fallback.
+  const slideItems = dbTestimonials;
+
+  // Brand stats: only real numbers from the backend. Entries with no data are not shown.
+  const { data: productCountResponse } = useGetProductsQuery({ limit: 1 });
+  const brandStats = useMemo(() => {
+    const totalProducts = Number(productCountResponse?.total ?? productCountResponse?.data?.total ?? 0);
+    const parentCategoryCount = (Array.isArray(categories) ? categories : [])
+      .filter((c: any) => c && (c.level === 0 || !c.parentCategory)).length;
+    const reviewList: any[] = Array.isArray(approvedReviews) ? approvedReviews : [];
+    const ratings = reviewList.map((r: any) => Number(r?.rating)).filter((n: number) => n > 0);
+    const avgRating = ratings.length ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length : 0;
+
+    const stats: { key: string; value: number; decimals: number; suffix: string; label: string; icon: any }[] = [];
+    if (totalProducts > 0) stats.push({ key: 'products', value: totalProducts, decimals: 0, suffix: '', label: locale === 'bn' ? 'পণ্য' : 'Products', icon: ShoppingBag });
+    if (parentCategoryCount > 0) stats.push({ key: 'categories', value: parentCategoryCount, decimals: 0, suffix: '', label: locale === 'bn' ? 'ক্যাটাগরি' : 'Categories', icon: Sparkles });
+    if (reviewList.length > 0) stats.push({ key: 'reviews', value: reviewList.length, decimals: 0, suffix: '', label: locale === 'bn' ? 'কাস্টমার রিভিউ' : 'Customer Reviews', icon: Users });
+    if (avgRating > 0) stats.push({ key: 'rating', value: avgRating, decimals: 1, suffix: ' ★', label: locale === 'bn' ? 'গড় রেটিং' : 'Average Rating', icon: Star });
+    return stats;
+  }, [productCountResponse, categories, approvedReviews, locale]);
 
   return (
     <div className="flex-1 w-full bg-background text-foreground font-sans relative">
 
       {/* 1. Hero Banner Slider */}
       <section className="w-full relative z-10 animate-fadeIn pt-1.5 sm:pt-2">
-        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12">
+        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-3 sm:px-6 lg:px-10 xl:px-12">
           {isProductsLoading ? (
             <BannerSkeleton />
-          ) : (
-            <div className="relative overflow-hidden bg-card aspect-[2.8/1] sm:aspect-[2.8/1] lg:aspect-[3.2/1] min-h-[120px] sm:min-h-[240px] max-h-[320px] sm:max-h-[400px] lg:max-h-[460px] w-full rounded-[2px] group shadow-none border-0">
+          ) : banners.length > 0 ? (
+            <div 
+              className="relative overflow-hidden bg-card aspect-[2.2/1] sm:aspect-[2.5/1] md:aspect-[2.65/1] lg:aspect-[2.7/1] min-h-[150px] sm:min-h-[220px] md:min-h-[280px] lg:min-h-[340px] xl:min-h-[380px] max-h-[240px] sm:max-h-[340px] md:max-h-[420px] lg:max-h-[500px] w-full rounded-xl sm:rounded-2xl lg:rounded-3xl group shadow-sm hover:shadow-md transition-shadow border border-border/40 select-none"
+              onMouseEnter={() => setIsBannerPaused(true)}
+              onMouseLeave={() => setIsBannerPaused(false)}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
 
               {/* Slides with Premium Cross-Fade */}
               {banners.map((banner: any, idx: number) => {
                 const isActive = idx === currentSlide;
 
-                const rawTitle = banner.title || "";
-                const hasDot = rawTitle.includes('.');
-                const isTitleTooLong = rawTitle.length > 40;
-
-                const displayTitle = (isTitleTooLong && hasDot)
-                  ? rawTitle.split('.')[0].trim()
-                  : (isTitleTooLong ? `${rawTitle.slice(0, 42)}...` : rawTitle);
-
-                const displayDesc = (isTitleTooLong && hasDot)
-                  ? (banner.subtitle && banner.subtitle !== "Best Deals & Trending Styles" ? banner.subtitle : rawTitle.split('.').slice(1).join('.').trim())
-                  : (banner.subtitle || "");
+                const rawTitle = (banner.title || '').trim();
+                const rawSubtitle = (banner.subtitle || '').trim();
+                const hasText = !!(rawTitle || rawSubtitle);
 
                 const bannerLink = resolveBannerLink(banner.link);
+                const ctaLabel = banner.buttonText || banner.ctaText || (locale === 'bn' ? 'শপ করুন' : 'Shop Now');
+                const altText = rawTitle || banner.alt || (locale === 'bn' ? 'চারুলতা লাইফস্টাইল ব্যানার' : 'Charulata Lifestyle Banner');
+                const bannerImg = banner.image || banner.imageUrl || banner.img;
 
                 return (
                   <div
                     key={banner._id || idx}
-                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-100 pointer-events-none'
-                      }`}
+                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${
+                      isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-100 pointer-events-none'
+                    }`}
                   >
-                    <Link href={bannerLink} className="block w-full h-full relative cursor-pointer group/banner">
+                    <Link 
+                      href={bannerLink} 
+                      className="block w-full h-full relative cursor-pointer group/banner"
+                      aria-label={altText}
+                    >
                       <Image
-                        src={banner.image || banner.imageUrl || banner.img || DEFAULT_BANNERS[0].image}
-                        alt={displayTitle || "Charulata Banner"}
+                        src={bannerImg}
+                        alt={altText}
                         fill
                         priority={idx === 0}
-                        unoptimized
-                        sizes="100vw"
-                        quality={95}
-                        className="object-contain sm:object-cover object-center transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, (max-width: 1536px) 1536px, 1680px"
+                        quality={90}
+                        className="object-cover object-center transition-transform duration-700 ease-out group-hover/banner:scale-[1.01]"
                       />
 
-                      {(displayTitle || displayDesc) && (
+                      {hasText && (
                         <div className="absolute inset-0 z-20 flex items-center w-full h-full pointer-events-none">
-                          <div className="pl-4 sm:pl-16 lg:pl-24 pr-4 sm:pr-16 w-full text-left">
-                            <div className={`space-y-2 sm:space-y-3.5 transition-all duration-700 ease-out transform max-w-md sm:max-w-lg p-4 sm:p-6 rounded-2xl bg-black/30 backdrop-blur-xs border border-white/10 shadow-2xl ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                              }`}>
-                              <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary text-white px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest uppercase shadow-xs">
-                                <Sparkles size={11} className="animate-pulse" />
-                                <span>EXPORT QUALITY · CHARULATA</span>
-                              </div>
+                          <div className="pl-4 sm:pl-10 lg:pl-16 pr-4 sm:pr-10 w-full text-left">
+                            <div 
+                              className={`space-y-1.5 sm:space-y-3 transition-all duration-700 ease-out transform max-w-[280px] sm:max-w-md lg:max-w-lg p-3 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl bg-black/40 dark:bg-black/55 backdrop-blur-xs sm:backdrop-blur-sm border border-white/15 shadow-2xl ${
+                                isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                              }`}
+                            >
+                              {banner.badge && (
+                                <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary text-white px-2.5 sm:px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest uppercase shadow-xs">
+                                  <Sparkles size={11} className="animate-pulse" />
+                                  <span>{banner.badge}</span>
+                                </div>
+                              )}
 
-                              {displayTitle && (
-                                <h1 className="hero-title-white text-xl sm:text-3xl lg:text-[36px] font-extrabold tracking-tight text-white font-serif leading-[1.2] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] line-clamp-2">
-                                  {displayTitle}
+                              {rawTitle && (
+                                <h1 className="hero-title-white text-base sm:text-2xl md:text-3xl lg:text-[34px] font-extrabold tracking-tight text-white font-serif leading-[1.2] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] line-clamp-2">
+                                  {rawTitle}
                                 </h1>
                               )}
 
-                              {displayDesc && (
-                                <p className="hero-subtitle-white text-[11px] sm:text-xs md:text-sm text-white/95 font-medium line-clamp-2 leading-relaxed drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-                                  {displayDesc}
+                              {rawSubtitle && (
+                                <p className="hero-subtitle-white text-[10px] sm:text-xs md:text-sm text-white/95 font-medium line-clamp-2 leading-relaxed drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                                  {rawSubtitle}
                                 </p>
                               )}
 
-                              <div className="pt-1">
-                                <span className="inline-flex items-center space-x-2 bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-black uppercase tracking-wider px-5 py-2 sm:py-2.5 rounded-xl transition-all duration-300 shadow-md">
-                                  <span>{locale === 'bn' ? 'শপ করুন' : 'Shop Now'}</span>
-                                  <ArrowRight size={14} className="stroke-[2.5]" />
+                              <div className="pt-0.5 sm:pt-1">
+                                <span className="inline-flex items-center space-x-1.5 sm:space-x-2 bg-primary hover:bg-primary/90 text-white text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-wider px-3.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 shadow-md">
+                                  <span>{ctaLabel}</span>
+                                  <ArrowRight size={13} className="stroke-[2.5]" />
                                 </span>
                               </div>
                             </div>
@@ -556,16 +546,26 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
               {banners.length > 1 && (
                 <>
                   <button
-                    onClick={handlePrevSlide}
-                    className="absolute left-2.5 sm:left-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100"
-                    aria-label="Previous banner"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handlePrevSlide();
+                    }}
+                    className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/45 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-lg hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    aria-label={locale === 'bn' ? 'পূর্ববর্তী ব্যানার' : 'Previous banner'}
                   >
                     <ChevronLeft size={18} className="stroke-[2.5]" />
                   </button>
                   <button
-                    onClick={handleNextSlide}
-                    className="absolute right-2.5 sm:right-5 top-1/2 transform -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-xl hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100"
-                    aria-label="Next banner"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleNextSlide();
+                    }}
+                    className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/45 hover:bg-primary border border-white/20 text-white hidden sm:flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-lg hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    aria-label={locale === 'bn' ? 'পরবর্তী ব্যানার' : 'Next banner'}
                   >
                     <ChevronRight size={18} className="stroke-[2.5]" />
                   </button>
@@ -574,29 +574,34 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
 
               {/* Slide Indicators */}
               {banners.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 hidden sm:flex items-center space-x-2 bg-black/35 px-3.5 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
+                <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-1.5 sm:space-x-2 bg-black/40 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
                   {banners.map((_: any, idx: number) => {
                     const isActive = currentSlide === idx;
                     return (
                       <button
                         key={idx}
-                        onClick={() => {
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           if (currentSlide === idx) return;
                           setAnimate(false);
                           setTimeout(() => {
                             setCurrentSlide(idx);
                           }, 300);
                         }}
-                        className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${isActive ? 'w-7 bg-primary shadow-xs' : 'w-2 bg-white/40 hover:bg-white/70'
-                          }`}
-                        aria-label={`Go to slide ${idx + 1}`}
+                        className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${
+                          isActive ? 'w-5 sm:w-7 bg-primary shadow-xs' : 'w-1.5 sm:w-2 bg-white/45 hover:bg-white/75'
+                        }`}
+                        aria-label={`${locale === 'bn' ? 'ব্যানার' : 'Slide'} ${idx + 1}`}
+                        aria-current={isActive ? 'true' : 'false'}
                       />
                     );
                   })}
                 </div>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </section>
 
@@ -869,84 +874,41 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
         </section>
       )}
 
-      {/* 6. Brand Stats Strip */}
-      <section className="w-full bg-muted/40 dark:bg-muted/20 py-12 sm:py-16 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[220px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      {/* 6. Brand Stats Strip (real values from backend only; hidden when there is nothing to show) */}
+      {brandStats.length > 0 && (
+        <section className="w-full bg-muted/40 dark:bg-muted/20 py-12 sm:py-16 relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[220px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10">
-
-          <div className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-rose-500/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-rose-500 group-hover:text-white transition-all duration-300 shadow-2xs">
-              <Users size={24} className="stroke-[2.2]" />
-            </div>
-            <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground font-serif tracking-tight group-hover:text-primary transition-colors">
-              {mounted ? (
-                <CountUp end={500} duration={2.5} enableScrollSpy scrollSpyOnce suffix="+" />
-              ) : (
-                "500+"
-              )}
-            </p>
-            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-widest mt-2 group-hover:text-foreground transition-colors font-sans">
-              {locale === 'bn' ? 'সন্তুষ্ট গ্রাহক' : 'Happy Clients'}
-            </p>
+          <div className={`mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 grid grid-cols-2 ${brandStats.length >= 4 ? 'lg:grid-cols-4' : brandStats.length === 3 ? 'lg:grid-cols-3' : ''} gap-4 sm:gap-6 relative z-10`}>
+            {brandStats.map((stat) => {
+              const StatIcon = stat.icon;
+              return (
+                <div
+                  key={stat.key}
+                  className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                    <StatIcon size={24} className="stroke-[2.2]" />
+                  </div>
+                  <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground font-serif tracking-tight group-hover:text-primary transition-colors">
+                    {mounted ? (
+                      <CountUp end={stat.value} decimals={stat.decimals} duration={2.5} enableScrollSpy scrollSpyOnce suffix={stat.suffix} />
+                    ) : (
+                      `${stat.value.toFixed(stat.decimals)}${stat.suffix}`
+                    )}
+                  </p>
+                  <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-widest mt-2 group-hover:text-foreground transition-colors font-sans">
+                    {stat.label}
+                  </p>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300 shadow-2xs">
-              <Award size={24} className="stroke-[2.2]" />
-            </div>
-            <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground font-serif tracking-tight group-hover:text-primary transition-colors">
-              {mounted ? (
-                <CountUp end={2} duration={2.5} enableScrollSpy scrollSpyOnce suffix="+" />
-              ) : (
-                "2+"
-              )}
-            </p>
-            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-widest mt-2 group-hover:text-foreground transition-colors font-sans">
-              {locale === 'bn' ? 'বছরের অভিজ্ঞতা' : 'Years of Craft'}
-            </p>
-          </div>
-
-          <div className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-500/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300 shadow-2xs">
-              <Truck size={24} className="stroke-[2.2]" />
-            </div>
-            <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground font-serif tracking-tight group-hover:text-primary transition-colors">
-              {mounted ? (
-                <CountUp end={10} duration={2.5} enableScrollSpy scrollSpyOnce suffix="+" />
-              ) : (
-                "10+"
-              )}
-            </p>
-            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-widest mt-2 group-hover:text-foreground transition-colors font-sans">
-              {locale === 'bn' ? 'ডেলিভারি হাব' : 'Delivery Hubs'}
-            </p>
-          </div>
-
-          <div className="group relative p-6 sm:p-8 rounded-3xl bg-background/80 dark:bg-card/70 border border-border/70 hover:border-primary/40 hover:bg-background shadow-2xs hover:shadow-md transition-all duration-300 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center text-center">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-amber-400/10 border border-amber-400/20 text-amber-400 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-amber-400 group-hover:text-white transition-all duration-300 shadow-2xs">
-              <Star size={24} className="fill-amber-400 group-hover:fill-white stroke-[2]" />
-            </div>
-            <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground font-serif tracking-tight group-hover:text-primary transition-colors">
-              {mounted ? (
-                <CountUp end={5.0} decimals={1} duration={2.5} enableScrollSpy scrollSpyOnce suffix=" ★" />
-              ) : (
-                "5.0 ★"
-              )}
-            </p>
-            <p className="text-xs sm:text-sm font-black text-muted-foreground uppercase tracking-widest mt-2 group-hover:text-foreground transition-colors font-sans">
-              {locale === 'bn' ? 'সেরা রেটিং' : 'Top Rating'}
-            </p>
-          </div>
-
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 7. Testimonials Section */}
+      {slideItems.length > 0 && (
       <section className="w-full bg-background py-20 overflow-hidden">
         <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
@@ -1100,6 +1062,7 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
           )}
         </div>
       </section>
+      )}
 
     </div>
   );

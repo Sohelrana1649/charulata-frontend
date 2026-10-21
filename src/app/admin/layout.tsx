@@ -139,10 +139,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
-  const { data: ordersResponse } = useGetAdminOrdersQuery({ status: 'Pending', limit: 1 });
+  const isAuthorizedAdmin = userRank >= 2;
+
+  const { data: ordersResponse } = useGetAdminOrdersQuery(
+    { status: 'Pending', limit: 1 },
+    { skip: !isAuthorizedAdmin }
+  );
   const pendingOrdersCount = ordersResponse?.total || ordersResponse?.data?.total || 0;
 
-  const { data: notificationsResponse } = useGetNotificationsQuery({});
+  const { data: notificationsResponse } = useGetNotificationsQuery(
+    {},
+    { skip: !isAuthorizedAdmin }
+  );
   const notificationsList = notificationsResponse?.data?.notifications || notificationsResponse?.notifications || [];
   const unreadNotificationsCount = Array.isArray(notificationsList)
     ? notificationsList.filter((n: any) => !n.isRead).length
@@ -268,6 +276,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 src="/logo.png" 
                 alt="Charulata Logo" 
                 fill 
+                sizes="(max-width: 640px) 36px, 40px"
                 className="object-cover" 
                 priority
               />

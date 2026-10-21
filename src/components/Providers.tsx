@@ -7,6 +7,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LanguageProvider, Locale } from '@/i18n/LanguageContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import AuthSync from '@/components/AuthSync';
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '627933808535-12olfmjeimfmbo44mdgf4hs2g4gran7f.apps.googleusercontent.com';
 
@@ -38,6 +39,7 @@ export default function Providers({
 
   return (
     <Provider store={store}>
+      <AuthSync />
       <GoogleOAuthProvider clientId={googleClientId}>
         <LanguageProvider initialLocale={initialLocale}>
           {children}
