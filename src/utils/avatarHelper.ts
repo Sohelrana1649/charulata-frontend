@@ -40,7 +40,7 @@ export const getUserAvatarUrl = (user: any): string => {
     let finalUrl = trimmed;
     if (!trimmed.startsWith('http') && !trimmed.startsWith('data:')) {
       let baseApiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+        process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
       if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
         baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
       }

@@ -152,7 +152,7 @@ export default function AdminSettingsPage() {
       const res = await uploadImage(formData).unwrap();
       const url = res?.data?.url || res?.url;
       if (url) {
-        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
         if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
           baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
         }
@@ -183,7 +183,7 @@ export default function AdminSettingsPage() {
       const res = await uploadImage(formData).unwrap();
       const url = res?.data?.url || res?.url;
       if (url) {
-        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+        let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
         if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
           baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
         }
@@ -256,7 +256,7 @@ export default function AdminSettingsPage() {
     setIsChangingPass(true);
     try {
       const token = localStorage.getItem('charulata_token');
-      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://charulata-database.onrender.com/api/v1';
+      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
       if (typeof window !== 'undefined' && baseApiUrl.includes('localhost')) {
         baseApiUrl = baseApiUrl.replace('localhost', window.location.hostname);
       }
@@ -639,7 +639,7 @@ export default function AdminSettingsPage() {
                         value={settingsForm.navbarLogo}
                         onChange={(e) => setSettingsForm({ ...settingsForm, navbarLogo: e.target.value })}
                         className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:border-primary outline-none transition"
-                        placeholder="Image URL (e.g. /images/newlogo.png)"
+                        placeholder="Image URL (e.g. /logo.png)"
                       />
                       <label className="block text-[11px] text-primary font-bold cursor-pointer hover:underline">
                         Or select logo file from PC
@@ -673,7 +673,7 @@ export default function AdminSettingsPage() {
                         value={settingsForm.footerLogo}
                         onChange={(e) => setSettingsForm({ ...settingsForm, footerLogo: e.target.value })}
                         className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:border-primary outline-none transition"
-                        placeholder="Image URL (e.g. /images/newlogo.png)"
+                        placeholder="Image URL (e.g. /logo.png)"
                       />
                       <label className="block text-[11px] text-primary font-bold cursor-pointer hover:underline">
                         Or select logo file from PC
