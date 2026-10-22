@@ -1,7 +1,11 @@
 import Image, { ImageProps } from "next/image";
 import React, { useState } from "react";
 
-const FALLBACK_PLACEHOLDER = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600";
+// Neutral, product-agnostic placeholder (never a stock product photo, so a missing
+// or broken DB image is never mistaken for a different product).
+const FALLBACK_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><rect width="300" height="400" fill="#f1f5f9"/><g fill="none" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"><rect x="100" y="150" width="100" height="80" rx="10"/><circle cx="128" cy="175" r="9"/><path d="m100 215 30-25 25 20 15-12 30 22"/></g></svg>'
+)}`;
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL;
 let backendBaseUrl = "http://localhost:5000";
@@ -82,10 +86,12 @@ export default function SafeImage({
   ...props
 }: ImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  // Track WHICH src failed so a new src (e.g. reused card/slide) is always attempted
+  const [failedSrc, setFailedSrc] = useState<unknown>(null);
 
   const isStringSrc = typeof src === "string";
   const initialCleaned = isStringSrc ? cleanImageUrl(src) : src;
+  const hasError = failedSrc !== null && failedSrc === initialCleaned;
   const currentSrc = hasError ? FALLBACK_PLACEHOLDER : initialCleaned;
 
   const isExternal = typeof currentSrc === 'string' && (
@@ -106,7 +112,7 @@ export default function SafeImage({
 
   const handleError = (e: any) => {
     if (!hasError) {
-      setHasError(true);
+      setFailedSrc(initialCleaned);
     }
     if (onError) {
       onError(e);

@@ -90,7 +90,7 @@ const extractList = (res: any, key: string): any[] => {
 };
 
 export default function CategoryGrid({ categories = [], selectedCategory, onSelectCategory }: CategoryGridProps) {
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const bn = locale === 'bn';
 
   const { data: catRes, isLoading: catLoading, isError: catError, refetch } = useGetCategoriesQuery({});
@@ -134,7 +134,7 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
       (subsByParent[pid] = subsByParent[pid] || []).push(s);
     });
 
-    const enrichedParents = parentList.slice(0, 8).map((p: any) => {
+    const enrichedParents = parentList.map((p: any) => {
       const pid = String(p._id || '');
       const subs = subsByParent[pid] || [];
       const image =
@@ -155,6 +155,9 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
 
     return { parents: enrichedParents, popularSubs: popular };
   }, [allCategories, products]);
+
+  const [showAll, setShowAll] = React.useState(false);
+  const displayedParents = showAll ? parents : parents.slice(0, 8);
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
@@ -194,16 +197,35 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
   const scrollByAmount = (direction: 'left' | 'right') => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    const scrollAmount = Math.max(Math.round(el.clientWidth * 0.82), 200);
+    const firstCard = el.querySelector<HTMLElement>(':scope > a');
+    let scrollAmount = Math.max(Math.round(el.clientWidth * 0.8), 200);
+    if (firstCard) {
+      const style = window.getComputedStyle(el);
+      const gap = parseFloat(style.columnGap || style.gap) || 12;
+      const cardWidthWithGap = firstCard.offsetWidth + gap;
+      const cardsInView = Math.max(1, Math.floor(el.clientWidth / cardWidthWithGap));
+      const stepCards = cardsInView > 1 ? cardsInView - 1 : 1;
+      scrollAmount = cardWidthWithGap * stepCards;
+    }
     const amount = direction === 'left' ? -scrollAmount : scrollAmount;
     el.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
+  const handleContainerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      scrollByAmount('left');
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      scrollByAmount('right');
+    }
   };
 
   const hrefFor = (cat: any) => `/search?category=${encodeURIComponent(cat.slug || cat.name)}`;
   const isSelected = (cat: any) =>
     !!selectedCategory && (selectedCategory === cat.slug || selectedCategory === cat.name);
 
-  const viewAllLabel = bn ? 'সব ক্যাটাগরি দেখুন' : 'View All Categories';
+  const viewAllLabel = bn ? (t('home.viewAll') || 'সব দেখুন') : 'View All';
 
   // ---------- Loading ----------
   if (catLoading && allCategories.length === 0) {
@@ -211,9 +233,9 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
       <section className="w-full" aria-busy="true" aria-label="Loading categories">
         <div className="h-5 w-32 rounded bg-muted animate-pulse mb-3" />
         <div className="h-8 w-72 max-w-full rounded bg-muted animate-pulse mb-6" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-[190px] sm:h-[200px] rounded-2xl bg-muted animate-pulse" />
+            <div key={i} className="h-[175px] sm:h-[195px] lg:h-[205px] rounded-2xl bg-muted animate-pulse" />
           ))}
         </div>
       </section>
@@ -230,7 +252,7 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:opacity-90 cursor-pointer"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:opacity-90 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <RefreshCw size={14} />
           {bn ? 'আবার চেষ্টা করুন' : 'Try again'}
@@ -245,35 +267,36 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
   return (
     <section className="w-full overflow-hidden" aria-labelledby="category-section-title">
       {/* ================= PARENT CATEGORIES ================= */}
-      <div className="flex items-end justify-between gap-3 mb-4 sm:mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div className="min-w-0">
-          <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-primary">
-            {bn ? 'ক্যাটাগরি অনুযায়ী কিনুন' : 'Shop by Category'}
+          <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-primary">
+            {bn ? (t('home.shopByCategoryEyebrow') || 'SHOP BY CATEGORY') : 'SHOP BY CATEGORY'}
           </span>
           <h2
             id="category-section-title"
             className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground font-serif mt-1 tracking-tight"
           >
-            {bn ? 'আপনার পছন্দের পণ্য খুঁজুন' : 'Find What You’re Looking For'}
+            {bn ? (t('home.shopByCategoryHeading') || 'আপনার পছন্দের স্টাইল খুঁজুন') : 'Find Your Style'}
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium max-w-xl">
             {bn
-              ? 'আমাদের সেরা ক্যাটাগরিগুলো ঘুরে দেখুন এবং দারুণ সব পণ্য আবিষ্কার করুন।'
-              : 'Explore our top categories and discover amazing products.'}
+              ? (t('home.shopByCategorySubtitle') || 'আমাদের সকল ক্যাটাগরি ঘুরে দেখুন।')
+              : 'Explore our categories.'}
           </p>
         </div>
+
         <Link
           href="/search"
-          className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-primary hover:gap-2.5 transition-all whitespace-nowrap pb-1"
+          className="self-start sm:self-end shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-primary hover:text-[#b0842e] hover:gap-2.5 transition-all whitespace-nowrap pb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1 py-0.5"
+          aria-label={viewAllLabel}
         >
-          <span className="hidden min-[400px]:inline">{viewAllLabel}</span>
-          <span className="min-[400px]:hidden">{bn ? 'সব দেখুন' : 'View All'}</span>
+          <span>{viewAllLabel}</span>
           <ArrowRight size={15} />
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-        {parents.map((cat: any, idx: number) => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+        {displayedParents.map((cat: any, idx: number) => {
           const theme = THEMES[idx % THEMES.length];
           const Icon = pickIcon(cat);
           const name = translateCategoryName(cat, bn ? 'bn' : 'en');
@@ -287,58 +310,61 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
               href={hrefFor(cat)}
               onClick={() => onSelectCategory && onSelectCategory(cat.slug || cat.name)}
               aria-label={name}
-              className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 sm:p-5 min-h-[190px] sm:min-h-[210px] shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-primary ${theme.card} ${
+              className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 sm:p-5 min-h-[175px] sm:min-h-[195px] lg:min-h-[205px] shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${theme.card} ${
                 selected ? 'ring-2 ring-primary' : ''
               }`}
             >
-              {/* Decorative blob */}
+              {/* Decorative pastel background blob */}
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute -right-8 -bottom-10 h-40 w-40 sm:h-52 sm:w-52 rounded-full ${theme.blob} transition-transform duration-500 group-hover:scale-110`}
+                className={`pointer-events-none absolute -right-6 -bottom-8 h-36 w-36 sm:h-48 sm:w-48 rounded-full ${theme.blob} transition-transform duration-500 group-hover:scale-105`}
               />
 
-              {/* Visual: product photo or icon */}
-              <div className="absolute right-0 top-0 h-[96px] w-[96px] sm:inset-y-0 sm:h-auto sm:w-[44%]">
+              {/* Visual: Category Photo cutout or Silhouette Icon fallback */}
+              <div className="absolute right-0 top-0 w-[40%] sm:w-[44%] h-[78px] sm:h-full sm:inset-y-0">
                 {cat.image ? (
-                  <div className="relative h-full w-full overflow-hidden rounded-bl-[2rem] sm:rounded-bl-none sm:rounded-l-[2.5rem]">
+                  <div className="relative h-full w-full overflow-hidden rounded-bl-3xl sm:rounded-bl-none sm:rounded-l-[2.5rem]">
                     <Image
                       src={cat.image}
                       alt={name}
                       fill
-                      sizes="(min-width: 1024px) 12vw, (min-width: 640px) 22vw, 30vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      sizes="(min-width: 1024px) 15vw, (min-width: 640px) 25vw, 40vw"
+                      className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <Icon className={`h-14 w-14 sm:h-20 sm:w-20 opacity-30 ${theme.text}`} strokeWidth={1.25} />
+                  <div className="flex h-full w-full items-center justify-center p-2">
+                    <Icon className={`h-12 w-12 sm:h-18 sm:w-18 opacity-25 ${theme.text}`} strokeWidth={1.25} aria-hidden="true" />
                   </div>
                 )}
               </div>
 
-              {/* Content */}
+              {/* Top Row: Category Icon Badge */}
               <div className="relative z-10">
                 <span
-                  className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full text-white shadow-sm ${theme.badge}`}
+                  aria-hidden="true"
+                  className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-white shadow-xs ${theme.badge}`}
                 >
-                  <Icon size={18} className="text-white" />
+                  <Icon size={16} className="text-white" />
                 </span>
               </div>
 
-              <div className="relative z-10 max-w-[62%] sm:max-w-[58%]">
-                <h3 className="text-sm sm:text-base font-extrabold text-foreground leading-tight line-clamp-2">
+              {/* Bottom Content: Title, Subs & Arrow (Strictly bounded so it NEVER overlaps the right image) */}
+              <div className="relative z-10 max-w-[56%] sm:max-w-[54%]">
+                <h3 className="text-xs sm:text-sm lg:text-base font-extrabold text-foreground leading-tight line-clamp-2">
                   {name}
                 </h3>
                 {subNames.length > 0 && (
-                  <p className="mt-1 text-[11px] sm:text-xs font-medium text-foreground/70 leading-snug line-clamp-2">
+                  <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-medium text-foreground/70 leading-tight line-clamp-1 sm:line-clamp-2">
                     {subNames.join(' • ')}
                     {hasMore ? (bn ? ' ও আরও' : ' & More') : ''}
                   </p>
                 )}
                 <span
-                  className={`mt-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-card shadow-sm transition-all duration-300 group-hover:translate-x-1 group-hover:bg-primary group-hover:text-white ${theme.text}`}
+                  aria-hidden="true"
+                  className={`mt-2 sm:mt-2.5 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white dark:bg-card shadow-2xs transition-all duration-300 group-hover:translate-x-1 group-hover:bg-primary group-hover:text-white ${theme.text}`}
                 >
-                  <ArrowRight size={15} />
+                  <ArrowRight size={14} />
                 </span>
               </div>
             </Link>
@@ -346,26 +372,45 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
         })}
       </div>
 
+      {/* Show more toggle if more than 8 categories exist */}
+      {parents.length > 8 && (
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll((prev) => !prev)}
+            aria-label={showAll ? (bn ? 'কম দেখুন' : 'Show Less') : viewAllLabel}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-border/80 bg-card hover:bg-muted text-xs sm:text-sm font-bold text-foreground transition-all duration-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span>
+              {showAll
+                ? (bn ? 'কম দেখুন' : 'Show Less')
+                : viewAllLabel}
+            </span>
+            <ArrowRight size={14} className={`transition-transform duration-200 ${showAll ? '-rotate-90' : 'rotate-90'}`} />
+          </button>
+        </div>
+      )}
+
       {/* ================= POPULAR SUBCATEGORIES ================= */}
       {popularSubs.length > 0 && (
-        <div className="mt-8 sm:mt-10 lg:mt-12">
+        <div className="mt-10 sm:mt-14 lg:mt-16 pt-8 sm:pt-10 border-t border-border/60">
           {/* Section Header: Aligned on desktop, responsive on mobile, with Next/Prev Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="min-w-0">
               <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-primary">
-                {bn ? 'জনপ্রিয় সাব-ক্যাটাগরি' : 'Popular Subcategories'}
+                {bn ? (t('home.popularSubcategoriesEyebrow') || 'POPULAR SUBCATEGORIES') : 'POPULAR SUBCATEGORIES'}
               </span>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground font-serif mt-1 tracking-tight">
-                {bn ? 'আপনার প্রিয় পণ্য কিনুন' : 'Shop Your Favourite'}
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground font-serif mt-0.5 tracking-tight">
+                {bn ? (t('home.popularSubcategoriesHeading') || 'আপনার প্রিয় পণ্য কিনুন') : 'Shop Your Favourites'}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium line-clamp-1 sm:line-clamp-none">
-                {bn ? 'সবচেয়ে জনপ্রিয় ক্যাটাগরিগুলোতে দ্রুত যান।' : 'Quick access to the most loved categories.'}
+                {bn ? (t('home.popularSubcategoriesSubtitle') || 'আপনার পছন্দের আইটেম খুঁজুন।') : 'Find your favourites.'}
               </p>
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 shrink-0">
-              {/* Carousel Prev & Next Navigation Buttons in Website Brand Color (Positioned UP in Header) */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+              {/* Carousel Prev & Next Navigation Buttons in Website Brand Color (Hidden on mobile where touch scroll is native, visible on sm+) */}
+              <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => scrollByAmount('left')}
@@ -390,10 +435,10 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
 
               <Link
                 href="/search"
-                className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-primary hover:gap-2.5 transition-all whitespace-nowrap pb-0.5"
+                className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-primary hover:gap-2.5 transition-all whitespace-nowrap pb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1 py-0.5"
+                aria-label={viewAllLabel}
               >
-                <span className="hidden min-[400px]:inline">{viewAllLabel}</span>
-                <span className="min-[400px]:hidden">{bn ? 'সব দেখুন' : 'View All'}</span>
+                <span>{viewAllLabel}</span>
                 <ArrowRight size={15} />
               </Link>
             </div>
@@ -405,7 +450,8 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
             tabIndex={0}
             role="region"
             aria-label={bn ? 'জনপ্রিয় সাব-ক্যাটাগরি তালিকা' : 'Popular subcategories'}
-            className="flex gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar scroll-smooth snap-x touch-pan-x pb-2 pt-1 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 rounded-2xl"
+            onKeyDown={handleContainerKeyDown}
+            className="w-full flex gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar scroll-smooth snap-x touch-pan-x pb-2 pt-1 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 rounded-2xl"
           >
             {popularSubs.map((sub: any) => {
               const Icon = pickIcon(sub);
@@ -417,21 +463,21 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
                   href={hrefFor(sub)}
                   onClick={() => onSelectCategory && onSelectCategory(sub.slug || sub.name)}
                   aria-label={name}
-                  className={`group snap-start shrink-0 w-[calc((100%-2.25*0.625rem)/3.25)] min-[420px]:w-[calc((100%-2.5*0.625rem)/3.5)] sm:w-[calc((100%-3*0.75rem)/4)] md:w-[calc((100%-4*0.75rem)/5)] lg:w-[calc((100%-5*0.75rem)/6)] xl:w-[calc((100%-7*0.75rem)/8)] min-w-[90px] h-[124px] sm:h-[132px] flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl border bg-card shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary select-none ${
+                  className={`group snap-start shrink-0 w-[calc((100%-20px)/3.25)] min-[390px]:w-[calc((100%-25px)/3.5)] min-[480px]:w-[calc((100%-30px)/4)] sm:w-[calc((100%-3rem)/5)] md:w-[calc((100%-3.75rem)/6)] lg:w-[calc((100%-5.25rem)/8)] min-w-[88px] h-[126px] sm:h-[136px] lg:h-[140px] flex flex-col items-center justify-between p-2 sm:p-2.5 rounded-2xl border bg-card shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:border-primary/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary select-none ${
                     selected
                       ? 'border-primary ring-2 ring-primary/25 bg-primary/5 text-primary'
                       : 'border-border/80 hover:bg-card'
                   }`}
                 >
                   {/* Circular Product Thumbnail */}
-                  <div className="relative h-14 w-14 sm:h-16 sm:w-16 lg:h-[68px] lg:w-[68px] shrink-0 overflow-hidden rounded-full bg-muted/40 ring-1 ring-border/60 flex items-center justify-center">
+                  <div className="relative h-14 w-14 sm:h-16 sm:w-16 lg:h-[60px] lg:w-[60px] xl:h-[64px] xl:w-[64px] shrink-0 overflow-hidden rounded-full bg-muted/40 ring-1 ring-border/60 flex items-center justify-center">
                     {sub.image ? (
                       <Image
                         src={sub.image}
                         alt={name}
                         fill
-                        sizes="(min-width: 1024px) 68px, (min-width: 640px) 64px, 56px"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="(min-width: 1280px) 64px, (min-width: 1024px) 60px, (min-width: 640px) 64px, 56px"
+                        className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-primary/10">
@@ -440,17 +486,19 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
                     )}
                   </div>
 
-                  {/* Category Name: 2 lines max, centered */}
-                  <span
-                    title={name}
-                    className={`w-full mt-1.5 sm:mt-2 text-center text-[11px] sm:text-xs lg:text-[13px] font-bold leading-tight line-clamp-2 px-1 transition-colors ${
-                      selected
-                        ? 'text-primary font-extrabold'
-                        : 'text-foreground/90 group-hover:text-primary'
-                    }`}
-                  >
-                    {name}
-                  </span>
+                  {/* Category Name: 2 lines max, centered with uniform height box */}
+                  <div className="w-full h-[2.5em] flex items-center justify-center px-1">
+                    <span
+                      title={name}
+                      className={`text-center text-[11px] sm:text-xs lg:text-[13px] font-bold leading-tight line-clamp-2 transition-colors ${
+                        selected
+                          ? 'text-primary font-extrabold'
+                          : 'text-foreground/90 group-hover:text-primary'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  </div>
                 </Link>
               );
             })}

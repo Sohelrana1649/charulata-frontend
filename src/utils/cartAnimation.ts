@@ -9,7 +9,8 @@ export const triggerFlyToCartAnimation = (startElement: HTMLElement | null, imgS
 
   // Create flying clone element
   const flyImg = document.createElement('img');
-  flyImg.src = imgSrc || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+  if (!imgSrc) return; // never animate an unrelated stock image
+  flyImg.src = imgSrc;
   flyImg.className = 'fly-to-cart-thumbnail';
   
   const initialWidth = Math.min(startRect.width, 80);

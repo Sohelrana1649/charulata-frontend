@@ -192,6 +192,43 @@ export default function Header() {
   const [isWishlistDrawerOpen, setIsWishlistDrawerOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
+  // Automatically close mobile menu drawer on route or search change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname, searchParams]);
+
+  // Sync state with mobile bottom navigation and global triggers
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('mobile_menu_state_changed', { detail: { isOpen: isMobileMenuOpen } })
+    );
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('wishlist_drawer_state_changed', { detail: { isOpen: isWishlistDrawerOpen } })
+    );
+  }, [isWishlistDrawerOpen]);
+
+  useEffect(() => {
+    const handleOpenWishlist = () => setIsWishlistDrawerOpen(true);
+    const handleToggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
+    const handleOpenMobileMenu = () => setIsMobileMenuOpen(true);
+    const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
+
+    window.addEventListener('open_wishlist_drawer', handleOpenWishlist);
+    window.addEventListener('toggle_mobile_menu', handleToggleMobileMenu);
+    window.addEventListener('open_mobile_menu', handleOpenMobileMenu);
+    window.addEventListener('close_mobile_menu', handleCloseMobileMenu);
+
+    return () => {
+      window.removeEventListener('open_wishlist_drawer', handleOpenWishlist);
+      window.removeEventListener('toggle_mobile_menu', handleToggleMobileMenu);
+      window.removeEventListener('open_mobile_menu', handleOpenMobileMenu);
+      window.removeEventListener('close_mobile_menu', handleCloseMobileMenu);
+    };
+  }, []);
+
   const desktopSearchRef = React.useRef<HTMLDivElement>(null);
   const mobileSearchRef = React.useRef<HTMLDivElement>(null);
 
@@ -640,21 +677,21 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-[100] w-full bg-card/95 backdrop-blur-md text-foreground border-b border-border/80 shadow-xs">
       {/* FIRST TOPBAR: Logo, Search, Actions */}
-      <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-3 sm:px-6 lg:px-8 xl:px-12 w-full flex h-16 sm:h-20 items-center justify-between gap-2 sm:gap-4 lg:gap-6">
+      <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-3 sm:px-6 lg:px-8 xl:px-12 w-full flex h-14 sm:h-16 lg:h-20 items-center justify-between gap-1.5 sm:gap-4 lg:gap-6">
         
         {/* Left: Hamburger Icon (Mobile) & Logo */}
-        <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden w-10 h-10 sm:w-11 sm:h-11 min-w-[40px] min-h-[40px] flex items-center justify-center bg-primary text-white rounded-xl hover:opacity-90 transition-all focus-visible:outline-2 focus-visible:outline-primary cursor-pointer shadow-xs active:scale-95 shrink-0"
+            className="lg:hidden w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-11 sm:h-11 flex items-center justify-center bg-primary text-white rounded-xl hover:opacity-90 transition-all focus-visible:outline-2 focus-visible:outline-primary cursor-pointer shadow-xs active:scale-95 shrink-0"
             aria-label={isMobileMenuOpen ? (locale === 'bn' ? 'মেনু বন্ধ করুন' : 'Close navigation menu') : (locale === 'bn' ? 'মেনু খুলুন' : 'Open navigation menu')}
             aria-expanded={isMobileMenuOpen}
           >
-            {isMobileMenuOpen ? <X size={22} className="text-white" /> : <Menu size={22} className="text-white" />}
+            {isMobileMenuOpen ? <X size={20} className="text-white" /> : <Menu size={20} className="text-white" />}
           </button>
 
           <Link href="/" onClick={handleHomeClick} className="flex items-center shrink-0">
-            <div className="relative h-10 sm:h-14 w-auto flex items-center justify-center shrink-0 pl-0.5" suppressHydrationWarning>
+            <div className="relative h-9 sm:h-12 lg:h-14 w-auto flex items-center justify-center shrink-0 pl-0.5" suppressHydrationWarning>
               <Image 
                 src={navbarLogo} 
                 alt="Charulata Lifestyle Logo" 
@@ -662,7 +699,7 @@ export default function Header() {
                 height={48}
                 priority
                 suppressHydrationWarning
-                className="h-10 sm:h-14 w-auto max-w-[100px] min-[390px]:max-w-[135px] sm:max-w-[170px] lg:max-w-[190px] object-contain hover:opacity-95 transition-opacity"
+                className="h-8.5 sm:h-11 lg:h-14 w-auto max-w-[100px] min-[390px]:max-w-[125px] sm:max-w-[160px] lg:max-w-[190px] object-contain hover:opacity-95 transition-opacity"
               />
             </div>
           </Link>
@@ -721,8 +758,8 @@ export default function Header() {
           {renderSearchSuggestions()}
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
+        {/* Right: Actions (Hidden on mobile to eliminate duplicate shortcuts; BottomNav handles mobile navigation) */}
+        <div className="hidden md:flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
 
           {/* Desktop Theme Toggle (Laptop & Desktop) */}
           <button 
@@ -790,13 +827,13 @@ export default function Header() {
             title={locale === 'bn' ? 'পছন্দের তালিকা' : 'Wishlist'}
           >
             <div className="relative flex items-center justify-center">
-              <Heart size={22} className={`w-5.5 h-5.5 stroke-[2.25] ${wishlistCount > 0 ? 'text-rose-500 fill-rose-500/30' : 'text-foreground/80'}`} />
+              <Heart size={20} className={`w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2] ${wishlistCount > 0 ? 'text-rose-500 fill-rose-500/30' : 'text-foreground/80'}`} />
               {mounted && wishlistCount > 0 && (
                 <span 
-                  className="absolute -top-2.5 -right-2.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-rose-600 !text-white text-[11px] font-black ring-2 ring-background shadow-xs leading-none select-none"
+                  className="absolute -top-2 -right-2 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-rose-600 !text-white text-[10px] font-black ring-2 ring-background shadow-xs leading-none select-none"
                   style={{ color: '#ffffff' }}
                 >
-                  {wishlistCount}
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
             </div>
@@ -817,15 +854,15 @@ export default function Header() {
             title={cartItemsCount > 0 ? `${cartItemsCount} ${locale === 'bn' ? 'টি পণ্য কার্টে আছে' : 'items in cart'}` : t('header.cart')}
           >
             <div className={`relative flex items-center justify-center ${isCartShake ? 'animate-header-cart-shake' : ''}`}>
-              <ShoppingCart size={22} className={`w-5.5 h-5.5 stroke-[2.25] ${cartItemsCount > 0 ? 'text-primary fill-primary/30' : 'text-foreground/80 group-hover:text-primary'}`} />
+              <ShoppingCart size={20} className={`w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2] ${cartItemsCount > 0 ? 'text-primary fill-primary/30' : 'text-foreground/80 group-hover:text-primary'}`} />
               {cartItemsCount > 0 && (
                 <span 
-                  className={`absolute -top-2.5 -right-2.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-primary !text-white text-[11px] font-black ring-2 ring-background shadow-xs leading-none select-none transition-transform duration-200 ${
+                  className={`absolute -top-2 -right-2 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-primary !text-white text-[10px] font-black ring-2 ring-background shadow-xs leading-none select-none transition-transform duration-200 ${
                     isCartShake ? 'scale-125' : ''
                   }`}
                   style={{ color: '#ffffff' }}
                 >
-                  {cartItemsCount}
+                  {cartItemsCount > 99 ? '99+' : cartItemsCount}
                 </span>
               )}
             </div>
@@ -918,19 +955,10 @@ export default function Header() {
               <Link
                 href="/login"
                 suppressHydrationWarning
-                className="hidden sm:flex items-center space-x-2 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white hover:bg-primary/90 transition shadow-xs whitespace-nowrap h-11 min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="flex items-center space-x-2 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white hover:bg-primary/90 transition shadow-xs whitespace-nowrap h-11 min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <User size={18} />
                 <span suppressHydrationWarning>{t('header.signIn')}</span>
-              </Link>
-              {/* Mobile Sign In icon */}
-              <Link
-                href="/login"
-                suppressHydrationWarning
-                className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center sm:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl transition-all border border-amber-500/20 shadow-2xs focus-visible:outline-2 focus-visible:outline-primary"
-                aria-label={t('header.signIn')}
-              >
-                <User size={22} className="w-5.5 h-5.5 stroke-[2.25]" />
               </Link>
             </div>
           )}
@@ -938,10 +966,10 @@ export default function Header() {
         </div>
       </div>
 
-      {/* MOBILE SEARCH BAR: Full-width modern search input for mobile devices */}
-      <div ref={mobileSearchRef} className="block lg:hidden px-3 sm:px-6 pb-2.5 pt-1.5 border-t border-border/40 bg-card relative shadow-xs">
-        <form onSubmit={handleSearch} role="search" className="relative flex items-center w-full">
-          <div className="relative flex-1 flex items-center">
+      {/* MOBILE SEARCH BAR: Full-width accessible search input for mobile devices */}
+      <div ref={mobileSearchRef} className="block lg:hidden px-3 sm:px-6 py-2 border-t border-border/40 bg-card relative shadow-2xs">
+        <form onSubmit={handleSearch} role="search" className="relative flex items-center w-full gap-2">
+          <div className="relative flex-1 flex items-center min-w-0">
             <Search className="absolute left-3 text-muted-foreground pointer-events-none" size={17} />
             <input
               type="text"
@@ -953,7 +981,7 @@ export default function Header() {
               autoComplete="off"
               spellCheck={false}
               data-form-type="other"
-              placeholder={t('header.searchPlaceholder')}
+              placeholder={locale === 'bn' ? 'পণ্য খুঁজুন (যেমন: শাড়ি, পাঞ্জাবি)...' : 'Search products (e.g. Sarees, Panjabi)...'}
               value={searchQuery}
               onFocus={() => setIsSearchFocused(true)}
               onKeyDown={handleSearchKeyDown}
@@ -962,7 +990,7 @@ export default function Header() {
                 setIsSearchFocused(true);
               }}
               suppressHydrationWarning
-              className="w-full h-11 rounded-xl border border-border bg-muted/80 px-3.5 pl-10 pr-8 text-sm font-medium text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-2xs min-h-[44px] tracking-normal"
+              className="w-full h-10.5 rounded-xl border border-border bg-muted/70 px-3 pl-9.5 pr-8 text-sm font-medium text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-2xs min-h-[42px] tracking-normal"
             />
             {searchQuery && (
               <button
@@ -971,7 +999,7 @@ export default function Header() {
                   setSearchQuery('');
                   setIsSearchFocused(false);
                 }}
-                className="absolute right-2 text-muted-foreground hover:text-foreground p-2 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
+                className="absolute right-2 text-muted-foreground hover:text-foreground p-1.5 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center cursor-pointer"
                 aria-label={locale === 'bn' ? 'সার্চ মুছুন' : 'Clear search'}
               >
                 <X size={15} />
@@ -983,10 +1011,10 @@ export default function Header() {
             type="submit"
             suppressHydrationWarning
             aria-label={t('header.search')}
-            className="ml-2 inline-flex items-center space-x-1.5 bg-primary hover:bg-primary/90 text-white px-3.5 h-11 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer shadow-xs active:scale-95 min-h-[44px]"
+            className="h-10.5 px-3 min-[380px]:px-4 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer shadow-xs active:scale-95 min-h-[42px] flex items-center justify-center gap-1.5"
           >
             <Search size={15} className="text-white" />
-            <span suppressHydrationWarning>{locale === 'bn' ? 'খুঁজুন' : 'Search'}</span>
+            <span className="hidden min-[380px]:inline" suppressHydrationWarning>{locale === 'bn' ? 'খুঁজুন' : 'Search'}</span>
           </button>
         </form>
         {renderSearchSuggestions()}

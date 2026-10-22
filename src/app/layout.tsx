@@ -7,6 +7,7 @@ import Providers from '@/components/Providers';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import WhatsAppButton from '@/components/layout/WhatsAppButton';
+import BottomNav from '@/components/layout/BottomNav';
 import ThemeScript from '@/components/ThemeScript';
 import FacebookPixel from '@/components/analytics/FacebookPixel';
 import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
@@ -233,6 +234,9 @@ export default async function RootLayout({
           </div>
           <Footer />
           <WhatsAppButton />
+          <Suspense fallback={null}>
+            <BottomNav />
+          </Suspense>
         </Providers>
       </body>
     </html>

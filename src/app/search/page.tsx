@@ -1261,90 +1261,63 @@ function SearchResults() {
                 </div>
               )}
 
-              {/* Load More Pagination Section */}
-              {totalProducts > 0 && (
+              {/* Load More Button */}
+              {totalProducts > 0 && currentPage < totalPages && (
                 <div className="w-full max-w-5xl mx-auto mt-12 pt-8 border-t border-border/50 flex flex-col items-center justify-center space-y-4">
-                  {/* Subtle Supporting Progress Bar */}
-                  <div className="w-full max-w-xs sm:max-w-sm space-y-1.5 text-center px-4">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {locale === 'bn' ? 'প্রদর্শিত হচ্ছে' : 'Showing'} {Math.min(sortedProducts.length, totalProducts)} / {totalProducts} {locale === 'bn' ? 'পণ্য' : 'products'}
-                      </span>
-                      <span className="font-mono text-xs font-semibold text-muted-foreground">
-                        {Math.min(100, Math.round((Math.min(sortedProducts.length, totalProducts) / Math.max(totalProducts, 1)) * 100))}%
-                      </span>
-                    </div>
-
-                    <div className="w-full h-1.5 bg-muted/60 dark:bg-muted/30 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary/75 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${Math.min(100, (Math.min(sortedProducts.length, totalProducts) / Math.max(totalProducts, 1)) * 100)}%` }}
-                      />
-                    </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleLoadMore}
+                      disabled={isLoading || isFetchingMore}
+                      className="group min-w-[230px] sm:min-w-[250px] inline-flex items-center justify-center space-x-2 px-8 py-3.5 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-primary/20 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:transform-none"
+                    >
+                      {(isLoading || isFetchingMore) ? (
+                        <>
+                          <Loader2 size={17} className="animate-spin text-white" />
+                          <span>{locale === 'bn' ? 'আরও পণ্য লোড হচ্ছে...' : 'Loading more products...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={17} className="transition-transform duration-200 group-hover:translate-y-0.5 stroke-[2.5]" />
+                          <span>{locale === 'bn' ? 'আরও পণ্য দেখুন' : 'Load more products'}</span>
+                          <span className="inline-flex items-center justify-center bg-white/20 text-white px-2 py-0.5 rounded-full text-[11px] font-medium font-mono">
+                            +{Math.min(itemsPerPage, Math.max(0, totalProducts - sortedProducts.length))}
+                          </span>
+                        </>
+                      )}
+                    </button>
                   </div>
-
-                  {/* Primary Focus Load More Button */}
-                  {currentPage < totalPages ? (
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={handleLoadMore}
-                        disabled={isLoading || isFetchingMore}
-                        className="group min-w-[230px] sm:min-w-[250px] inline-flex items-center justify-center space-x-2 px-8 py-3.5 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-primary/20 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:transform-none"
-                      >
-                        {(isLoading || isFetchingMore) ? (
-                          <>
-                            <Loader2 size={17} className="animate-spin text-white" />
-                            <span>{locale === 'bn' ? 'আরও পণ্য লোড হচ্ছে...' : 'Loading more products...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown size={17} className="transition-transform duration-200 group-hover:translate-y-0.5 stroke-[2.5]" />
-                            <span>{locale === 'bn' ? 'আরও পণ্য দেখুন' : 'Load more products'}</span>
-                            <span className="inline-flex items-center justify-center bg-white/20 text-white px-2 py-0.5 rounded-full text-[11px] font-medium font-mono">
-                              +{Math.min(itemsPerPage, Math.max(0, totalProducts - sortedProducts.length))}
-                            </span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="pt-3 text-center">
-                      <div className="inline-flex items-center space-x-2 bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 px-5 py-2.5 rounded-full text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-xs backdrop-blur-xs">
-                        <Check size={15} className="text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
-                        <span>{locale === 'bn' ? 'আপনি এই কালেকশনের সব পণ্য দেখেছেন 🎉' : 'You have viewed all products in this collection 🎉'}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Hidden SEO Crawlable Pagination Links */}
-                  <nav aria-label="Pagination Navigation" className="sr-only">
-                    {currentPage > 1 && (
-                      <a
-                        href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(currentPage - 1) }).toString()}`}
-                        rel="prev"
-                      >
-                        Previous Page
-                      </a>
-                    )}
-                    {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
-                      <a
-                        key={pageNum}
-                        href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(pageNum) }).toString()}`}
-                      >
-                        Page {pageNum}
-                      </a>
-                    ))}
-                    {currentPage < totalPages && (
-                      <a
-                        href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(currentPage + 1) }).toString()}`}
-                        rel="next"
-                      >
-                        Next Page
-                      </a>
-                    )}
-                  </nav>
                 </div>
+              )}
+
+              {/* Hidden SEO Crawlable Pagination Links */}
+              {totalProducts > 0 && (
+                <nav aria-label="Pagination Navigation" className="sr-only">
+                  {currentPage > 1 && (
+                    <a
+                      href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(currentPage - 1) }).toString()}`}
+                      rel="prev"
+                    >
+                      Previous Page
+                    </a>
+                  )}
+                  {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+                    <a
+                      key={pageNum}
+                      href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(pageNum) }).toString()}`}
+                    >
+                      Page {pageNum}
+                    </a>
+                  ))}
+                  {currentPage < totalPages && (
+                    <a
+                      href={`/search?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), page: String(currentPage + 1) }).toString()}`}
+                      rel="next"
+                    >
+                      Next Page
+                    </a>
+                  )}
+                </nav>
               )}
             </>
           )}

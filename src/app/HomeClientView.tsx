@@ -5,7 +5,9 @@ import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import CountUp from 'react-countup';
 import CategoryGrid from '@/components/home/CategoryGrid';
-import ProductSlider from '@/components/common/ProductSlider';
+import FlashSaleSection from '@/components/home/FlashSaleSection';
+import ProductGrid from '@/components/common/ProductGrid';
+import ProductSlider from '@/components/home/ProductSlider';
 import { useGetLandingDataQuery } from '@/store/api/landingApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { toast } from 'react-toastify';
@@ -71,12 +73,14 @@ const resolveBannerLink = (link: string | undefined): string => {
 
 // ─── Skeleton Components for Progressive Loading ───────────────────────────
 const ProductCardSkeleton = () => (
-  <div className="flex flex-col bg-card border border-border/70 rounded-xl overflow-hidden shadow-2xs">
-    <div className="aspect-square shimmer-bg" />
-    <div className="p-2.5 sm:p-3 space-y-2">
-      <div className="h-3.5 shimmer-bg rounded w-3/4" />
-      <div className="h-3 shimmer-bg rounded w-1/2" />
-      <div className="flex items-center justify-between pt-1.5 border-t border-border/60">
+  <div className="flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs">
+    <div className="aspect-[3/4] shimmer-bg" />
+    <div className="p-2.5 sm:p-3 space-y-2 flex-1 flex flex-col justify-between">
+      <div className="space-y-1.5">
+        <div className="h-3.5 shimmer-bg rounded w-4/5" />
+        <div className="h-3 shimmer-bg rounded w-3/5" />
+      </div>
+      <div className="flex items-center justify-between pt-2 border-t border-border/50">
         <div className="h-4 shimmer-bg rounded w-16" />
         <div className="h-8 w-8 shimmer-bg rounded-lg" />
       </div>
@@ -84,16 +88,16 @@ const ProductCardSkeleton = () => (
   </div>
 );
 
-const SectionSkeleton = ({ count = 5 }: { count?: number }) => (
-  <div className="space-y-8 animate-fadeIn">
-    <div className="flex justify-between items-end border-b border-border pb-4">
-      <div className="space-y-2">
+const SectionSkeleton = ({ count = 8 }: { count?: number }) => (
+  <div className="space-y-5 sm:space-y-6 animate-fadeIn">
+    <div className="flex justify-between items-center pb-4 border-b border-border">
+      <div className="space-y-1">
         <div className="h-3 shimmer-bg rounded w-24" />
-        <div className="h-6 shimmer-bg rounded w-40" />
+        <div className="h-5 sm:h-6 shimmer-bg rounded w-36 sm:w-44" />
       </div>
-      <div className="h-4 shimmer-bg rounded w-20" />
+      <div className="h-7 w-20 shimmer-bg rounded-full" />
     </div>
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
@@ -193,61 +197,7 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
   });
   const landingData = initialData || landingResponse?.data || landingResponse;
 
-  // Helper to convert numbers to Bangla digits for super clear user-friendly display
-  const toBanglaDigits = (num: number): string => {
-    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-    return String(num).padStart(2, '0').replace(/\d/g, (digit) => bnDigits[parseInt(digit, 10)]);
-  };
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    const calculateFlashSaleTime = () => {
-      const now = Date.now();
-      const rawFlashSale = landingData?.flashSale || [];
-
-      // 1. Find all active FUTURE discountEndDate timestamps (sorted ascending: shortest remaining time first)
-      const futureDates = rawFlashSale
-        .map((p: any) => p.discountEndDate ? new Date(p.discountEndDate).getTime() : null)
-        .filter((t: number | null): t is number => t !== null && !isNaN(t) && t > now)
-        .sort((a: number, b: number) => a - b);
-
-      let targetTime: number | null = null;
-
-      if (futureDates.length > 0) {
-        targetTime = futureDates[0];
-      } else if (landingData?.campaign?.endDate) {
-        const campaignTime = new Date(landingData.campaign.endDate).getTime();
-        if (campaignTime > now) {
-          targetTime = campaignTime;
-        }
-      }
-
-      if (!targetTime) {
-        const endOfToday = new Date();
-        endOfToday.setHours(23, 59, 59, 999);
-        targetTime = endOfToday.getTime();
-      }
-
-      const difference = targetTime - now;
-
-      if (difference <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        return;
-      }
-
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      setTimeLeft({ days, hours, minutes, seconds });
-    };
-
-    calculateFlashSaleTime();
-    const interval = setInterval(calculateFlashSaleTime, 1000);
-    return () => clearInterval(interval);
-  }, [landingData]);
 
   // Real-time Countdown timer for promo section (dynamically calculated from backend active campaign endDate)
   const activeCampaign = landingData?.campaign || null;
@@ -317,26 +267,11 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
     [landingData?.newArrivals]
   );
 
-  const [nowTime, setNowTime] = useState(() => Date.now());
 
-  useEffect(() => {
-    const timer = setInterval(() => setNowTime(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  const flashSaleProducts = useMemo(() =>
-    (landingData?.flashSale || [])
-      .filter((p: any) => {
-        if (!p.discountEndDate) return true;
-        const endTime = new Date(p.discountEndDate).getTime();
-        return !isNaN(endTime) && endTime > nowTime;
-      })
-      .slice(0, 10),
-    [landingData?.flashSale, nowTime]
-  );
-
+  // All Products: 10 cards → 2 clean rows of 5 on desktop
   const allProducts = useMemo(() =>
-    (landingData?.allProducts || []).slice(0, 15),
+    (landingData?.allProducts || []).slice(0, 10),
     [landingData?.allProducts]
   );
 
@@ -606,92 +541,12 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
       </section>
 
       {/* 2. Flash Sale Section */}
-      {flashSaleProducts.length > 0 && (
-        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 pt-8 sm:pt-12">
-          <div id="flash-sale-section" className="space-y-8 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-border pb-4">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-extrabold text-destructive uppercase tracking-widest bg-destructive/10 border border-destructive/20 px-2.5 py-0.5 rounded-md">
-                    {t('home.flashSaleTag')}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 mt-2">
-                  <h3 className="text-xl sm:text-3xl font-extrabold text-foreground font-serif">{t('home.flashSale')}</h3>
-
-                  {/* Countdown Box */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 bg-primary/10 border border-primary/20 px-4 sm:px-5 py-1.5 rounded-full max-w-full overflow-hidden shadow-xs">
-                    <span className="inline-flex items-center space-x-1.5 text-xs sm:text-sm font-bold text-primary tracking-wider whitespace-nowrap shrink-0">
-                      <Clock size={15} className="animate-pulse text-primary shrink-0" />
-                      <span className="whitespace-nowrap">{locale === 'bn' ? 'সময় বাকি:' : 'Ends in:'}</span>
-                    </span>
-
-                    <div className="flex items-center space-x-1 sm:space-x-1.5 font-bold whitespace-nowrap shrink-0">
-                      {timeLeft.days > 0 && (
-                        <>
-                          <div className="flex items-center space-x-1 whitespace-nowrap">
-                            <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
-                              {locale === 'bn' ? toBanglaDigits(timeLeft.days) : String(timeLeft.days).padStart(2, '0')}
-                            </span>
-                            <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap">
-                              {locale === 'bn' ? 'দিন' : 'Days'}
-                            </span>
-                          </div>
-
-                          <span className="text-primary font-bold text-xs leading-none">:</span>
-                        </>
-                      )}
-
-                      <div className="flex items-center space-x-1 whitespace-nowrap">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
-                          {locale === 'bn' ? toBanglaDigits(timeLeft.hours) : String(timeLeft.hours).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap">
-                          {locale === 'bn' ? 'ঘণ্টা' : 'Hours'}
-                        </span>
-                      </div>
-
-                      <span className="text-primary font-bold text-xs leading-none">:</span>
-
-                      <div className="flex items-center space-x-1 whitespace-nowrap">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
-                          {locale === 'bn' ? toBanglaDigits(timeLeft.minutes) : String(timeLeft.minutes).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap pr-1 sm:pr-0">
-                          {locale === 'bn' ? 'মিনিট' : 'Mins'}
-                        </span>
-                      </div>
-
-                      <span className="text-primary font-bold text-xs leading-none hidden sm:inline">:</span>
-
-                      <div className="hidden sm:flex items-center space-x-1 whitespace-nowrap">
-                        <span className="bg-primary text-white text-xs sm:text-sm font-black px-2 py-0.5 rounded-md shadow-xs font-mono min-w-[26px] text-center inline-flex items-center justify-center leading-none h-6">
-                          {locale === 'bn' ? toBanglaDigits(timeLeft.seconds) : String(timeLeft.seconds).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-primary whitespace-nowrap pr-1">
-                          {locale === 'bn' ? 'সেকেন্ড' : 'Secs'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <Link href="/search" prefetch={false} className="text-xs sm:text-sm font-extrabold text-primary hover:underline flex items-center space-x-1 shrink-0">
-                <span>{t('home.viewMore')}</span>
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <ProductSlider
-              products={flashSaleProducts}
-              wishlistArray={wishlistArray}
-              onWishlistToggle={handleWishlistToggle}
-            />
-          </div>
-        </div>
-      )}
+      <FlashSaleSection
+        rawProducts={landingData?.flashSale}
+        campaign={landingData?.campaign}
+        wishlistArray={wishlistArray}
+        onWishlistToggle={handleWishlistToggle}
+      />
 
       {/* 3. Categories Section Grid */}
       <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 py-8 sm:py-12">
@@ -699,74 +554,71 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
       </div>
 
       {/* 4. Products Catalog Sections */}
-      <section id="shop" className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 py-8 sm:py-12">
+      <section id="shop" className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-3 sm:px-6 lg:px-10 xl:px-12 py-8 sm:py-12 lg:py-14">
         {isProductsLoading ? (
-          <div className="space-y-24">
-            <SectionSkeleton count={5} />
-            <SectionSkeleton count={5} />
-            <SectionSkeleton count={5} />
+          <div className="space-y-16 sm:space-y-20">
+            <SectionSkeleton count={8} />
+            <SectionSkeleton count={8} />
+            <SectionSkeleton count={8} />
           </div>
         ) : (
-          <div className="space-y-24">
-            {/* 4.2 Best Sellers Section */}
+          <div className="space-y-12 sm:space-y-16 lg:space-y-20">
+            {/* 4.2 Best Sellers Section (Slider) */}
             {bestSellingProducts.length > 0 && (
-              <div className="space-y-8 animate-fadeIn">
-                <div className="flex justify-between items-end border-b border-border pb-4">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-[#c99a3c] uppercase tracking-widest">{t('home.bestSellersTag')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-foreground font-serif mt-1">{t('home.bestSellers')}</h3>
-                  </div>
-                  <Link href="/search?sort=rating-desc" prefetch={false} className="text-xs font-semibold text-primary hover:underline flex items-center space-x-1">
-                    <span>{t('home.viewMore')}</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-                <ProductSlider
-                  products={bestSellingProducts}
-                  wishlistArray={wishlistArray}
-                  onWishlistToggle={handleWishlistToggle}
-                />
-              </div>
+              <ProductSlider
+                id="best-sellers"
+                tag={t('home.bestSellersTag')}
+                title={t('home.bestSellers')}
+                icon={TrendingUp}
+                viewMoreHref="/search?sort=rating-desc"
+                viewMoreLabel={t('home.viewMore')}
+                products={bestSellingProducts}
+                wishlistArray={wishlistArray}
+                onWishlistToggle={handleWishlistToggle}
+                autoplayDelay={4500}
+              />
             )}
 
-            {/* 4.3 New Arrivals Section */}
+            {/* 4.3 New Arrivals Section (Slider) */}
             {newArrivalProducts.length > 0 && (
-              <div className="space-y-8 animate-fadeIn">
-                <div className="flex justify-between items-end border-b border-border pb-4">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-[#c99a3c] uppercase tracking-widest">{t('home.newArrivalsTag')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-foreground font-serif mt-1">{t('home.newArrivals')}</h3>
-                  </div>
-                  <Link href="/search?sort=newest" prefetch={false} className="text-xs font-semibold text-primary hover:underline flex items-center space-x-1">
-                    <span>{t('home.viewMore')}</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-                <ProductSlider
-                  products={newArrivalProducts}
-                  wishlistArray={wishlistArray}
-                  onWishlistToggle={handleWishlistToggle}
-                />
-              </div>
+              <ProductSlider
+                id="new-arrivals"
+                tag={t('home.newArrivalsTag')}
+                title={t('home.newArrivals')}
+                icon={Sparkles}
+                viewMoreHref="/search?sort=newest"
+                viewMoreLabel={t('home.viewMore')}
+                products={newArrivalProducts}
+                wishlistArray={wishlistArray}
+                onWishlistToggle={handleWishlistToggle}
+                autoplayDelay={5200}
+              />
             )}
 
             {/* 4.4 All Pieces Section */}
             {allProducts.length > 0 && (
-              <div className="space-y-8 animate-fadeIn">
-                <div className="flex justify-between items-end border-b border-border pb-4">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-[#c99a3c] uppercase tracking-widest">{t('home.allPiecesTag')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-foreground font-serif mt-1">{t('home.allPieces')}</h3>
+              <div className="animate-fadeIn">
+                <div className="flex items-center justify-between gap-4 mb-5 sm:mb-6">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="hidden sm:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center shrink-0">
+                      <ShoppingBag size={20} className="text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] sm:text-[11px] font-extrabold text-primary uppercase tracking-widest block">{t('home.allPiecesTag')}</span>
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground font-serif mt-0.5 truncate">{t('home.allPieces')}</h3>
+                    </div>
                   </div>
-                  <Link href="/search" prefetch={false} className="text-xs font-semibold text-primary hover:underline flex items-center space-x-1">
+                  <Link href="/search" prefetch={false} className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-primary hover:text-primary/80 transition-colors group/link px-3 py-1.5 rounded-full border border-primary/20 hover:border-primary/40 hover:bg-primary/5">
                     <span>{t('home.viewMore')}</span>
-                    <ArrowRight size={14} />
+                    <ArrowRight size={14} className="transition-transform group-hover/link:translate-x-0.5" />
                   </Link>
                 </div>
-                <ProductSlider
+                <div className="w-full h-px bg-gradient-to-r from-primary/30 via-border to-transparent mb-5 sm:mb-6" />
+                <ProductGrid
                   products={allProducts}
                   wishlistArray={wishlistArray}
                   onWishlistToggle={handleWishlistToggle}
+                  columns={5}
                 />
               </div>
             )}
