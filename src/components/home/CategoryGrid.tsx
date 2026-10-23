@@ -156,9 +156,71 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
     return { parents: enrichedParents, popularSubs: popular };
   }, [allCategories, products]);
 
-  const [showAll, setShowAll] = React.useState(false);
-  const displayedParents = showAll ? parents : parents.slice(0, 8);
+  // Parent Categories Carousel Scroll State & Handlers
+  const parentScrollRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollParentLeft, setCanScrollParentLeft] = React.useState(false);
+  const [canScrollParentRight, setCanScrollParentRight] = React.useState(true);
 
+  const checkParentScroll = React.useCallback(() => {
+    const el = parentScrollRef.current;
+    if (!el) return;
+    const tolerance = 4;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setCanScrollParentLeft(el.scrollLeft > tolerance);
+    setCanScrollParentRight(maxScroll > tolerance && Math.ceil(el.scrollLeft) < maxScroll - tolerance);
+  }, []);
+
+  React.useEffect(() => {
+    const el = parentScrollRef.current;
+    if (!el) return;
+    checkParentScroll();
+    el.addEventListener('scroll', checkParentScroll, { passive: true });
+    window.addEventListener('resize', checkParentScroll);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        checkParentScroll();
+      });
+      ro.observe(el);
+    }
+
+    return () => {
+      el.removeEventListener('scroll', checkParentScroll);
+      window.removeEventListener('resize', checkParentScroll);
+      ro?.disconnect();
+    };
+  }, [checkParentScroll, parents.length]);
+
+  const scrollParentsByAmount = (direction: 'left' | 'right') => {
+    const el = parentScrollRef.current;
+    if (!el) return;
+    const firstCard = el.querySelector<HTMLElement>(':scope > a');
+    let scrollAmount = Math.max(Math.round(el.clientWidth * 0.9), 200);
+    if (firstCard) {
+      const style = window.getComputedStyle(el);
+      const gap = parseFloat(style.columnGap || style.gap) || 12;
+      const cardWidthWithGap = firstCard.offsetWidth + gap;
+      // Scroll by 2 cards on mobile, or cards in view
+      const cardsInView = Math.max(1, Math.floor(el.clientWidth / cardWidthWithGap));
+      const step = cardsInView >= 2 ? 2 : 1;
+      scrollAmount = cardWidthWithGap * step;
+    }
+    const amount = direction === 'left' ? -scrollAmount : scrollAmount;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
+  const handleParentKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      scrollParentsByAmount('left');
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      scrollParentsByAmount('right');
+    }
+  };
+
+  // Popular Subcategories Scroll State & Handlers
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(true);
@@ -233,9 +295,12 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
       <section className="w-full" aria-busy="true" aria-label="Loading categories">
         <div className="h-5 w-32 rounded bg-muted animate-pulse mb-3" />
         <div className="h-8 w-72 max-w-full rounded bg-muted animate-pulse mb-6" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-[175px] sm:h-[195px] lg:h-[205px] rounded-2xl bg-muted animate-pulse" />
+        <div className="flex gap-3 sm:gap-4 lg:gap-5 overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="shrink-0 w-[calc((100%-12px)/2)] sm:w-[calc((100%-32px)/3)] lg:w-[calc((100%-60px)/4)] h-[175px] sm:h-[195px] lg:h-[205px] rounded-2xl bg-muted animate-pulse"
+            />
           ))}
         </div>
       </section>
@@ -267,36 +332,70 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
   return (
     <section className="w-full overflow-hidden" aria-labelledby="category-section-title">
       {/* ================= PARENT CATEGORIES ================= */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div className="flex items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="min-w-0">
-          <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-primary">
+          <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-primary">
             {bn ? (t('home.shopByCategoryEyebrow') || 'SHOP BY CATEGORY') : 'SHOP BY CATEGORY'}
           </span>
           <h2
             id="category-section-title"
-            className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground font-serif mt-1 tracking-tight"
+            className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-foreground font-serif mt-0.5 tracking-tight"
           >
             {bn ? (t('home.shopByCategoryHeading') || 'আপনার পছন্দের স্টাইল খুঁজুন') : 'Find Your Style'}
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium max-w-xl">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 font-medium max-w-xl line-clamp-1 sm:line-clamp-none">
             {bn
               ? (t('home.shopByCategorySubtitle') || 'আমাদের সকল ক্যাটাগরি ঘুরে দেখুন।')
               : 'Explore our categories.'}
           </p>
         </div>
 
-        <Link
-          href="/search"
-          className="self-start sm:self-end shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-primary hover:text-[#b0842e] hover:gap-2.5 transition-all whitespace-nowrap pb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1 py-0.5"
-          aria-label={viewAllLabel}
-        >
-          <span>{viewAllLabel}</span>
-          <ArrowRight size={15} />
-        </Link>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Carousel Prev & Next Navigation Buttons */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => scrollParentsByAmount('left')}
+              disabled={!canScrollParentLeft}
+              aria-label={bn ? 'পূর্ববর্তী ক্যাটাগরি' : 'Previous categories'}
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary text-white hover:bg-primary/90 shadow-xs shadow-primary/25 disabled:opacity-25 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollParentsByAmount('right')}
+              disabled={!canScrollParentRight}
+              aria-label={bn ? 'পরবর্তী ক্যাটাগরি' : 'Next categories'}
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary text-white hover:bg-primary/90 shadow-xs shadow-primary/25 disabled:opacity-25 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-border/80" />
+
+          <Link
+            href="/search"
+            className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm font-extrabold text-primary hover:text-primary-hover hover:gap-1.5 transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1 py-0.5"
+            aria-label={viewAllLabel}
+          >
+            <span>{viewAllLabel}</span>
+            <ArrowRight size={14} />
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-        {displayedParents.map((cat: any, idx: number) => {
+      {/* 2-Cards per View on Mobile, 3 on Tablet, 4 on Desktop with Smooth Snap Slide */}
+      <div
+        ref={parentScrollRef}
+        tabIndex={0}
+        role="region"
+        aria-label={bn ? 'ক্যাটাগরি তালিকা' : 'Shop by Category'}
+        onKeyDown={handleParentKeyDown}
+        className="w-full flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory touch-pan-x pb-2 pt-1 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 rounded-2xl"
+      >
+        {parents.map((cat: any, idx: number) => {
           const theme = THEMES[idx % THEMES.length];
           const Icon = pickIcon(cat);
           const name = translateCategoryName(cat, bn ? 'bn' : 'en');
@@ -310,7 +409,7 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
               href={hrefFor(cat)}
               onClick={() => onSelectCategory && onSelectCategory(cat.slug || cat.name)}
               aria-label={name}
-              className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 sm:p-5 min-h-[175px] sm:min-h-[195px] lg:min-h-[205px] shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${theme.card} ${
+              className={`group snap-start shrink-0 w-[calc((100%-12px)/2)] sm:w-[calc((100%-32px)/3)] lg:w-[calc((100%-60px)/4)] relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 sm:p-5 min-h-[175px] sm:min-h-[195px] lg:min-h-[205px] shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none ${theme.card} ${
                 selected ? 'ring-2 ring-primary' : ''
               }`}
             >
@@ -328,7 +427,8 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
                       src={cat.image}
                       alt={name}
                       fill
-                      sizes="(min-width: 1024px) 15vw, (min-width: 640px) 25vw, 40vw"
+                      priority={idx < 2}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                       className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
@@ -371,25 +471,6 @@ export default function CategoryGrid({ categories = [], selectedCategory, onSele
           );
         })}
       </div>
-
-      {/* Show more toggle if more than 8 categories exist */}
-      {parents.length > 8 && (
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => setShowAll((prev) => !prev)}
-            aria-label={showAll ? (bn ? 'কম দেখুন' : 'Show Less') : viewAllLabel}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-border/80 bg-card hover:bg-muted text-xs sm:text-sm font-bold text-foreground transition-all duration-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <span>
-              {showAll
-                ? (bn ? 'কম দেখুন' : 'Show Less')
-                : viewAllLabel}
-            </span>
-            <ArrowRight size={14} className={`transition-transform duration-200 ${showAll ? '-rotate-90' : 'rotate-90'}`} />
-          </button>
-        </div>
-      )}
 
       {/* ================= POPULAR SUBCATEGORIES ================= */}
       {popularSubs.length > 0 && (
