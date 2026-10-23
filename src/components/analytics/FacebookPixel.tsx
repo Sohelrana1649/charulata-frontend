@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, Suspense } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import Script from 'next/script';
+import React, { useEffect, useRef, Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import Script from "next/script";
 
-export const PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || '1064564773292846';
+export const PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || "1064564773292846";
 
 /**
  * Helper to ensure the Meta Catalog ID format strictly matches
@@ -12,54 +12,111 @@ export const PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || '1064564773
  * Meta Feed exports: String(product.sku || product._id || product.id)
  */
 export const getCatalogProductId = (product: any): string => {
-  if (!product) return '';
-  if (typeof product === 'string' || typeof product === 'number') return String(product).trim();
-  const sku = product.sku ? String(product.sku).trim() : '';
+  if (!product) return "";
+  if (typeof product === "string" || typeof product === "number") return String(product).trim();
+  const sku = product.sku ? String(product.sku).trim() : "";
   if (sku) return sku;
   const id = product._id || product.id;
-  return id ? String(id).trim() : '';
+  return id ? String(id).trim() : "";
 };
 
 /**
  * Helper to get cookie value by name (e.g. _fbp, _fbc)
  */
 export const getCookie = (name: string): string | undefined => {
-  if (typeof document === 'undefined') return undefined;
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : undefined;
+  if (typeof document === "undefined") return undefined;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : undefined;
 };
 
-export const getFbp = (): string | undefined => getCookie('_fbp');
-export const getFbc = (): string | undefined => getCookie('_fbc');
+export const getFbp = (): string | undefined => getCookie("_fbp");
+export const getFbc = (): string | undefined => getCookie("_fbc");
 
 /**
  * Generate a unique event ID for deduplication between Browser Pixel & Server CAPI
  */
-export const generateMetaEventId = (prefix: string = 'evt'): string => {
+export const generateMetaEventId = (prefix: string = "evt"): string => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
 
 /**
- * Tracks standard and custom events in Meta Pixel.
- * Safe to call from anywhere in client components.
- * Supports passing eventID for proper deduplication with Meta Conversions API (CAPI).
+ * Dispatches an event directly to the backend Meta Conversions API (CAPI) relay
+ */
+export const sendServerMetaEvent = async (
+  eventName: string,
+  options?: any,
+  eventParams?: { eventID?: string; testEventCode?: string }
+) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const fbp = getFbp();
+    const fbc = getFbc();
+    const eventId = eventParams?.eventID || generateMetaEventId(eventName.toLowerCase());
+
+    // Auto-detect test_event_code from URL or localStorage
+    let testEventCode = eventParams?.testEventCode;
+    if (!testEventCode && typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCode = urlParams.get("test_event_code");
+      if (urlCode) {
+        localStorage.setItem("meta_test_event_code", urlCode);
+        testEventCode = urlCode;
+      } else {
+        testEventCode = localStorage.getItem("meta_test_event_code") || undefined;
+      }
+    }
+
+    const payload = {
+      eventName,
+      eventId,
+      eventSourceUrl: window.location.href,
+      customData: options,
+      userData: {
+        fbp,
+        fbc,
+      },
+      testEventCode,
+    };
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.charulatalifestyle.com/api/v1";
+
+    fetch(`${apiUrl}/tracking/meta-event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Silent fail
+  }
+};
+
+/**
+ * Tracks standard and custom events in Meta Pixel (Browser) AND Conversions API (Server).
+ * Ensures identical eventID is sent to both for seamless deduplication by Meta.
  */
 export const fbEvent = (
-  action: 'track' | 'trackCustom',
+  action: "track" | "trackCustom",
   name: string,
   options?: any,
-  eventParams?: { eventID?: string }
+  eventParams?: { eventID?: string; testEventCode?: string; skipServer?: boolean }
 ) => {
-  if (typeof window !== 'undefined' && (window as any).fbq) {
-    if (eventParams?.eventID) {
-      (window as any).fbq(action, name, options, { eventID: eventParams.eventID });
-    } else {
-      (window as any).fbq(action, name, options);
-    }
-  } else {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Meta Pixel Log] ${action}: ${name}`, options || '', eventParams || '');
-    }
+  // Ensure a single, identical event ID shared between Browser and Server
+  const eventId = eventParams?.eventID || generateMetaEventId(name.toLowerCase());
+
+  // 1. Browser Pixel Track with explicit eventID for deduplication
+  if (typeof window !== "undefined" && (window as any).fbq) {
+    (window as any).fbq(action, name, options, { eventID: eventId });
+  } else if (process.env.NODE_ENV === "development") {
+    console.log(`[Meta Pixel Log] ${action}: ${name}`, options || "", { eventID: eventId });
+  }
+
+  // 2. Server CAPI Track for critical eCommerce events
+  // Note: Purchase is dispatched by the order placement API directly on the server to prevent duplicates
+  const capiEvents = ["ViewContent", "AddToCart", "InitiateCheckout", "Contact", "Search"];
+  if (!eventParams?.skipServer && capiEvents.includes(name)) {
+    sendServerMetaEvent(name, options, { ...eventParams, eventID: eventId });
   }
 };
 
@@ -67,6 +124,16 @@ function PixelTrackerInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isFirstLoad = useRef(true);
+
+  // Capture test_event_code parameter if present in query string
+  useEffect(() => {
+    if (typeof window !== "undefined" && searchParams) {
+      const code = searchParams.get("test_event_code");
+      if (code) {
+        localStorage.setItem("meta_test_event_code", code);
+      }
+    }
+  }, [searchParams]);
 
   // Track PageView on client-side route changes only.
   // The initial PageView is fired by the base pixel code below.
@@ -76,7 +143,7 @@ function PixelTrackerInner() {
       isFirstLoad.current = false;
       return;
     }
-    fbEvent('track', 'PageView');
+    fbEvent("track", "PageView");
   }, [pathname, searchParams]);
 
   if (!PIXEL_ID) {
@@ -109,7 +176,7 @@ fbq('track', 'PageView');
         <img
           height="1"
           width="1"
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           src={`https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1`}
           alt=""
         />
@@ -120,7 +187,6 @@ fbq('track', 'PageView');
 }
 
 export default function FacebookPixel() {
-  // Wrap in Suspense to avoid de-optimizing the build due to searchParams reading
   return (
     <Suspense fallback={null}>
       <PixelTrackerInner />

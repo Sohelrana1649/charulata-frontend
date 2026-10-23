@@ -865,7 +865,8 @@ export default function CheckoutForm() {
           transactionId: finalTrxId,
           _eventId: eventId,
           _fbp: fbp,
-          _fbc: fbc
+          _fbc: fbc,
+          _testEventCode: (typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("test_event_code") || localStorage.getItem("meta_test_event_code") || undefined) : undefined)
         };
         res = await placeOrder(payload).unwrap();
       } else {
@@ -896,7 +897,8 @@ export default function CheckoutForm() {
           transactionId: finalTrxId,
           _eventId: eventId,
           _fbp: fbp,
-          _fbc: fbc
+          _fbc: fbc,
+          _testEventCode: (typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("test_event_code") || localStorage.getItem("meta_test_event_code") || undefined) : undefined)
         };
         res = await placeGuestOrder(guestPayload).unwrap();
       }
@@ -938,7 +940,7 @@ export default function CheckoutForm() {
           value: orderObj.totalAmount || totalAmount,
           currency: 'BDT',
           num_items: (orderObj.items || items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
-        }, { eventID: eventId });
+        }, { eventID: eventId, skipServer: true });
       } else {
         setErrorMsg('Invalid checkout response from server.');
       }
