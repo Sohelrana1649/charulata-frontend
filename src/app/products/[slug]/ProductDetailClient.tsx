@@ -394,6 +394,9 @@ export default function ProductDetailClient({
     return bestVariant;
   }, [product, selectedAttributes, selectedColor, selectedSize]);
 
+  // Guard: fire Meta ViewContent only once per product id (StrictMode / re-render safe)
+  const viewContentTrackedRef = React.useRef<string | null>(null);
+
   // Initialize selected values once product loads
   React.useEffect(() => {
     if (product) {
@@ -435,7 +438,9 @@ export default function ProductDetailClient({
       }
 
       const catalogId = getCatalogProductId(product);
-      if (catalogId) {
+      const viewKey = String(product._id || product.id || catalogId);
+      if (catalogId && viewContentTrackedRef.current !== viewKey) {
+        viewContentTrackedRef.current = viewKey;
         const isDiscountExpired = product.discountEndDate && new Date() > new Date(product.discountEndDate);
         const currentPrice = (!isDiscountExpired && product.salePrice && product.salePrice > 0)
           ? Number(product.salePrice)

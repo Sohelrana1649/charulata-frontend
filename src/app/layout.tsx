@@ -229,7 +229,7 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <Header />
           </Suspense>
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col" suppressHydrationWarning>
             {children}
           </div>
           <Footer />

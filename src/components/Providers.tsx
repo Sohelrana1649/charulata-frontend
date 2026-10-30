@@ -21,20 +21,38 @@ export default function Providers({
   React.useEffect(() => {
     // Suppress intrusive third-party Chrome extension runtime errors (e.g. Urban VPN, adblockers)
     // from triggering Next.js development error modal overlays
+    const isExtensionError = (msg?: string, src?: string, stack?: string) => {
+      const combined = `${msg || ''} ${src || ''} ${stack || ''}`;
+      return (
+        combined.includes('chrome-extension://') ||
+        combined.includes('moz-extension://') ||
+        combined.includes('eppiocemhmnlbhjplcgkofciiegomcon') ||
+        combined.includes("reading 'M_ID'") ||
+        combined.includes('M_ID')
+      );
+    };
+
     const handleExtensionError = (event: ErrorEvent) => {
-      if (
-        event.filename?.includes('chrome-extension://') ||
-        event.message?.includes('chrome-extension://') ||
-        event.filename?.includes('moz-extension://') ||
-        event.message?.includes("reading 'M_ID'")
-      ) {
+      if (isExtensionError(event.message, event.filename, event.error?.stack)) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
+    };
+
+    const handleExtensionRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      if (isExtensionError(reason?.message || String(reason || ''), reason?.fileName, reason?.stack)) {
         event.stopImmediatePropagation();
         event.preventDefault();
       }
     };
 
     window.addEventListener('error', handleExtensionError, true);
-    return () => window.removeEventListener('error', handleExtensionError, true);
+    window.addEventListener('unhandledrejection', handleExtensionRejection, true);
+    return () => {
+      window.removeEventListener('error', handleExtensionError, true);
+      window.removeEventListener('unhandledrejection', handleExtensionRejection, true);
+    };
   }, []);
 
   return (

@@ -720,14 +720,16 @@ export const BANGLADESH_DISTRICT_THANAS: Record<string, IThana[]> = {
 export function getThanasForDistrict(districtName: string): IThana[] {
   if (!districtName) return [];
   const normalized = districtName.trim().toLowerCase();
+  const cleanNoParen = districtName.replace(/\(.*?\)/g, '').trim().toLowerCase();
+  const parenMatch = districtName.match(/\((.*?)\)/)?.[1]?.trim().toLowerCase();
 
-  // Try direct key match
+  // Try direct key match or stripped name match
   for (const [key, thanas] of Object.entries(BANGLADESH_DISTRICT_THANAS)) {
-    if (key.toLowerCase() === normalized) {
+    const k = key.toLowerCase();
+    if (k === normalized || k === cleanNoParen || (parenMatch && k === parenMatch)) {
       return thanas;
     }
   }
 
-  // Try matching against thanas from mapped district
   return [];
 }

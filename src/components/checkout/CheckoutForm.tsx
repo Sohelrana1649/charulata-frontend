@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCheckoutMutation, useGuestCheckoutMutation, useValidateCouponMutation } from '@/store/api/orderApi';
 import { useSaveLeadMutation } from '@/store/api/leadApi';
 import { useGetCartQuery, useRemoveFromCartMutation, useUpdateCartQuantityMutation } from '@/store/api/cartApi';
@@ -11,7 +11,8 @@ import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck, X, Minus, Plus, CreditCard, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { fbEvent, getCatalogProductId, getFbp, getFbc, generateMetaEventId } from '@/components/analytics/FacebookPixel';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
+import { generateEventId, getFbp, getFbc, trackMetaPurchase } from '@/utils/metaTracking';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
@@ -301,33 +302,82 @@ export default function CheckoutForm() {
     }, 250);
   };
 
+  const findDistrictObj = useCallback((query: string) => {
+    if (!query) return null;
+    const clean = query.trim().toLowerCase();
+    const cleanNoParen = query.replace(/\(.*?\)/g, '').trim().toLowerCase();
+    const parenMatch = query.match(/\((.*?)\)/)?.[1]?.trim().toLowerCase();
+    const mapped = BANGLA_DISTRICT_MAP[query.trim()]?.toLowerCase();
+
+    return districtsList.find((d: any) => {
+      const dDistrict = (d.district || '').toLowerCase();
+      const dEn = (d.nameEn || dDistrict.replace(/\(.*?\)/g, '').trim()).toLowerCase();
+      const dBn = (d.nameBn || dDistrict.match(/\((.*?)\)/)?.[1]?.trim() || '').toLowerCase();
+
+      return (
+        dDistrict === clean ||
+        dEn === clean ||
+        dBn === clean ||
+        (cleanNoParen && (dEn === cleanNoParen || dDistrict === cleanNoParen || dDistrict.startsWith(cleanNoParen))) ||
+        (parenMatch && (dBn === parenMatch || dEn === parenMatch)) ||
+        (mapped && (dEn === mapped || dDistrict.startsWith(mapped)))
+      );
+    });
+  }, [districtsList]);
+
   const filteredDistricts = useMemo(() => {
-    if (!districtSearch.trim()) return [];
+    if (!districtSearch.trim()) return districtsList;
     const query = districtSearch.trim().toLowerCase();
+    const cleanQuery = query.replace(/\(.*?\)/g, '').trim();
     const mappedQuery = BANGLA_DISTRICT_MAP[districtSearch.trim()]?.toLowerCase() || query;
 
     return districtsList.filter((d: any) => {
-      const enName = (d.district || '').toLowerCase();
-      const bnName = ENGLISH_TO_BANGLA_DISTRICT_MAP[enName] || '';
-      return enName.includes(query) || enName.includes(mappedQuery) || bnName.includes(query);
+      const dDistrict = (d.district || '').toLowerCase();
+      const enName = (d.nameEn || dDistrict.replace(/\(.*?\)/g, '').trim()).toLowerCase();
+      const bnName = (d.nameBn || ENGLISH_TO_BANGLA_DISTRICT_MAP[enName] || dDistrict.match(/\((.*?)\)/)?.[1]?.trim() || '').toLowerCase();
+      return (
+        dDistrict.includes(query) ||
+        enName.includes(query) ||
+        enName.includes(cleanQuery) ||
+        enName.includes(mappedQuery) ||
+        bnName.includes(query) ||
+        bnName.includes(cleanQuery)
+      );
     });
   }, [districtSearch, districtsList]);
 
-  const availableThanas = useMemo(() => {
+  const availableThanas = useMemo<IThana[]>(() => {
     const activeDist = (shippingAddress.district || districtSearch).trim();
     if (!activeDist) return [];
-    const mappedDist = BANGLA_DISTRICT_MAP[activeDist] || activeDist;
+
+    // 1. Try finding in API districtsList first (which contains backend thanas from database)
+    const distObj = findDistrictObj(activeDist);
+    if (distObj?.thanas && Array.isArray(distObj.thanas) && distObj.thanas.length > 0) {
+      return distObj.thanas.map((th: any) => ({
+        en: th.nameEn || th.en || th.name || '',
+        bn: th.nameBn || th.bn || th.name || th.nameEn || ''
+      }));
+    }
+
+    // 2. Fallback to static getThanasForDistrict if not found in API
+    const cleanDist = activeDist.replace(/\(.*?\)/g, '').trim();
+    const mappedDist = BANGLA_DISTRICT_MAP[activeDist] || BANGLA_DISTRICT_MAP[cleanDist] || cleanDist;
     return getThanasForDistrict(mappedDist);
-  }, [shippingAddress.district, districtSearch]);
+  }, [shippingAddress.district, districtSearch, findDistrictObj]);
 
   const filteredThanas = useMemo(() => {
     if (!availableThanas.length) return [];
     if (!thanaSearch.trim()) return availableThanas;
+    // When the user focuses on the field with an already selected thana, show all thanas
+    if (shippingAddress.thana && thanaSearch.trim() === shippingAddress.thana.trim()) {
+      return availableThanas;
+    }
     const query = thanaSearch.trim().toLowerCase();
     return availableThanas.filter((th: IThana) =>
-      th.bn.toLowerCase().includes(query) || th.en.toLowerCase().includes(query)
+      (th.bn && th.bn.toLowerCase().includes(query)) ||
+      (th.en && th.en.toLowerCase().includes(query))
     );
-  }, [availableThanas, thanaSearch]);
+  }, [availableThanas, thanaSearch, shippingAddress.thana]);
 
   const [couponCode, setCouponCode] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
@@ -618,12 +668,7 @@ export default function CheckoutForm() {
 
   // Dynamically find shipping charge from DB districts (defaults to 0 until district selected)
   const activeDistrictQuery = (shippingAddress.district || districtSearch).trim();
-  const mappedEnDistrict = BANGLA_DISTRICT_MAP[activeDistrictQuery] || activeDistrictQuery;
-
-  const selectedDistrictObj = districtsList.find((d: any) => {
-    const enName = (d.district || '').toLowerCase();
-    return enName === mappedEnDistrict.toLowerCase() || enName === activeDistrictQuery.toLowerCase();
-  });
+  const selectedDistrictObj = findDistrictObj(activeDistrictQuery);
 
   const isDhakaDistrict = /dhaka|ঢাকা/i.test(activeDistrictQuery) || /dhaka/i.test(selectedDistrictObj?.district || '');
   const hasDistrictSelected = Boolean(shippingAddress.district.trim());
@@ -831,7 +876,7 @@ export default function CheckoutForm() {
       const finalSenderNumber = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? paymentSenderNumber.trim() : 'N/A';
       const finalTrxId = requireAdvancePayment && selectedPaymentMethod !== 'COD' ? transactionId.trim().toUpperCase() : 'COD';
 
-      const eventId = generateMetaEventId('purchase');
+      const eventId = generateEventId();
       const fbp = getFbp();
       const fbc = getFbc();
 
@@ -866,6 +911,7 @@ export default function CheckoutForm() {
           _eventId: eventId,
           _fbp: fbp,
           _fbc: fbc,
+          _eventSourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
           _testEventCode: (typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("test_event_code") || localStorage.getItem("meta_test_event_code") || undefined) : undefined)
         };
         res = await placeOrder(payload).unwrap();
@@ -898,6 +944,7 @@ export default function CheckoutForm() {
           _eventId: eventId,
           _fbp: fbp,
           _fbc: fbc,
+          _eventSourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
           _testEventCode: (typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("test_event_code") || localStorage.getItem("meta_test_event_code") || undefined) : undefined)
         };
         res = await placeGuestOrder(guestPayload).unwrap();
@@ -931,16 +978,26 @@ export default function CheckoutForm() {
           if (matchedDb) {
             return getCatalogProductId(matchedDb);
           }
-          return String(item.sku || prod);
+          return getCatalogProductId(item.sku || prod);
         }).filter(Boolean);
 
-        fbEvent('track', 'Purchase', {
+        // Browser Purchase uses the server's event ID (response.metaEventId, which equals the _eventId we sent)
+        // and fires only once per order. The server already sent the Purchase CAPI event: no /meta-event call here.
+        const purchaseItems = (orderObj.items || items || []);
+        const purchaseOrderId = String(orderObj.orderId || orderObj._id || orderObj.id || '');
+        const purchaseEventId = res?.metaEventId || res?.data?.metaEventId || eventId;
+        trackMetaPurchase(purchaseOrderId, purchaseEventId, {
           content_ids: purchasedContentIds,
           content_type: 'product',
+          contents: purchaseItems.map((item: any, idx: number) => ({
+            id: purchasedContentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
+            quantity: item.quantity || 1,
+          })).filter((c: any) => c.id),
           value: orderObj.totalAmount || totalAmount,
           currency: 'BDT',
-          num_items: (orderObj.items || items || []).reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
-        }, { eventID: eventId, skipServer: true });
+          num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
+          order_id: purchaseOrderId || undefined
+        });
       } else {
         setErrorMsg('Invalid checkout response from server.');
       }
@@ -1895,8 +1952,10 @@ export default function CheckoutForm() {
                         {showDistrictDropdown && filteredDistricts.length > 0 && (
                           <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40 custom-scrollbar">
                             {filteredDistricts.map((d: any) => {
-                              const enName = d.district;
-                              const bnName = ENGLISH_TO_BANGLA_DISTRICT_MAP[(enName || '').toLowerCase()];
+                              const enName = d.nameEn || d.district?.replace(/\(.*?\)/g, '').trim() || d.district;
+                              const bnName = d.nameBn || ENGLISH_TO_BANGLA_DISTRICT_MAP[(enName || '').toLowerCase()] || d.district?.match(/\((.*?)\)/)?.[1]?.trim() || '';
+                              const fullDistrictValue = d.district || enName;
+                              const isSelected = shippingAddress.district === fullDistrictValue || shippingAddress.district === bnName || shippingAddress.district === enName;
 
                               return (
                                 <div key={d._id || d.district} className="bg-card">
@@ -1906,13 +1965,15 @@ export default function CheckoutForm() {
                                       type="button"
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => {
-                                        setShippingAddress(prev => ({ ...prev, district: bnName, thana: '' }));
-                                        setDistrictSearch(bnName);
+                                        setShippingAddress(prev => ({ ...prev, district: fullDistrictValue, thana: '' }));
+                                        setDistrictSearch(fullDistrictValue);
                                         setThanaSearch('');
                                         setShowDistrictDropdown(false);
+                                        setTimeout(() => setShowThanaDropdown(true), 100);
                                       }}
-                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === bnName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
-                                        }`}
+                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
+                                        isSelected ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
+                                      }`}
                                     >
                                       <span className="font-semibold">{bnName} <span className="text-muted-foreground text-xs font-normal">({enName})</span></span>
                                       <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
@@ -1924,13 +1985,15 @@ export default function CheckoutForm() {
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
-                                      setShippingAddress(prev => ({ ...prev, district: enName, thana: '' }));
-                                      setDistrictSearch(enName);
+                                      setShippingAddress(prev => ({ ...prev, district: fullDistrictValue, thana: '' }));
+                                      setDistrictSearch(fullDistrictValue);
                                       setThanaSearch('');
                                       setShowDistrictDropdown(false);
+                                      setTimeout(() => setShowThanaDropdown(true), 100);
                                     }}
-                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${shippingAddress.district === enName ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
-                                      }`}
+                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
+                                      isSelected ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
+                                    }`}
                                   >
                                     <span className="font-semibold">{enName} {bnName && <span className="text-muted-foreground text-xs font-normal">({bnName})</span>}</span>
                                     <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
@@ -1956,22 +2019,21 @@ export default function CheckoutForm() {
                         <input
                           type="text"
                           required
-                          placeholder={locale === 'bn' ? 'থানা লিখুন...' : 'Enter thana...'}
+                          placeholder={locale === 'bn' ? (availableThanas.length > 0 ? 'থানা নির্বাচন করুন বা লিখুন...' : 'থানা লিখুন...') : (availableThanas.length > 0 ? 'Select or enter thana...' : 'Enter thana...')}
                           value={shippingAddress.thana || thanaSearch}
                           onChange={(e) => {
                             const val = e.target.value;
                             setThanaSearch(val);
                             setShippingAddress(prev => ({ ...prev, thana: val }));
-                            if (availableThanas.length > 0) {
-                              setShowThanaDropdown(true);
-                            }
+                            setShowThanaDropdown(true);
                           }}
                           onFocus={() => {
-                            if (availableThanas.length > 0) {
-                              setShowThanaDropdown(true);
-                            }
+                            setShowThanaDropdown(true);
                           }}
-                          onBlur={() => setTimeout(() => setShowThanaDropdown(false), 200)}
+                          onClick={() => {
+                            setShowThanaDropdown(true);
+                          }}
+                          onBlur={() => setTimeout(() => setShowThanaDropdown(false), 250)}
                           className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] text-xs sm:text-sm font-medium focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 transition-all min-h-[44px]"
                         />
                         {availableThanas.length > 0 && (
@@ -1979,30 +2041,36 @@ export default function CheckoutForm() {
                         )}
 
                         {showThanaDropdown && availableThanas.length > 0 && (
-                          <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40 custom-scrollbar">
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl divide-y divide-border/40 custom-scrollbar">
                             {filteredThanas.length > 0 ? (
-                              filteredThanas.map((th, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => {
-                                    const selectedThana = locale === 'bn' ? th.bn : th.en;
-                                    setShippingAddress(prev => ({ ...prev, thana: selectedThana }));
-                                    setThanaSearch(selectedThana);
-                                    setShowThanaDropdown(false);
-                                  }}
-                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
-                                    shippingAddress.thana === (locale === 'bn' ? th.bn : th.en) ? 'bg-primary/10 text-primary font-bold' : 'text-foreground'
-                                  }`}
-                                >
-                                  <span className="font-semibold">{th.bn} <span className="text-muted-foreground text-xs font-normal">({th.en})</span></span>
-                                  {shippingAddress.thana === (locale === 'bn' ? th.bn : th.en) && (
-                                    <Check size={14} className="text-primary stroke-[3]" />
-                                  )}
-                                </button>
-                              ))
-                            ) : null}
+                              filteredThanas.map((th, idx) => {
+                                const thanaDisplay = locale === 'bn' ? (th.bn || th.en) : (th.en || th.bn);
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                      setShippingAddress(prev => ({ ...prev, thana: thanaDisplay }));
+                                      setThanaSearch(thanaDisplay);
+                                      setShowThanaDropdown(false);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
+                                      shippingAddress.thana === thanaDisplay ? 'bg-primary/10 text-primary font-bold' : 'text-foreground'
+                                    }`}
+                                  >
+                                    <span className="font-semibold">{th.bn} {th.en && th.en !== th.bn && <span className="text-muted-foreground text-xs font-normal">({th.en})</span>}</span>
+                                    {shippingAddress.thana === thanaDisplay && (
+                                      <Check size={14} className="text-primary stroke-[3]" />
+                                    )}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="px-3.5 py-2.5 text-xs text-muted-foreground">
+                                {locale === 'bn' ? 'কোনো থানা পাওয়া যায়নি' : 'No matching thana found'}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

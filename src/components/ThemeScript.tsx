@@ -19,6 +19,36 @@ export default function ThemeScript() {
                 }
               } catch (e) {}
 
+              // Prevent third-party browser extensions (e.g. Urban VPN "reading 'M_ID'")
+              // from triggering Next.js dev error modal overlays
+              try {
+                var isExtensionError = function(msg, src, err) {
+                  var str = (msg || '') + ' ' + (src || '') + ' ' + (err && err.stack ? err.stack : '');
+                  return str.indexOf('chrome-extension://') !== -1 ||
+                         str.indexOf('moz-extension://') !== -1 ||
+                         str.indexOf('eppiocemhmnlbhjplcgkofciiegomcon') !== -1 ||
+                         str.indexOf("reading 'M_ID'") !== -1 ||
+                         str.indexOf('M_ID') !== -1;
+                };
+
+                window.addEventListener('error', function(ev) {
+                  if (isExtensionError(ev.message, ev.filename, ev.error)) {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
+                    return true;
+                  }
+                }, true);
+
+                window.addEventListener('unhandledrejection', function(ev) {
+                  var reason = ev.reason;
+                  if (reason && isExtensionError(reason.message || reason, reason.fileName || '', reason)) {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
+                    return true;
+                  }
+                }, true);
+              } catch (e) {}
+
               try {
                 if (typeof MutationObserver !== 'undefined') {
                   var clean = function(node) {
@@ -34,6 +64,8 @@ export default function ThemeScript() {
                       }
                     }
                   };
+
+                  clean(document.documentElement);
 
                   var observer = new MutationObserver(function(mutations) {
                     for (var i = 0; i < mutations.length; i++) {
