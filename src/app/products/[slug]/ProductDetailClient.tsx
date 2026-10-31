@@ -680,13 +680,19 @@ export default function ProductDetailClient({
   const salePrice = currentSalePrice;
 
   const productStock = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
-  const currentStock = matchedVariant?.stockQuantity !== undefined
-    ? Number(matchedVariant.stockQuantity)
+  const hasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
+    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
+    : false;
+
+  const currentStock = hasVariantStock
+    ? (matchedVariant?.stockQuantity !== undefined && Number(matchedVariant.stockQuantity) > 0
+        ? Number(matchedVariant.stockQuantity)
+        : (matchedVariant?.stockQuantity !== undefined ? Number(matchedVariant.stockQuantity) : productStock))
     : productStock;
-  const hasAnyStock = Array.isArray(product?.variants) && product.variants.length > 0
-    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0) || productStock > 0
-    : (product?.stockQuantity !== undefined ? productStock > 0 : true);
-  const isInStock = matchedVariant ? currentStock > 0 : hasAnyStock;
+
+  const isInStock = hasVariantStock
+    ? (matchedVariant ? (Number(matchedVariant.stockQuantity) || 0) > 0 : (productStock > 0 || hasVariantStock))
+    : productStock > 0;
   const fallbackPlaceholder = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
   const rawImages = [
     ...(Array.isArray(product?.productImages) ? product.productImages : []),
@@ -784,7 +790,7 @@ export default function ProductDetailClient({
               zoomLevel={2.5}
               isSale={isSale}
               discountPercent={discountPercent}
-              stockQuantity={product.stockQuantity}
+              stockQuantity={currentStock}
               galleryImages={galleryImages}
               activeImageIndex={activeImageIndex}
               onPrevImage={handlePrevImage}
@@ -1013,7 +1019,7 @@ export default function ProductDetailClient({
               
               <span className={`text-[11px] font-medium flex items-center gap-1 ${isInStock ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 font-bold'}`}>
                 {isInStock ? <Check size={12} /> : <X size={12} />}
-                <span>{isInStock ? (locale === 'bn' ? 'ইন স্টক' : 'In Stock') : (locale === 'bn' ? 'স্টক শেষ' : 'Stock Out')}</span>
+                <span>{isInStock ? (locale === 'bn' ? 'ইন স্টক' : 'In Stock') : (locale === 'bn' ? 'স্টক আউট' : 'Stock Out')}</span>
               </span>
             </div>
 
@@ -1231,8 +1237,14 @@ export default function ProductDetailClient({
               </button>
               <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{quantity}</span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
-                disabled={!isInStock}
+                onClick={() => {
+                  if (currentStock > 0 && quantity >= currentStock) {
+                    toast.info(locale === 'bn' ? `সর্বোচ্চ ${currentStock} টি স্টকে আছে` : `Only ${currentStock} item(s) available in stock`);
+                    return;
+                  }
+                  setQuantity(quantity + 1);
+                }}
+                disabled={!isInStock || (currentStock > 0 && quantity >= currentStock)}
                 className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Increase Quantity"
               >
@@ -1257,7 +1269,7 @@ export default function ProductDetailClient({
                 <Zap size={18} />
                 <span>
                   {!isInStock
-                    ? (locale === 'bn' ? 'স্টক শেষ' : 'Stock Out')
+                    ? (locale === 'bn' ? 'স্টক আউট' : 'Stock Out')
                     : (locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now')}
                 </span>
               </button>
@@ -1282,7 +1294,7 @@ export default function ProductDetailClient({
                 ) : !isInStock ? (
                   <>
                     <X size={18} />
-                    <span>{locale === 'bn' ? 'স্টক শেষ' : 'Out of Stock'}</span>
+                    <span>{locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}</span>
                   </>
                 ) : (
                   <>

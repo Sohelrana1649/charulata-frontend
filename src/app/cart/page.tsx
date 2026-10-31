@@ -112,9 +112,13 @@ export default function CartPage() {
     );
   }
 
-  const handleQuantityChange = async (itemId: string, currentQty: number, change: number) => {
+  const handleQuantityChange = async (itemId: string, currentQty: number, change: number, maxStock?: number) => {
     const newQty = currentQty + change;
     if (newQty < 1) return;
+    if (change > 0 && maxStock !== undefined && maxStock > 0 && currentQty >= maxStock) {
+      toast.info(locale === 'bn' ? `সর্বোচ্চ ${maxStock} টি স্টকে আছে` : `Only ${maxStock} item(s) available in stock`);
+      return;
+    }
     if (!isAuthenticated) {
       updateGuestCartQuantity(itemId, newQty);
       setGuestCartItems(getGuestCart());
@@ -424,6 +428,13 @@ export default function CartPage() {
         <div className="lg:col-span-8 space-y-4">
           {items.map((item: any) => {
             const product = item.product || {};
+            const itemStock = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
+            const itemHasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
+              ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
+              : false;
+            const isItemInStock = itemHasVariantStock
+              ? (itemStock > 0 || itemHasVariantStock)
+              : itemStock > 0;
             const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
             const image = product.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150';
 
@@ -444,8 +455,19 @@ export default function CartPage() {
                       {product.title || product.name || 'Product'}
                     </Link>
                     
-                    {/* Attributes Badges */}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {/* Attributes & In Stock / Stock Out Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {isItemInStock ? (
+                        <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {locale === 'bn' ? 'ইন স্টক' : 'In Stock'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          {locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+                        </span>
+                      )}
                       {item.color && renderColorBadge(item.color)}
                       {item.size && renderSizeBadge(item.size)}
                       {item.selectedAttributes &&
@@ -475,7 +497,7 @@ export default function CartPage() {
                   {/* Quantity selector pill */}
                   <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs shrink-0">
                     <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity, -1)}
+                      onClick={() => handleQuantityChange(item._id, item.quantity, -1, itemStock)}
                       disabled={item.quantity <= 1 || isUpdating}
                       className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                       title={locale === 'bn' ? 'পরিমাণ কমান' : 'Decrease Quantity'}
@@ -484,9 +506,9 @@ export default function CartPage() {
                     </button>
                     <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{item.quantity}</span>
                     <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity, 1)}
-                      disabled={isUpdating}
-                      className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs"
+                      onClick={() => handleQuantityChange(item._id, item.quantity, 1, itemStock)}
+                      disabled={isUpdating || !isItemInStock || (itemStock > 0 && item.quantity >= itemStock)}
+                      className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs disabled:cursor-not-allowed"
                       title={locale === 'bn' ? 'পরিমাণ বাড়ান' : 'Increase Quantity'}
                     >
                       <Plus size={14} strokeWidth={2.5} />
@@ -563,6 +585,16 @@ export default function CartPage() {
           <div className="space-y-3">
             <button
               onClick={() => {
+                const hasOutOfStock = items.some((it: any) => {
+                  const p = it.product || {};
+                  const s = p?.stockQuantity !== undefined ? Number(p.stockQuantity) : 0;
+                  const hv = Array.isArray(p?.variants) && p.variants.length > 0 && p.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0);
+                  return hv ? (s <= 0 && !hv) : s <= 0;
+                });
+                if (hasOutOfStock) {
+                  toast.error(locale === 'bn' ? 'আপনার কার্টে স্টক আউট পণ্য রয়েছে। অনুগ্রহ করে সেটি সরিয়ে অর্ডার করুন।' : 'Your cart contains out-of-stock items. Please remove them before proceeding.');
+                  return;
+                }
                 const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
                 if (contentIds.length > 0) {
                   fbEvent('track', 'InitiateCheckout', {
