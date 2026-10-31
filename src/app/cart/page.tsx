@@ -23,6 +23,7 @@ export default function CartPage() {
   
   const [mounted, setMounted] = React.useState(false);
   const [guestCartItems, setGuestCartItems] = React.useState<any[]>([]);
+  const [guestWishlistItems, setGuestWishlistItems] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -34,6 +35,15 @@ export default function CartPage() {
       const handleUpdate = () => setGuestCartItems(getGuestCart());
       window.addEventListener('guest_cart_updated', handleUpdate);
       return () => window.removeEventListener('guest_cart_updated', handleUpdate);
+    }
+  }, [isAuthenticated]);
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setGuestWishlistItems(getGuestWishlistItems());
+      const handleUpdate = () => setGuestWishlistItems(getGuestWishlistItems());
+      window.addEventListener('guest_wishlist_updated', handleUpdate);
+      return () => window.removeEventListener('guest_wishlist_updated', handleUpdate);
     }
   }, [isAuthenticated]);
   
@@ -51,7 +61,7 @@ export default function CartPage() {
   const dbProductsList = React.useMemo(() => allProductsResponse?.data || allProductsResponse?.products || allProductsResponse || [], [allProductsResponse]);
 
   const wishlistItems = React.useMemo(() => {
-    if (!isAuthenticated) return getGuestWishlistItems();
+    if (!isAuthenticated) return guestWishlistItems;
     const serverProducts = Array.isArray(wishlistResponse?.data?.products)
       ? wishlistResponse.data.products
       : Array.isArray(wishlistResponse?.products)
@@ -62,7 +72,7 @@ export default function CartPage() {
             ? wishlistResponse
             : [];
     return serverProducts;
-  }, [isAuthenticated, wishlistResponse]);
+  }, [isAuthenticated, wishlistResponse, guestWishlistItems]);
 
   const cartData = cartResponse?.data?.cart || cartResponse?.cart || cartResponse?.data || cartResponse;
   

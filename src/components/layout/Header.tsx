@@ -143,10 +143,20 @@ export default function Header() {
     return () => window.removeEventListener('resize', computeCount);
   }, []);
 
+  // Fallback Parent Categories if backend API is temporarily unreachable
+  const FALLBACK_CATEGORIES = React.useMemo(() => [
+    { _id: 'cat_wf', name: "Women's Fashion", nameBn: 'নারীদের ফ্যাশন', slug: 'womens-fashion', level: 0 },
+    { _id: 'cat_mf', name: "Men's Fashion", nameBn: 'পুরুষের ফ্যাশন', slug: 'mens-fashion', level: 0 },
+    { _id: 'cat_acc', name: 'Accessories', nameBn: 'এক্সেসরিজ', slug: 'accessories', level: 0 },
+    { _id: 'cat_hl', name: 'Home & Lifestyle', nameBn: 'হোম ও লাইফস্টাইল', slug: 'home-lifestyle', level: 0 },
+    { _id: 'cat_bp', name: 'Beauty & Personal Care', nameBn: 'বিউটি ও পার্সোনাল কেয়ার', slug: 'beauty-personal-care', level: 0 },
+    { _id: 'cat_jw', name: 'Jewelry & Watches', nameBn: 'জুয়েলারি ও ঘড়ি', slug: 'jewelry-watches', level: 0 },
+  ], []);
+
   // Dynamic Backend Categories Fetching for Navigation
-  const { data: categoriesData } = useGetCategoriesQuery({});
+  const { data: categoriesData, isLoading: isCategoriesLoading, isError: isCategoriesError } = useGetCategoriesQuery({});
   const categoriesList = React.useMemo(() => {
-    return Array.isArray(categoriesData?.data?.categories)
+    const rawList = Array.isArray(categoriesData?.data?.categories)
       ? categoriesData.data.categories
       : Array.isArray(categoriesData?.data)
         ? categoriesData.data
@@ -155,7 +165,9 @@ export default function Header() {
           : Array.isArray(categoriesData)
             ? categoriesData
             : [];
-  }, [categoriesData]);
+    if (rawList.length > 0) return rawList;
+    return isCategoriesError ? FALLBACK_CATEGORIES : [];
+  }, [categoriesData, isCategoriesError, FALLBACK_CATEGORIES]);
 
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1145,6 +1157,16 @@ export default function Header() {
               >
                 {t('nav.home')}
               </Link>
+
+              {/* Shimmer loading pills while categories load */}
+              {isCategoriesLoading && topParentCategories.length === 0 && (
+                <div className="flex items-center gap-2 animate-pulse">
+                  <div className="h-6 w-20 bg-white/20 rounded-md" />
+                  <div className="h-6 w-24 bg-white/20 rounded-md" />
+                  <div className="h-6 w-16 bg-white/20 rounded-md" />
+                  <div className="h-6 w-20 bg-white/20 rounded-md" />
+                </div>
+              )}
 
               {/* Top Parent Categories with Subcategory Dropdowns */}
               {mounted && topParentCategories.map((item: any) => {

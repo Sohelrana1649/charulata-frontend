@@ -212,24 +212,58 @@ export default function ProductDetailClient({
 
   const isInWishlist = wishlistArray.some((itemId: string) => itemId === product?._id?.toString());
 
-  const handleWishlistToggle = async () => {
-    if (!isAuthenticated && product?._id) {
-      const added = toggleGuestWishlist(product._id);
+  const handleWishlistToggle = async (targetProductOrId?: any) => {
+    // If targetProductOrId is provided and is a valid product object or string (not a synthetic click event)
+    const isSyntheticEvent = Boolean(
+      targetProductOrId && (targetProductOrId.nativeEvent || targetProductOrId.target || targetProductOrId.preventDefault)
+    );
+    const targetProduct = (!isSyntheticEvent && targetProductOrId && typeof targetProductOrId === 'object')
+      ? targetProductOrId
+      : (typeof targetProductOrId === 'string' ? { _id: targetProductOrId } : product);
+
+    const targetId = (targetProduct?._id || targetProduct?.id || (typeof targetProductOrId === 'string' ? targetProductOrId : null))?.toString();
+    if (!targetId) return;
+
+    if (!isAuthenticated) {
+      const added = toggleGuestWishlist(targetProduct);
       if (added) {
         toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        const catalogId = getCatalogProductId(targetProduct);
+        const itemPrice = Number(targetProduct.salePrice || targetProduct.price) || 0;
+        if (catalogId) {
+          fbEvent('track', 'AddToWishlist', {
+            content_ids: [catalogId],
+            content_type: 'product',
+            content_name: targetProduct.title || targetProduct.name,
+            value: itemPrice,
+            currency: 'BDT',
+          });
+        }
       } else {
         toast.info(locale === 'bn' ? 'পছন্দের তালিকা থেকে সরানো হয়েছে' : 'Removed from wishlist');
       }
       return;
     }
 
+    const isIn = wishlistArray.some((id: string) => id === targetId);
     try {
-      if (isInWishlist) {
-        await removeFromWishlist(product._id).unwrap();
+      if (isIn) {
+        await removeFromWishlist(targetId).unwrap();
         toast.info(locale === 'bn' ? 'পছন্দের তালিকা থেকে সরানো হয়েছে' : 'Removed from wishlist');
       } else {
-        await addToWishlist(product._id).unwrap();
+        await addToWishlist(targetId).unwrap();
         toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        const catalogId = getCatalogProductId(targetProduct);
+        const itemPrice = Number(targetProduct.salePrice || targetProduct.price) || 0;
+        if (catalogId) {
+          fbEvent('track', 'AddToWishlist', {
+            content_ids: [catalogId],
+            content_type: 'product',
+            content_name: targetProduct.title || targetProduct.name,
+            value: itemPrice,
+            currency: 'BDT',
+          });
+        }
       }
     } catch (err: any) {
       console.error('Wishlist toggle error:', err);
@@ -1234,7 +1268,7 @@ export default function ProductDetailClient({
 
             <div className="flex items-center space-x-2 pt-1">
               <button
-                onClick={handleWishlistToggle}
+                onClick={() => handleWishlistToggle(product)}
                 disabled={isAddingToWishlist || isRemovingFromWishlist}
                 className={`flex-1 py-2 px-3 rounded-lg border text-xs font-normal transition flex items-center justify-center space-x-1.5 cursor-pointer ${
                   isInWishlist 
@@ -1243,7 +1277,7 @@ export default function ProductDetailClient({
                 }`}
               >
                 <Heart size={14} fill={isInWishlist ? "currentColor" : "none"} className={isInWishlist ? "stroke-rose-600" : "stroke-current"} />
-                <span>{isInWishlist ? 'Saved in Wishlist' : 'Add to Wishlist'}</span>
+                <span>{isInWishlist ? (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত আছে' : 'Saved in Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}</span>
               </button>
 
               <button

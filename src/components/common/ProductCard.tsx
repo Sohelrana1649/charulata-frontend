@@ -12,6 +12,8 @@ import { useAppSelector } from '@/store/hooks';
 import { toast } from 'react-toastify';
 import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
 import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
+import { toggleGuestWishlist, isProductInGuestWishlist } from '@/utils/guestWishlist';
+import { useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
 
 interface ProductCardProps {
   product: any;
@@ -25,11 +27,25 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const [addToCart, { isLoading: isAdding }] = useAddToCartMutation();
   const [isCartBouncing, setIsCartBouncing] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
-  const [orderLoading, setOrderLoading] = useState(false);
+
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+  const [internalWishlisted, setInternalWishlisted] = useState(false);
+
+  // If onWishlistToggle is not passed, use internal guest/server wishlisted state
+  const effectiveIsWishlisted = onWishlistToggle ? isWishlisted : (isWishlisted || internalWishlisted);
+
+  React.useEffect(() => {
+    if (!onWishlistToggle && product?._id) {
+      setInternalWishlisted(isProductInGuestWishlist(product._id));
+      const handleUpdate = () => setInternalWishlisted(isProductInGuestWishlist(product._id));
+      window.addEventListener('guest_wishlist_updated', handleUpdate);
+      return () => window.removeEventListener('guest_wishlist_updated', handleUpdate);
+    }
+  }, [onWishlistToggle, product?._id]);
 
   // Prevent duplicate rapid clicks
   const cartClickRef = useRef(false);
-  const orderClickRef = useRef(false);
   const wishlistClickRef = useRef(false);
 
   const [now] = useState(() => Date.now());
@@ -151,74 +167,70 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     }
   }, [addToCart, hasVariantsOrAttributes, img, isAdding, isAuthenticated, isSale, locale, price, product, router, salePrice]);
 
-  const handleOrderNowClick = useCallback(async (e: React.MouseEvent) => {
+  const handleWishlistClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     // Prevent duplicate rapid clicks
-    if (orderClickRef.current || orderLoading) return;
-    orderClickRef.current = true;
-    setTimeout(() => { orderClickRef.current = false; }, 1500);
+    if (wishlistClickRef.current) return;
+    wishlistClickRef.current = true;
+    setTimeout(() => { wishlistClickRef.current = false; }, 600);
 
-    if (hasVariantsOrAttributes) {
-      router.push(`/products/${product.slug}`);
+    if (onWishlistToggle) {
+      onWishlistToggle(product);
       return;
     }
 
-    setOrderLoading(true);
-    const catalogId = getCatalogProductId(product);
-    const itemPrice = isSale ? salePrice : price;
+    const prodId = (product?._id || product?.id)?.toString();
+    if (!prodId) return;
 
     if (!isAuthenticated) {
-      addToGuestCart(product, 1);
-      if (catalogId) {
-        fbEvent('track', 'AddToCart', {
-          content_ids: [catalogId],
-          content_type: 'product',
-          content_name: product.title,
-          value: itemPrice,
-          currency: 'BDT',
-          quantity: 1
-        });
+      const added = toggleGuestWishlist(product);
+      setInternalWishlisted(added);
+      if (added) {
+        toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        const catalogId = getCatalogProductId(product);
+        const itemPrice = isSale ? salePrice : price;
+        if (catalogId) {
+          fbEvent('track', 'AddToWishlist', {
+            content_ids: [catalogId],
+            content_type: 'product',
+            content_name: product.title || product.name,
+            value: itemPrice,
+            currency: 'BDT',
+          });
+        }
+      } else {
+        toast.info(locale === 'bn' ? 'পছন্দের তালিকা থেকে সরানো হয়েছে' : 'Removed from wishlist');
       }
-      router.push('/checkout');
       return;
     }
 
     try {
-      await addToCart({
-        product: product._id,
-        quantity: 1
-      }).unwrap();
-
-      if (catalogId) {
-        fbEvent('track', 'AddToCart', {
-          content_ids: [catalogId],
-          content_type: 'product',
-          content_name: product.title,
-          value: itemPrice,
-          currency: 'BDT',
-          quantity: 1
-        });
+      if (effectiveIsWishlisted) {
+        await removeFromWishlist(prodId).unwrap();
+        setInternalWishlisted(false);
+        toast.info(locale === 'bn' ? 'পছন্দের তালিকা থেকে সরানো হয়েছে' : 'Removed from wishlist');
+      } else {
+        await addToWishlist(prodId).unwrap();
+        setInternalWishlisted(true);
+        toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        const catalogId = getCatalogProductId(product);
+        const itemPrice = isSale ? salePrice : price;
+        if (catalogId) {
+          fbEvent('track', 'AddToWishlist', {
+            content_ids: [catalogId],
+            content_type: 'product',
+            content_name: product.title || product.name,
+            value: itemPrice,
+            currency: 'BDT',
+          });
+        }
       }
-      router.push('/checkout');
     } catch (err: any) {
-      setOrderLoading(false);
-      router.push(`/products/${product.slug}`);
+      toast.error('Failed to update wishlist');
     }
-  }, [addToCart, hasVariantsOrAttributes, isSale, isAuthenticated, orderLoading, price, product, router, salePrice]);
-
-  const handleWishlistClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Prevent duplicate rapid clicks
-    if (wishlistClickRef.current || !onWishlistToggle) return;
-    wishlistClickRef.current = true;
-    setTimeout(() => { wishlistClickRef.current = false; }, 600);
-
-    onWishlistToggle(product);
-  }, [onWishlistToggle, product]);
+  }, [addToWishlist, effectiveIsWishlisted, isAuthenticated, isSale, locale, onWishlistToggle, price, product, removeFromWishlist, salePrice]);
 
   return (
     <div className="product-card group flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative h-full">
@@ -235,33 +247,31 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       )}
 
       {/* Wishlist Button */}
-      {onWishlistToggle && (
-        <button
-          onClick={handleWishlistClick}
-          className={`absolute top-2 right-2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-110 active:scale-90 flex items-center justify-center cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
-            isWishlisted 
-              ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-rose-100' 
-              : 'bg-white/90 hover:bg-white border-black/10 text-gray-700 hover:text-rose-600'
-          }`}
-          title={isWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
-          aria-label={isWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
-        >
-          <Heart 
-            size={15} 
-            fill={isWishlisted ? "#e11d48" : "none"} 
-            className={`transition-all duration-200 ${isWishlisted ? "stroke-[#e11d48] text-rose-600 scale-110" : "stroke-gray-700 hover:stroke-rose-600"}`} 
-          />
-        </button>
-      )}
+      <button
+        onClick={handleWishlistClick}
+        className={`absolute top-2 right-2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-110 active:scale-90 flex items-center justify-center cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
+          effectiveIsWishlisted 
+            ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-rose-100' 
+            : 'bg-white/90 hover:bg-white border-black/10 text-gray-700 hover:text-rose-600'
+        }`}
+        title={effectiveIsWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
+        aria-label={effectiveIsWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
+      >
+        <Heart 
+          size={15} 
+          fill={effectiveIsWishlisted ? "#e11d48" : "none"} 
+          className={`transition-all duration-200 ${effectiveIsWishlisted ? "stroke-[#e11d48] text-rose-600 scale-110" : "stroke-gray-700 hover:stroke-rose-600"}`} 
+        />
+      </button>
 
-      {/* Product Image - 3:4 Aspect Ratio for Fashion */}
-      <Link href={`/products/${product.slug}`} prefetch={false} className="aspect-[3/4] overflow-hidden bg-muted/50 relative block group/img cursor-pointer">
+      {/* Product Image - 3:4 Aspect Ratio for Fashion (Non-clickable container) */}
+      <div className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none">
         <Image 
           src={img} 
           alt={productAlt} 
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="transition duration-500 group-hover/img:scale-105 object-cover" 
+          className="object-cover" 
           loading="lazy"
         />
 
@@ -272,15 +282,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             <span>{productTimeLeftText}</span>
           </span>
         )}
-
-        {/* Image Overlay - View Details (Desktop only for cleaner mobile UX) */}
-        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 hidden sm:flex items-center justify-center z-10">
-          <span className="flex items-center space-x-1.5 bg-white/95 text-[#0B0F19] text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl shadow-xl scale-90 group-hover/img:scale-100 transition-transform duration-300 border border-white/20">
-            <span>{locale === 'bn' ? 'বিস্তারিত দেখুন' : 'View Details'}</span>
-            <ArrowRight size={13} className="stroke-[3]" />
-          </span>
-        </div>
-      </Link>
+      </div>
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
@@ -347,22 +349,16 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
 
         {/* Action Buttons: Order Now (Primary) + Add to Cart (Secondary Icon Button) */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border/50 mt-auto">
-          {/* Order Now (Primary Button) */}
-          <button
-            onClick={handleOrderNowClick}
-            disabled={orderLoading}
+          {/* Order Now (Primary Button) - Navigates directly to Product Details Page */}
+          <Link
+            href={`/products/${product.slug}`}
+            prefetch={false}
             aria-label={locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
-            className="flex-1 bg-primary hover:bg-[#b0842e] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl transition-all duration-200 ease-out hover:shadow-md hover:shadow-primary/20 active:scale-[0.97] active:duration-100 flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer min-w-0 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="flex-1 bg-primary hover:bg-[#b0842e] text-white text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl transition-all duration-200 ease-out hover:shadow-md hover:shadow-primary/20 active:scale-[0.97] active:duration-100 flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer min-w-0 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            {orderLoading ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <>
-                <span className="whitespace-nowrap truncate">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
-                <ArrowRight size={13} className="stroke-[2.5] shrink-0" />
-              </>
-            )}
-          </button>
+            <span className="whitespace-nowrap truncate">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
+            <ArrowRight size={13} className="stroke-[2.5] shrink-0" />
+          </Link>
 
           {/* Add to Cart (Secondary Icon Button) */}
           <button

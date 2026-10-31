@@ -61,31 +61,40 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
     if (!isAuthenticated) {
       return guestItems
         .map((g: any) => {
-          const idStr = (g._id || g.id || g).toString();
+          if (!g) return null;
+          const idStr = (g._id || g.id || g)?.toString();
+          if (!idStr || idStr === 'undefined' || idStr === 'null') return null;
+
           const matched = allProductsList.find((p: any) => (p._id || p.id)?.toString() === idStr);
           if (matched) {
+            const matchedImg = (Array.isArray(matched.productImages) ? matched.productImages : [])
+              .concat(Array.isArray(matched.images) ? matched.images : [])
+              .concat(matched.image ? [matched.image] : [])
+              .find((src: any) => typeof src === 'string' && src.trim() !== '') || g.image;
+
             return {
               _id: matched._id || matched.id,
-              title: matched.title || matched.name,
-              slug: matched.slug || idStr,
+              title: matched.title || matched.name || g.title || 'Product',
+              slug: matched.slug || g.slug || idStr,
               price: Number(matched.price) || Number(g.price) || 0,
               salePrice: Number(matched.salePrice) || Number(g.salePrice) || 0,
-              image: matched.productImages?.[0] || matched.image || g.image,
+              image: matchedImg || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
               rawProduct: matched
             };
           }
-          if (g.title && g.title !== 'Charulata Product' && g.slug && g.slug !== 'undefined') {
-            return {
-              _id: idStr,
-              title: g.title,
-              slug: g.slug,
-              price: Number(g.price) || 0,
-              salePrice: Number(g.salePrice) || 0,
-              image: g.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
-              rawProduct: g
-            };
-          }
-          return null;
+
+          // If not in allProductsList, show saved guest item details
+          const gImg = g.image || (Array.isArray(g.productImages) ? g.productImages[0] : (Array.isArray(g.images) ? g.images[0] : '')) || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+
+          return {
+            _id: idStr,
+            title: g.title || g.name || 'Charulata Product',
+            slug: g.slug || idStr,
+            price: Number(g.price) || 0,
+            salePrice: Number(g.salePrice) || 0,
+            image: gImg,
+            rawProduct: g
+          };
         })
         .filter(Boolean);
     }
@@ -100,15 +109,24 @@ export default function WishlistDrawer({ isOpen, onClose }: WishlistDrawerProps)
             ? wishlistResponse
             : [];
 
-    return serverProducts.map((p: any) => ({
-      _id: p._id || p.id,
-      title: p.title || 'Product',
-      slug: p.slug || p._id,
-      price: Number(p.price) || 0,
-      salePrice: Number(p.salePrice) || 0,
-      image: p.productImages?.[0] || p.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
-      rawProduct: p
-    }));
+    return serverProducts
+      .filter((p: any) => p && (p._id || p.id))
+      .map((p: any) => {
+        const pImg = (Array.isArray(p.productImages) ? p.productImages : [])
+          .concat(Array.isArray(p.images) ? p.images : [])
+          .concat(p.image ? [p.image] : [])
+          .find((src: any) => typeof src === 'string' && src.trim() !== '') || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+
+        return {
+          _id: p._id || p.id,
+          title: p.title || p.name || 'Product',
+          slug: p.slug || p._id || p.id,
+          price: Number(p.price) || 0,
+          salePrice: Number(p.salePrice) || 0,
+          image: pImg,
+          rawProduct: p
+        };
+      });
   }, [isAuthenticated, wishlistResponse, guestItems, allProductsList]);
 
   const handleRemove = async (productId: string) => {

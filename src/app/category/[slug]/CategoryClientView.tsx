@@ -10,6 +10,7 @@ import { useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMut
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { getGuestWishlist, toggleGuestWishlist } from '@/utils/guestWishlist';
 import { toast } from 'react-toastify';
+import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 import { useAppSelector } from '@/store/hooks';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { translateCategoryName } from '@/utils/categoryTranslator';
@@ -65,12 +66,27 @@ export default function CategoryClientView({
   }, [isAuthenticated, wishlistResponse, guestWishlist]);
 
   const handleWishlistToggle = async (productOrId: any) => {
-    const productId = (typeof productOrId === 'object' ? (productOrId._id || productOrId.id) : productOrId)?.toString();
+    const isObj = typeof productOrId === 'object' && productOrId !== null;
+    const productId = (isObj ? (productOrId._id || productOrId.id) : productOrId)?.toString();
+    if (!productId) return;
 
     if (!isAuthenticated) {
       const added = toggleGuestWishlist(productOrId);
       if (added) {
         toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        if (isObj) {
+          const catalogId = getCatalogProductId(productOrId);
+          const itemPrice = Number(productOrId.salePrice || productOrId.price) || 0;
+          if (catalogId) {
+            fbEvent('track', 'AddToWishlist', {
+              content_ids: [catalogId],
+              content_type: 'product',
+              content_name: productOrId.title || productOrId.name,
+              value: itemPrice,
+              currency: 'BDT',
+            });
+          }
+        }
       } else {
         toast.info(locale === 'bn' ? 'পছন্দের তালিকা থেকে সরানো হয়েছে' : 'Removed from wishlist');
       }
@@ -85,6 +101,19 @@ export default function CategoryClientView({
       } else {
         await addToWishlist(productId).unwrap();
         toast.success(locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত হয়েছে!' : 'Saved to wishlist!');
+        if (isObj) {
+          const catalogId = getCatalogProductId(productOrId);
+          const itemPrice = Number(productOrId.salePrice || productOrId.price) || 0;
+          if (catalogId) {
+            fbEvent('track', 'AddToWishlist', {
+              content_ids: [catalogId],
+              content_type: 'product',
+              content_name: productOrId.title || productOrId.name,
+              value: itemPrice,
+              currency: 'BDT',
+            });
+          }
+        }
       }
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to update wishlist.');
