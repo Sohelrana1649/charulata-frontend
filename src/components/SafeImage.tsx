@@ -8,8 +8,8 @@ const FALLBACK_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
 )}`;
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL;
-let backendBaseUrl = "http://localhost:5000";
-if (apiURL) {
+let backendBaseUrl = "https://api.charulatalifestyle.com";
+if (apiURL && !apiURL.includes('localhost:5000')) {
   try {
     const url = new URL(apiURL);
     backendBaseUrl = `${url.protocol}//${url.host}`;

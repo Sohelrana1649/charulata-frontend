@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { name, identifier, password } = body;
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
     const backendRes = await fetch(`${backendUrl}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -8,7 +8,7 @@ export const orderApi = baseApi.injectEndpoints({
         method: 'POST',
         body: checkoutData,
       }),
-      invalidatesTags: ['Cart', 'Order', 'Analytics'],
+      invalidatesTags: ['Cart', 'Order', 'Analytics', 'Product'],
     }),
     guestCheckout: builder.mutation({
       query: (guestCheckoutData) => ({
@@ -16,7 +16,7 @@ export const orderApi = baseApi.injectEndpoints({
         method: 'POST',
         body: guestCheckoutData,
       }),
-      invalidatesTags: ['Cart', 'Order', 'Analytics'],
+      invalidatesTags: ['Cart', 'Order', 'Analytics', 'Product'],
     }),
     getOrderHistory: builder.query({
       query: () => '/orders/history',

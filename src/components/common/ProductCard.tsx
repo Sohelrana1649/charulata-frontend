@@ -99,6 +99,14 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     (product?.colors && product.colors.length > 0) ||
     (product?.sizes && product.sizes.length > 0);
 
+  const stockQuantity = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
+  const hasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
+    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
+    : false;
+  const isInStock = product?.variants && product.variants.length > 0
+    ? (stockQuantity > 0 || hasVariantStock)
+    : (product?.stockQuantity !== undefined ? stockQuantity > 0 : true);
+
   const handleAddToCartClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -277,9 +285,9 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
 
         {/* Individual Product Flash Sale Time Remaining Badge */}
         {productTimeLeftText && (
-          <span className="absolute bottom-2 left-2 z-10 bg-black/80 text-amber-300 backdrop-blur-md text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 border border-amber-400/30 shadow-xs">
+          <span suppressHydrationWarning className="absolute bottom-2 left-2 z-10 bg-black/80 text-amber-300 backdrop-blur-md text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 border border-amber-400/30 shadow-xs">
             <Clock size={11} className="text-amber-400 animate-pulse shrink-0" />
-            <span>{productTimeLeftText}</span>
+            <span suppressHydrationWarning>{productTimeLeftText}</span>
           </span>
         )}
       </div>
@@ -325,23 +333,35 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
           )}
           </div>
 
-          {/* Pricing Section */}
-          <div className="flex flex-wrap items-baseline gap-1 sm:gap-1.5 pt-0.5 min-h-[22px]">
-            {isSale ? (
-              <>
-                <span className="text-[14px] sm:text-base font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-                  ৳{salePrice.toLocaleString('en-IN')}
-                </span>
-                <span className="text-[11px] text-muted-foreground/70 line-through decoration-rose-500/40 font-medium font-mono">
+          {/* Pricing Section & Stock Badge */}
+          <div className="flex items-center justify-between gap-1 pt-0.5 min-h-[22px]">
+            <div className="flex flex-wrap items-baseline gap-1 sm:gap-1.5">
+              {isSale ? (
+                <>
+                  <span className="text-[14px] sm:text-base font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                    ৳{salePrice.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground/70 line-through decoration-rose-500/40 font-medium font-mono">
+                    ৳{price.toLocaleString('en-IN')}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[14px] sm:text-base font-black text-foreground font-mono tracking-tight">
                   ৳{price.toLocaleString('en-IN')}
                 </span>
-                <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-px rounded font-mono leading-none">
-                  -{discountPercent}%
-                </span>
-              </>
+              )}
+            </div>
+
+            {/* In Stock / Stock Out Badge */}
+            {isInStock ? (
+              <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {locale === 'bn' ? 'ইন স্টক' : 'In Stock'}
+              </span>
             ) : (
-              <span className="text-[14px] sm:text-base font-black text-foreground font-mono tracking-tight">
-                ৳{price.toLocaleString('en-IN')}
+              <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                {locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
               </span>
             )}
           </div>
@@ -349,41 +369,54 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
 
         {/* Action Buttons: Order Now (Primary) + Add to Cart (Secondary Icon Button) */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border/50 mt-auto">
-          {/* Order Now (Primary Button) - Navigates directly to Product Details Page */}
-          <Link
-            href={`/products/${product.slug}`}
-            prefetch={false}
-            aria-label={locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
-            className="flex-1 bg-primary hover:bg-[#b0842e] text-white text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl transition-all duration-200 ease-out hover:shadow-md hover:shadow-primary/20 active:scale-[0.97] active:duration-100 flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer min-w-0 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <span className="whitespace-nowrap truncate">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
-            <ArrowRight size={13} className="stroke-[2.5] shrink-0" />
-          </Link>
+          {isInStock ? (
+            <>
+              {/* Order Now (Primary Button) - Navigates directly to Product Details Page */}
+              <Link
+                href={`/products/${product.slug}`}
+                prefetch={false}
+                aria-label={locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
+                className="flex-1 bg-primary hover:bg-[#b0842e] text-white text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl transition-all duration-200 ease-out hover:shadow-md hover:shadow-primary/20 active:scale-[0.97] active:duration-100 flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer min-w-0 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <span className="whitespace-nowrap truncate">{locale === 'bn' ? 'অর্ডার করুন' : 'Order Now'}</span>
+                <ArrowRight size={13} className="stroke-[2.5] shrink-0" />
+              </Link>
 
-          {/* Add to Cart (Secondary Icon Button) */}
-          <button
-            onClick={handleAddToCartClick}
-            disabled={isAdding || cartSuccess}
-            aria-label={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
-            className={`w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-10 sm:h-10 rounded-lg sm:rounded-xl transition-all duration-200 ease-out active:scale-[0.92] active:duration-100 shrink-0 cursor-pointer flex items-center justify-center will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-              cartSuccess
-                ? 'bg-emerald-500 text-white border border-emerald-400 shadow-sm'
-                : isAdding
-                  ? 'bg-primary/10 text-primary border border-primary/20 opacity-70 cursor-not-allowed'
-                  : `bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 hover:shadow-md hover:shadow-primary/20 shadow-xs ${
-                      isCartBouncing ? 'animate-cart-bounce' : ''
-                    }`
-            }`}
-            title={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
-          >
-            {cartSuccess ? (
-              <Check size={16} className="stroke-[3]" />
-            ) : isAdding ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <ShoppingCart size={15} className={`stroke-[2.5] transition-transform duration-200 ${isCartBouncing ? 'scale-110' : ''}`} />
-            )}
-          </button>
+              {/* Add to Cart (Secondary Icon Button) */}
+              <button
+                onClick={handleAddToCartClick}
+                disabled={isAdding || cartSuccess}
+                aria-label={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
+                className={`w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-10 sm:h-10 rounded-lg sm:rounded-xl transition-all duration-200 ease-out active:scale-[0.92] active:duration-100 shrink-0 cursor-pointer flex items-center justify-center will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                  cartSuccess
+                    ? 'bg-emerald-500 text-white border border-emerald-400 shadow-sm'
+                    : isAdding
+                      ? 'bg-primary/10 text-primary border border-primary/20 opacity-70 cursor-not-allowed'
+                      : `bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 hover:shadow-md hover:shadow-primary/20 shadow-xs ${
+                          isCartBouncing ? 'animate-cart-bounce' : ''
+                        }`
+                }`}
+                title={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
+              >
+                {cartSuccess ? (
+                  <Check size={16} className="stroke-[3]" />
+                ) : isAdding ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <ShoppingCart size={15} className={`stroke-[2.5] transition-transform duration-200 ${isCartBouncing ? 'scale-110' : ''}`} />
+                )}
+              </button>
+            </>
+          ) : (
+            <Link
+              href={`/products/${product.slug}`}
+              prefetch={false}
+              aria-label={locale === 'bn' ? 'স্টক শেষ' : 'Stock Out'}
+              className="flex-1 bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border/80 flex items-center justify-center gap-1 transition-all"
+            >
+              <span>{locale === 'bn' ? 'স্টক শেষ (বিস্তারিত দেখুন)' : 'Stock Out (View Details)'}</span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

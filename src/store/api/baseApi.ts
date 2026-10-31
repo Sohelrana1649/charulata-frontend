@@ -5,14 +5,15 @@ import { getErrorMessage } from '@/utils/errorHelper';
 import { toast } from 'react-toastify';
 
 const getDynamicBaseUrl = () => {
-  let url = process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
-  if (typeof window !== 'undefined') {
+  let url = process.env.NEXT_PUBLIC_API_URL;
+  // If not configured or compiled as dead localhost:5000, fallback to live API
+  if (!url || url.includes('localhost:5000')) {
+    return 'https://api.charulatalifestyle.com/api/v1';
+  }
+  if (typeof window !== 'undefined' && url.includes('localhost')) {
     const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `http://${hostname}:5000/api/v1`;
-    }
-    if (url.includes('localhost')) {
-      url = url.replace('localhost', hostname);
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return url.replace('localhost', hostname);
     }
   }
   return url;

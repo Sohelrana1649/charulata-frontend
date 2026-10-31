@@ -1158,15 +1158,7 @@ export default function Header() {
                 {t('nav.home')}
               </Link>
 
-              {/* Shimmer loading pills while categories load */}
-              {isCategoriesLoading && topParentCategories.length === 0 && (
-                <div className="flex items-center gap-2 animate-pulse">
-                  <div className="h-6 w-20 bg-white/20 rounded-md" />
-                  <div className="h-6 w-24 bg-white/20 rounded-md" />
-                  <div className="h-6 w-16 bg-white/20 rounded-md" />
-                  <div className="h-6 w-20 bg-white/20 rounded-md" />
-                </div>
-              )}
+
 
               {/* Top Parent Categories with Subcategory Dropdowns */}
               {mounted && topParentCategories.map((item: any) => {

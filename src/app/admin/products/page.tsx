@@ -522,13 +522,10 @@ export default function AdminProductsPage() {
     const derivedSizes = sizeAttr ? sizeAttr.options : (form.sizes || []);
     const derivedColors = colorAttr ? colorAttr.options : (form.colors || []);
 
-    // Total stock quantity fallback to sum of variant stock if variants present
-    let finalStockQuantity = Number(form.stockQuantity);
-    if (cleanedVariants.length > 0) {
-      const totalVariantStock = cleanedVariants.reduce((sum, v) => sum + v.stockQuantity, 0);
-      if (totalVariantStock > 0) {
-        finalStockQuantity = totalVariantStock;
-      }
+    // Use the explicit stock quantity entered by admin (ensuring 50 -> 40 edits are never overwritten)
+    const finalStockQuantity = Math.max(0, Number(form.stockQuantity || 0));
+    if (cleanedVariants.length === 1) {
+      cleanedVariants[0].stockQuantity = finalStockQuantity;
     }
 
     const payload = {
@@ -790,7 +787,11 @@ export default function AdminProductsPage() {
     setForm(prev => {
       const updated = [...prev.variants];
       updated[index] = { ...updated[index], [key]: value };
-      return { ...prev, variants: updated };
+      let updatedTotalStock = prev.stockQuantity;
+      if (key === 'stockQuantity') {
+        updatedTotalStock = updated.reduce((sum, v) => sum + (Number(v.stockQuantity) || 0), 0);
+      }
+      return { ...prev, variants: updated, stockQuantity: updatedTotalStock };
     });
   };
 
@@ -1918,7 +1919,16 @@ export default function AdminProductsPage() {
                       placeholder="Enter available stock"
                       value={form.stockQuantity === 0 ? '' : form.stockQuantity}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => setForm(prev => ({ ...prev, stockQuantity: e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0) }))}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0);
+                        setForm(prev => ({
+                          ...prev,
+                          stockQuantity: val,
+                          variants: prev.variants.length === 1
+                            ? prev.variants.map(v => ({ ...v, stockQuantity: val }))
+                            : prev.variants
+                        }));
+                      }}
                       className="w-full bg-muted/60 border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition font-mono min-h-[42px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>

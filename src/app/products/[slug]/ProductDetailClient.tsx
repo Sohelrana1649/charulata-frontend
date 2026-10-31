@@ -678,6 +678,15 @@ export default function ProductDetailClient({
   const finalUnitPrice = isSale ? currentSalePrice : currentRegularPrice;
   const price = currentRegularPrice;
   const salePrice = currentSalePrice;
+
+  const productStock = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
+  const currentStock = matchedVariant?.stockQuantity !== undefined
+    ? Number(matchedVariant.stockQuantity)
+    : productStock;
+  const hasAnyStock = Array.isArray(product?.variants) && product.variants.length > 0
+    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0) || productStock > 0
+    : (product?.stockQuantity !== undefined ? productStock > 0 : true);
+  const isInStock = matchedVariant ? currentStock > 0 : hasAnyStock;
   const fallbackPlaceholder = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
   const rawImages = [
     ...(Array.isArray(product?.productImages) ? product.productImages : []),
@@ -1002,9 +1011,9 @@ export default function ProductDetailClient({
                 {categoryName}
               </span>
               
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                <Check size={12} />
-                <span>In Stock</span>
+              <span className={`text-[11px] font-medium flex items-center gap-1 ${isInStock ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 font-bold'}`}>
+                {isInStock ? <Check size={12} /> : <X size={12} />}
+                <span>{isInStock ? (locale === 'bn' ? 'ইন স্টক' : 'In Stock') : (locale === 'bn' ? 'স্টক শেষ' : 'Stock Out')}</span>
               </span>
             </div>
 
@@ -1214,7 +1223,7 @@ export default function ProductDetailClient({
             <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
+                disabled={!isInStock || quantity <= 1}
                 className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                 title="Decrease Quantity"
               >
@@ -1223,7 +1232,8 @@ export default function ProductDetailClient({
               <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer shadow-2xs"
+                disabled={!isInStock}
+                className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Increase Quantity"
               >
                 <Plus size={14} strokeWidth={2.5} />
@@ -1237,25 +1247,42 @@ export default function ProductDetailClient({
               {/* Buy Now (Primary Solid Red Action) */}
               <button
                 onClick={handleBuyNow}
-                disabled={isAdding}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.97] flex items-center justify-center space-x-2 shadow-md shadow-rose-600/20 cursor-pointer"
+                disabled={isAdding || !isInStock}
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${
+                  isInStock
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white hover:scale-[1.01] active:scale-[0.97] shadow-md shadow-rose-600/20 cursor-pointer'
+                    : 'bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60'
+                }`}
               >
                 <Zap size={18} />
-                <span>{locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now'}</span>
+                <span>
+                  {!isInStock
+                    ? (locale === 'bn' ? 'স্টক শেষ' : 'Stock Out')
+                    : (locale === 'bn' ? 'সরাসরি অর্ডার করুন' : 'Buy Now')}
+                </span>
               </button>
 
               {/* Add to Cart (Secondary Distinct Outline Action) */}
               <button
                 onClick={handleAddToCart}
-                disabled={isAdding}
-                className={`w-full border-2 border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.97] flex items-center justify-center space-x-2 cursor-pointer ${
-                  isCartBouncing ? 'animate-cart-bounce' : ''
+                disabled={isAdding || !isInStock}
+                className={`w-full border-2 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${
+                  !isInStock
+                    ? 'border-border text-muted-foreground bg-muted/40 cursor-not-allowed opacity-60'
+                    : `border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card hover:scale-[1.01] active:scale-[0.97] cursor-pointer ${
+                        isCartBouncing ? 'animate-cart-bounce' : ''
+                      }`
                 }`}
               >
                 {isAdding ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4" />
                     <span>{locale === 'bn' ? 'যোগ হচ্ছে...' : 'Adding...'}</span>
+                  </>
+                ) : !isInStock ? (
+                  <>
+                    <X size={18} />
+                    <span>{locale === 'bn' ? 'স্টক শেষ' : 'Out of Stock'}</span>
                   </>
                 ) : (
                   <>

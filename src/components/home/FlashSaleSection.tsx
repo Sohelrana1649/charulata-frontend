@@ -33,7 +33,12 @@ export default function FlashSaleSection({
   const swiperRef = useRef<SwiperType | null>(null);
   const [isBeginning, setIsBeginning] = useState(true);
   const [isEnd, setIsEnd] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const [isMounted, setIsMounted] = useState(false);
+  const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 1. Filter genuine, active flash sale products
   const validProducts = useMemo(() => {
@@ -88,40 +93,30 @@ export default function FlashSaleSection({
     return null;
   }, [rawProducts, campaign, now]);
 
-  // 3. Countdown timer state
+  // 3. Countdown timer state (initialized cleanly to avoid SSR Date.now mismatch)
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
     minutes: number;
     seconds: number;
     hasValidEnd: boolean;
-  }>(() => {
-    if (!targetEndTime) {
-      return { days: 0, hours: 0, minutes: 0, seconds: 0, hasValidEnd: false };
-    }
-    const diff = targetEndTime - Date.now();
-    if (diff <= 0) {
-      return { days: 0, hours: 0, minutes: 0, seconds: 0, hasValidEnd: false };
-    }
-    return {
-      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-      minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
-      seconds: Math.floor((diff % (1000 * 60)) / 1000),
-      hasValidEnd: true,
-    };
+  }>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    hasValidEnd: false,
   });
 
   // 4. Stable 1-second timer tick
   useEffect(() => {
     if (!targetEndTime) {
-      setTimeLeft(prev => prev.hasValidEnd ? { days: 0, hours: 0, minutes: 0, seconds: 0, hasValidEnd: false } : prev);
+      setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, hasValidEnd: false });
       return;
     }
 
     const updateTimer = () => {
       const currentNow = Date.now();
-      setNow(currentNow);
       const diff = targetEndTime - currentNow;
 
       if (diff <= 0) {
@@ -172,8 +167,8 @@ export default function FlashSaleSection({
                 {t('home.flashSale')}
               </h2>
 
-              {/* Countdown Timer - only shown when valid sale end time exists */}
-              {timeLeft.hasValidEnd && (
+              {/* Countdown Timer - only shown when client is mounted and valid sale end time exists */}
+              {isMounted && timeLeft.hasValidEnd && (
                 <div
                   className="inline-flex items-center gap-2 sm:gap-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-3 sm:px-4 py-1.5 rounded-full shadow-2xs max-w-full"
                   role="timer"
@@ -191,7 +186,7 @@ export default function FlashSaleSection({
                     {timeLeft.days > 0 && (
                       <>
                         <div className="flex items-center gap-0.5 whitespace-nowrap">
-                          <span className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
+                          <span suppressHydrationWarning className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
                             {locale === 'bn' ? toBanglaDigits(timeLeft.days) : String(timeLeft.days).padStart(2, '0')}
                           </span>
                           <span className="text-[10px] sm:text-[11px] font-bold text-rose-800 dark:text-rose-200 ml-0.5">
@@ -203,7 +198,7 @@ export default function FlashSaleSection({
                     )}
 
                     <div className="flex items-center gap-0.5 whitespace-nowrap">
-                      <span className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
+                      <span suppressHydrationWarning className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
                         {locale === 'bn' ? toBanglaDigits(timeLeft.hours) : String(timeLeft.hours).padStart(2, '0')}
                       </span>
                       <span className="text-[10px] sm:text-[11px] font-bold text-rose-800 dark:text-rose-200 ml-0.5">
@@ -214,7 +209,7 @@ export default function FlashSaleSection({
                     <span className="text-rose-400 font-bold">:</span>
 
                     <div className="flex items-center gap-0.5 whitespace-nowrap">
-                      <span className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
+                      <span suppressHydrationWarning className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
                         {locale === 'bn' ? toBanglaDigits(timeLeft.minutes) : String(timeLeft.minutes).padStart(2, '0')}
                       </span>
                       <span className="text-[10px] sm:text-[11px] font-bold text-rose-800 dark:text-rose-200 ml-0.5">
@@ -225,7 +220,7 @@ export default function FlashSaleSection({
                     <span className="text-rose-400 font-bold">:</span>
 
                     <div className="flex items-center gap-0.5 whitespace-nowrap">
-                      <span className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
+                      <span suppressHydrationWarning className="bg-[#BE123C] text-white min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 rounded-md flex items-center justify-center text-[11px] sm:text-xs shadow-xs font-mono font-black">
                         {locale === 'bn' ? toBanglaDigits(timeLeft.seconds) : String(timeLeft.seconds).padStart(2, '0')}
                       </span>
                       <span className="text-[10px] sm:text-[11px] font-bold text-rose-800 dark:text-rose-200 ml-0.5">
