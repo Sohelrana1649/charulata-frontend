@@ -15,6 +15,7 @@ import { triggerFlyToCartAnimation } from '@/utils/cartAnimation';
 import ProductDescription from '@/components/common/ProductDescription';
 import ProductImageMagnifier from '@/components/common/ProductImageMagnifier';
 import ProductLightboxModal from '@/components/common/ProductLightboxModal';
+import { getStockStatus } from '@/utils/stock';
 import { useAppSelector } from '@/store/hooks';
 import {
   ShoppingBag,
@@ -679,20 +680,10 @@ export default function ProductDetailClient({
   const price = currentRegularPrice;
   const salePrice = currentSalePrice;
 
-  const productStock = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
-  const hasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
-    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
-    : false;
-
-  const currentStock = hasVariantStock
-    ? (matchedVariant?.stockQuantity !== undefined && Number(matchedVariant.stockQuantity) > 0
-      ? Number(matchedVariant.stockQuantity)
-      : (matchedVariant?.stockQuantity !== undefined ? Number(matchedVariant.stockQuantity) : productStock))
-    : productStock;
-
-  const isInStock = hasVariantStock
-    ? (matchedVariant ? (Number(matchedVariant.stockQuantity) || 0) > 0 : (productStock > 0 || hasVariantStock))
-    : productStock > 0;
+  const stockInfo = getStockStatus(product, matchedVariant);
+  const isInStock = stockInfo.isInStock;
+  const currentStock = stockInfo.stockQuantity;
+  const hasVariantStock = stockInfo.hasVariantStock;
   const fallbackPlaceholder = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
   const rawImages = [
     ...(Array.isArray(product?.productImages) ? product.productImages : []),

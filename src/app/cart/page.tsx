@@ -15,6 +15,7 @@ import { useGetProductsQuery } from '@/store/api/productApi';
 import { getGuestCart, addToGuestCart, removeFromGuestCart, updateGuestCartQuantity, clearGuestCart } from '@/utils/guestCart';
 import { getGuestWishlistItems } from '@/utils/guestWishlist';
 import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
+import { getStockStatus } from '@/utils/stock';
 
 export default function CartPage() {
   const router = useRouter();
@@ -428,13 +429,7 @@ export default function CartPage() {
         <div className="lg:col-span-8 space-y-4">
           {items.map((item: any) => {
             const product = item.product || {};
-            const itemStock = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
-            const itemHasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
-              ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
-              : false;
-            const isItemInStock = itemHasVariantStock
-              ? (itemStock > 0 || itemHasVariantStock)
-              : itemStock > 0;
+            const { isInStock: isItemInStock, stockQuantity: itemStock } = getStockStatus(product);
             const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
             const image = product.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150';
 

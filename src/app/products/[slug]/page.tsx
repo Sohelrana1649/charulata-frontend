@@ -3,6 +3,7 @@ import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
 import JsonLd from '@/components/common/JsonLd';
+import { getStockStatus } from '@/utils/stock';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.charulatalifestyle.com';
 
@@ -231,7 +232,7 @@ export default async function ProductDetailPageServer({
       price: effectivePrice,
       priceValidUntil: safeIsoDate(product?.discountEndDate) || '2028-12-31',
       itemCondition: 'https://schema.org/NewCondition',
-      availability: (Number(product?.stockQuantity) || 0) > 0
+      availability: getStockStatus(product).isInStock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       seller: {

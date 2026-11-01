@@ -15,6 +15,8 @@ import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPix
 import { toggleGuestWishlist, isProductInGuestWishlist } from '@/utils/guestWishlist';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation } from '@/store/api/userApi';
 
+import { getStockStatus } from '@/utils/stock';
+
 interface ProductCardProps {
   product: any;
   isWishlisted?: boolean;
@@ -99,13 +101,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     (product?.colors && product.colors.length > 0) ||
     (product?.sizes && product.sizes.length > 0);
 
-  const stockQuantity = product?.stockQuantity !== undefined ? Number(product.stockQuantity) : 0;
-  const hasVariantStock = Array.isArray(product?.variants) && product.variants.length > 0
-    ? product.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0)
-    : false;
-  const isInStock = product?.variants && product.variants.length > 0
-    ? (stockQuantity > 0 || hasVariantStock)
-    : (product?.stockQuantity !== undefined ? stockQuantity > 0 : true);
+  const { isInStock, stockQuantity } = getStockStatus(product);
 
   const handleAddToCartClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -240,8 +236,19 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     }
   }, [addToWishlist, effectiveIsWishlisted, isAuthenticated, isSale, locale, onWishlistToggle, price, product, removeFromWishlist, salePrice]);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a')) {
+      return;
+    }
+    router.push(`/products/${product.slug}`);
+  };
+
   return (
-    <div className="product-card group flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative h-full">
+    <div
+      onClick={handleCardClick}
+      className="product-card group flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative h-full cursor-pointer"
+    >
       {/* Discount Badge */}
       {isSale && discountPercent > 0 && (
         <span className="absolute top-2 left-2 z-10 bg-rose-600 text-white font-mono font-black text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
@@ -271,25 +278,38 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
         />
       </button>
 
-      {/* Product Image - 3:4 Aspect Ratio for Fashion (Non-clickable container) */}
-      <div className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none">
+      {/* Product Image - 3:4 Aspect Ratio for Fashion */}
+      <Link
+        href={`/products/${product.slug}`}
+        prefetch={false}
+        className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none cursor-pointer"
+      >
         <Image
           src={img}
           alt={productAlt}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover"
+          className={`object-cover transition-all duration-300 ${!isInStock ? 'grayscale opacity-70 contrast-90' : 'group-hover:scale-105'}`}
           loading="lazy"
         />
 
+        {/* Stock Out Overlay Badge on Image */}
+        {!isInStock && (
+          <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px] flex items-center justify-center p-2 z-10 pointer-events-none">
+            <span className="bg-rose-600/95 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">
+              {locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+            </span>
+          </div>
+        )}
+
         {/* Individual Product Flash Sale Time Remaining Badge */}
-        {productTimeLeftText && (
+        {productTimeLeftText && isInStock && (
           <span suppressHydrationWarning className="absolute bottom-2 left-2 z-10 bg-black/80 text-amber-300 backdrop-blur-md text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 border border-amber-400/30 shadow-xs">
             <Clock size={11} className="text-amber-400 animate-pulse shrink-0" />
             <span suppressHydrationWarning>{productTimeLeftText}</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
@@ -405,14 +425,37 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
               </button>
             </>
           ) : (
-            <Link
-              href={`/products/${product.slug}`}
-              prefetch={false}
-              aria-label={locale === 'bn' ? 'স্টক শেষ' : 'Stock Out'}
-              className="flex-1 bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border/80 flex items-center justify-center gap-1 transition-all"
-            >
-              <span>{locale === 'bn' ? 'স্টক শেষ (বিস্তারিত দেখুন)' : 'Stock Out (View Details)'}</span>
-            </Link>
+            <div className="flex-1 flex items-center gap-1.5">
+              {/* Disabled Order Now Button */}
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                className="flex-1 bg-muted/60 text-muted-foreground/75 text-[11px] sm:text-xs font-bold h-9.5 min-h-[38px] sm:h-10 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border/70 flex items-center justify-center gap-1 whitespace-nowrap cursor-not-allowed select-none opacity-80"
+              >
+                <span className="truncate">{locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}</span>
+              </button>
+
+              {/* Disabled Add to Cart Button */}
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                className="w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-muted/40 text-muted-foreground/40 border border-border/50 flex items-center justify-center cursor-not-allowed select-none opacity-60 shrink-0"
+                title={locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+                aria-label={locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+              >
+                <ShoppingCart size={15} className="stroke-[2] opacity-40" />
+              </button>
+            </div>
           )}
         </div>
       </div>
