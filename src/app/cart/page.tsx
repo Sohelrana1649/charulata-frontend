@@ -20,7 +20,7 @@ export default function CartPage() {
   const router = useRouter();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { t, locale } = useTranslation();
-  
+
   const [mounted, setMounted] = React.useState(false);
   const [guestCartItems, setGuestCartItems] = React.useState<any[]>([]);
   const [guestWishlistItems, setGuestWishlistItems] = React.useState<any[]>([]);
@@ -46,7 +46,7 @@ export default function CartPage() {
       return () => window.removeEventListener('guest_wishlist_updated', handleUpdate);
     }
   }, [isAuthenticated]);
-  
+
   const { data: cartResponse, isLoading } = useGetCartQuery(undefined, {
     skip: !isAuthenticated || !mounted
   });
@@ -75,7 +75,7 @@ export default function CartPage() {
   }, [isAuthenticated, wishlistResponse, guestWishlistItems]);
 
   const cartData = cartResponse?.data?.cart || cartResponse?.cart || cartResponse?.data || cartResponse;
-  
+
   const items = React.useMemo(() => {
     const rawItems = isAuthenticated ? (cartData?.items || []) : guestCartItems;
     if (!rawItems.length) return [];
@@ -185,7 +185,7 @@ export default function CartPage() {
       if (selSize && !targetAttrs['Size']) targetAttrs['Size'] = selSize;
 
       const targetEntries = Object.entries(targetAttrs).filter(([_, v]) => Boolean(v));
-      
+
       let matched: any = null;
       let maxScore = -1;
 
@@ -302,7 +302,7 @@ export default function CartPage() {
       });
       setGuestCartItems(getGuestCart());
       toast.success(locale === 'bn' ? 'উইশলিস্টের পণ্য কার্টে যোগ করা হয়েছে!' : 'Wishlist items added to cart!');
-      
+
       if (contentIds.length > 0) {
         fbEvent('track', 'AddToCart', {
           content_ids: contentIds,
@@ -380,13 +380,13 @@ export default function CartPage() {
     const cleanColor = color.trim();
     const isHex = cleanColor.startsWith('#') || /^[0-9A-F]{6}$/i.test(cleanColor) || /^[0-9A-F]{3}$/i.test(cleanColor);
     const colorStyle = isHex ? (cleanColor.startsWith('#') ? cleanColor : `#${cleanColor}`) : null;
-    
+
     return (
       <span className="inline-flex items-center space-x-1.5 bg-muted/70 text-foreground text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-xl border border-border/80">
         {colorStyle && (
-          <span 
-            className="w-3 h-3 rounded-full border border-black/10 shrink-0 shadow-3xs" 
-            style={{ backgroundColor: colorStyle }} 
+          <span
+            className="w-3 h-3 rounded-full border border-black/10 shrink-0 shadow-3xs"
+            style={{ backgroundColor: colorStyle }}
           />
         )}
         <span>{locale === 'bn' ? 'রঙ' : 'Color'}: {color}</span>
@@ -402,7 +402,7 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full py-6 sm:py-10 flex-1 space-y-6 sm:space-y-8">
-      
+
       {/* Title Header */}
       <div className="flex justify-between items-center mb-6 sm:mb-8 border-b border-border/60 pb-4 sm:pb-5">
         <h1 className="text-xl sm:text-3xl font-extrabold text-foreground font-serif flex items-center space-x-2.5">
@@ -423,7 +423,7 @@ export default function CartPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        
+
         {/* Cart Items List */}
         <div className="lg:col-span-8 space-y-4">
           {items.map((item: any) => {
@@ -439,11 +439,11 @@ export default function CartPage() {
             const image = product.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150';
 
             return (
-              <div 
-                key={item._id} 
+              <div
+                key={item._id}
                 className="bg-card border border-border/70 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:shadow-xs hover:border-primary/20 transition-all duration-300"
               >
-                
+
                 {/* Left: Thumbnail & Details */}
                 <div className="flex items-center space-x-3.5 sm:space-x-4 flex-1 min-w-0">
                   <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-muted border border-border/80 overflow-hidden relative shrink-0 shadow-2xs">
@@ -454,7 +454,7 @@ export default function CartPage() {
                     <Link href={`/products/${product.slug || product._id}`} className="font-extrabold text-foreground font-serif text-sm sm:text-base hover:text-primary transition line-clamp-1">
                       {product.title || product.name || 'Product'}
                     </Link>
-                    
+
                     {/* Attributes & In Stock / Stock Out Badges */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                       {isItemInStock ? (
@@ -484,7 +484,7 @@ export default function CartPage() {
                           );
                         })}
                     </div>
-                    
+
                     <p className="text-xs font-bold text-muted-foreground mt-2 sm:hidden">
                       ৳{effectivePrice.toLocaleString()} {locale === 'bn' ? 'প্রতিটি' : 'each'}
                     </p>
@@ -493,7 +493,7 @@ export default function CartPage() {
 
                 {/* Right: Quantity Controls, Price & Delete Action */}
                 <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-8 pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0">
-                  
+
                   {/* Quantity selector pill */}
                   <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs shrink-0">
                     <button
@@ -550,7 +550,7 @@ export default function CartPage() {
           <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-4 font-serif border-b pb-3 border-border/60">
             {t('cart.orderSummary')}
           </h2>
-          
+
           <div className="space-y-3.5 text-xs sm:text-sm mb-6">
             {productOfferDiscount > 0 && (
               <div className="flex justify-between text-muted-foreground">
@@ -568,14 +568,14 @@ export default function CartPage() {
               <span>{t('cart.subtotal')}</span>
               <span className="font-bold text-foreground font-serif">৳{subTotal.toLocaleString('en-IN')}</span>
             </div>
-            
+
             <div className="flex justify-between text-muted-foreground">
               <span>{t('cart.shipping')}</span>
               <span className="text-[11px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-lg border border-border">
                 {locale === 'bn' ? 'চেকআউটে হিসাব করা হবে' : 'Calculated at checkout'}
               </span>
             </div>
-            
+
             <div className="border-t border-border/60 pt-3.5 flex justify-between font-black text-foreground text-sm sm:text-base">
               <span>{t('cart.total')}</span>
               <span className="text-primary font-serif">৳{subTotal.toLocaleString()}</span>
@@ -612,8 +612,8 @@ export default function CartPage() {
               <span>{t('cart.proceedCheckout')}</span>
               <ArrowRight size={15} />
             </button>
-            
-            <Link 
+
+            <Link
               href="/"
               className="block w-full text-center py-2 text-[11px] sm:text-xs text-muted-foreground hover:text-primary transition font-extrabold"
             >

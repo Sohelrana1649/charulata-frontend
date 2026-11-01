@@ -94,7 +94,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const productTimeLeftText = isSale ? getProductTimeLeftText(product?.discountEndDate, now) : null;
 
-  const hasVariantsOrAttributes = 
+  const hasVariantsOrAttributes =
     (product?.attributes && product.attributes.length > 0) ||
     (product?.colors && product.colors.length > 0) ||
     (product?.sizes && product.sizes.length > 0);
@@ -137,7 +137,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Added to cart!');
       setCartSuccess(true);
       setTimeout(() => setCartSuccess(false), 1500);
-      
+
       if (catalogId) {
         fbEvent('track', 'AddToCart', {
           content_ids: [catalogId],
@@ -257,29 +257,28 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       {/* Wishlist Button */}
       <button
         onClick={handleWishlistClick}
-        className={`absolute top-2 right-2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-110 active:scale-90 flex items-center justify-center cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
-          effectiveIsWishlisted 
-            ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-rose-100' 
+        className={`absolute top-2 right-2 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-110 active:scale-90 flex items-center justify-center cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${effectiveIsWishlisted
+            ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-rose-100'
             : 'bg-white/90 hover:bg-white border-black/10 text-gray-700 hover:text-rose-600'
-        }`}
+          }`}
         title={effectiveIsWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
         aria-label={effectiveIsWishlisted ? (locale === 'bn' ? 'পছন্দের তালিকা থেকে সরান' : 'Remove from Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}
       >
-        <Heart 
-          size={15} 
-          fill={effectiveIsWishlisted ? "#e11d48" : "none"} 
-          className={`transition-all duration-200 ${effectiveIsWishlisted ? "stroke-[#e11d48] text-rose-600 scale-110" : "stroke-gray-700 hover:stroke-rose-600"}`} 
+        <Heart
+          size={15}
+          fill={effectiveIsWishlisted ? "#e11d48" : "none"}
+          className={`transition-all duration-200 ${effectiveIsWishlisted ? "stroke-[#e11d48] text-rose-600 scale-110" : "stroke-gray-700 hover:stroke-rose-600"}`}
         />
       </button>
 
       {/* Product Image - 3:4 Aspect Ratio for Fashion (Non-clickable container) */}
       <div className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none">
-        <Image 
-          src={img} 
-          alt={productAlt} 
+        <Image
+          src={img}
+          alt={productAlt}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover" 
+          className="object-cover"
           loading="lazy"
         />
 
@@ -296,7 +295,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
         <div className="space-y-1 flex-1 flex flex-col">
           {/* Product Title - 2 Line Clamp */}
-          <h3 
+          <h3
             className="text-[12px] sm:text-[13px] font-semibold leading-snug text-foreground hover:text-primary transition-colors line-clamp-2 min-h-[2.4em]"
             title={product?.title || product?.name || 'Product'}
           >
@@ -304,33 +303,33 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
               {product?.title || product?.name || 'Product'}
             </Link>
           </h3>
-          
+
           {/* Dynamic DB Rating Bar (Displayed only when genuine review data is available; row height reserved for grid alignment) */}
           <div className="min-h-[16px]">
-          {product.ratings?.count > 0 && product.ratings?.average > 0 && (
-            <div className="flex items-center gap-1 pt-0.5">
-              <div className="flex items-center gap-px">
-                {[1, 2, 3, 4, 5].map((starIdx) => {
-                  const avgRating = Number(product.ratings.average);
-                  const isStarFilled = starIdx <= Math.round(avgRating);
-                  return (
-                    <Star
-                      key={starIdx}
-                      size={12}
-                      fill={isStarFilled ? 'currentColor' : 'none'}
-                      className={isStarFilled ? 'text-amber-400 stroke-amber-400' : 'text-amber-400/30 stroke-amber-400/40'}
-                    />
-                  );
-                })}
+            {product.ratings?.count > 0 && product.ratings?.average > 0 && (
+              <div className="flex items-center gap-1 pt-0.5">
+                <div className="flex items-center gap-px">
+                  {[1, 2, 3, 4, 5].map((starIdx) => {
+                    const avgRating = Number(product.ratings.average);
+                    const isStarFilled = starIdx <= Math.round(avgRating);
+                    return (
+                      <Star
+                        key={starIdx}
+                        size={12}
+                        fill={isStarFilled ? 'currentColor' : 'none'}
+                        className={isStarFilled ? 'text-amber-400 stroke-amber-400' : 'text-amber-400/30 stroke-amber-400/40'}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-[11px] font-bold text-foreground/80 font-mono">
+                  {Number(product.ratings.average).toFixed(1)}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  ({product.ratings.count})
+                </span>
               </div>
-              <span className="text-[11px] font-bold text-foreground/80 font-mono">
-                {Number(product.ratings.average).toFixed(1)}
-              </span>
-              <span className="text-[10px] text-muted-foreground font-medium">
-                ({product.ratings.count})
-              </span>
-            </div>
-          )}
+            )}
           </div>
 
           {/* Pricing Section & Stock Badge */}
@@ -387,15 +386,13 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
                 onClick={handleAddToCartClick}
                 disabled={isAdding || cartSuccess}
                 aria-label={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
-                className={`w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-10 sm:h-10 rounded-lg sm:rounded-xl transition-all duration-200 ease-out active:scale-[0.92] active:duration-100 shrink-0 cursor-pointer flex items-center justify-center will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                  cartSuccess
+                className={`w-9.5 h-9.5 min-w-[38px] min-h-[38px] sm:w-10 sm:h-10 rounded-lg sm:rounded-xl transition-all duration-200 ease-out active:scale-[0.92] active:duration-100 shrink-0 cursor-pointer flex items-center justify-center will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${cartSuccess
                     ? 'bg-emerald-500 text-white border border-emerald-400 shadow-sm'
                     : isAdding
                       ? 'bg-primary/10 text-primary border border-primary/20 opacity-70 cursor-not-allowed'
-                      : `bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 hover:shadow-md hover:shadow-primary/20 shadow-xs ${
-                          isCartBouncing ? 'animate-cart-bounce' : ''
-                        }`
-                }`}
+                      : `bg-primary/10 dark:bg-primary/20 hover:bg-primary hover:text-white text-primary border border-primary/30 hover:shadow-md hover:shadow-primary/20 shadow-xs ${isCartBouncing ? 'animate-cart-bounce' : ''
+                      }`
+                  }`}
                 title={locale === 'bn' ? 'কার্টে যোগ করুন' : 'Add to Cart'}
               >
                 {cartSuccess ? (

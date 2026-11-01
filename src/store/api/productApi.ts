@@ -51,7 +51,7 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ['Product', 'Analytics'],
     }),
     bulkUpdateProducts: builder.mutation({
-      query: (body: { productIds: string[]; [key: string]: any }) => ({
+      query: (body: { productIds: string[];[key: string]: any }) => ({
         url: '/products/bulk-update',
         method: 'PATCH',
         body,

@@ -1,30 +1,39 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/store/hooks';
+import React from 'react';
+import type { Metadata } from 'next';
 import CheckoutForm from '@/components/checkout/CheckoutForm';
-import { Loader2 } from 'lucide-react';
 
-export default function CheckoutPage() {
-  const [mounted, setMounted] = useState(false);
+export const metadata: Metadata = {
+  title: 'চেকআউট | Charulata Lifestyle',
+  description: 'Complete your order with Cash on Delivery in Bangladesh.',
+};
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+export const revalidate = 300; // 5 mins ISR revalidation for delivery zones
 
-  if (!mounted) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#c99a3c] mb-2" />
-        <p className="text-sm text-gray-500">Loading Checkout...</p>
-      </div>
-    );
+const getCleanApiUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.charulatalifestyle.com/api/v1';
+};
+
+async function fetchDeliveryDistricts() {
+  try {
+    const res = await fetch(`${getCleanApiUrl()}/delivery/districts`, {
+      next: { revalidate: 300, tags: ['delivery'] },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const list = json?.data || json || [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
   }
+}
+
+export default async function CheckoutPage() {
+  const districts = await fetchDeliveryDistricts();
 
   return (
     <main className="flex-1 bg-slate-50/50">
-      <CheckoutForm />
+      <CheckoutForm initialDistricts={districts} />
     </main>
   );
 }

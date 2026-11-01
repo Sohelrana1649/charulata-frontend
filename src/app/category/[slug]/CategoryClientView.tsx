@@ -21,10 +21,10 @@ interface CategoryClientViewProps {
   slug?: string;
 }
 
-export default function CategoryClientView({ 
-  initialCategory, 
-  initialProducts = [], 
-  slug: propSlug 
+export default function CategoryClientView({
+  initialCategory,
+  initialProducts = [],
+  slug: propSlug
 }: CategoryClientViewProps) {
   const params = useParams();
   const slug = (params?.slug as string) || propSlug || initialCategory?.slug;
@@ -182,8 +182,8 @@ export default function CategoryClientView({
             {catName}
           </h1>
           <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
-            {initialCategory?.description || (locale === 'bn' 
-              ? `চারুলতা লাইফস্টাইলের সেরা ${catName} কালেকশন এক্সপ্লোর করুন। আকর্ষণীয় দাম ও ১-ক্লিক ক্যাশ অন ডেলিভারি।` 
+            {initialCategory?.description || (locale === 'bn'
+              ? `চারুলতা লাইফস্টাইলের সেরা ${catName} কালেকশন এক্সপ্লোর করুন। আকর্ষণীয় দাম ও ১-ক্লিক ক্যাশ অন ডেলিভারি।`
               : `Explore our top-tier ${catName} collection at Charulata Lifestyle. Premium quality with 1-Click Cash on Delivery.`)}
           </p>
         </div>

@@ -754,17 +754,15 @@ function SearchResults() {
                   <button
                     key="all-pieces"
                     onClick={() => handleCategorySelect('all')}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                      isAllActive
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${isAllActive
                         ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs font-black'
                         : 'text-foreground/85 hover:bg-muted hover:text-foreground border border-transparent'
-                    }`}
+                      }`}
                   >
                     <span className="capitalize truncate mr-2 font-serif">{t('search.allPieces')}</span>
                     <span
-                      className={`text-xs px-2.5 py-0.5 rounded-full font-black shrink-0 ${
-                        isAllActive ? 'bg-primary text-white shadow-xs' : 'bg-muted text-muted-foreground'
-                      }`}
+                      className={`text-xs px-2.5 py-0.5 rounded-full font-black shrink-0 ${isAllActive ? 'bg-primary text-white shadow-xs' : 'bg-muted text-muted-foreground'
+                        }`}
                     >
                       {totalAllCount}
                     </span>
@@ -787,9 +785,9 @@ function SearchResults() {
                     const isSearching = Boolean(query);
                     const matchingSubs = isSearching
                       ? pSubs.filter((sub: any) => {
-                          const subName = (translateCategoryName(sub, locale) || sub.name || '').toLowerCase();
-                          return subName.includes(query);
-                        })
+                        const subName = (translateCategoryName(sub, locale) || sub.name || '').toLowerCase();
+                        return subName.includes(query);
+                      })
                       : pSubs;
 
                     const isOpen = Boolean(openParents[String(parent.slug)] || openParents[String(parent._id)]) || (isSearching && matchingSubs.length > 0);
@@ -799,19 +797,17 @@ function SearchResults() {
                     return (
                       <div
                         key={pKey}
-                        className={`rounded-xl border transition-all duration-200 overflow-hidden ${
-                          isParentActive
+                        className={`rounded-xl border transition-all duration-200 overflow-hidden ${isParentActive
                             ? 'border-primary/40 bg-primary/5 shadow-2xs'
                             : isChildActive
-                            ? 'border-primary/25 bg-muted/20'
-                            : 'border-border/60 bg-card hover:border-border'
-                        }`}
+                              ? 'border-primary/25 bg-muted/20'
+                              : 'border-border/60 bg-card hover:border-border'
+                          }`}
                       >
                         {/* Parent Category Header Row */}
                         <div
-                          className={`w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm font-bold transition-colors ${
-                            isParentActive ? 'text-primary font-black' : isChildActive ? 'text-primary font-extrabold' : 'text-foreground/90'
-                          }`}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-xs sm:text-sm font-bold transition-colors ${isParentActive ? 'text-primary font-black' : isChildActive ? 'text-primary font-extrabold' : 'text-foreground/90'
+                            }`}
                         >
                           {/* Clickable Category Name (Filters by this parent & opens dropdown) */}
                           <button
@@ -829,9 +825,8 @@ function SearchResults() {
                             className="flex-1 flex items-center space-x-2 text-left truncate mr-2 cursor-pointer group/title py-1"
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform ${
-                                isParentActive ? 'bg-primary scale-125' : isChildActive ? 'bg-primary/70' : 'bg-transparent'
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform ${isParentActive ? 'bg-primary scale-125' : isChildActive ? 'bg-primary/70' : 'bg-transparent'
+                                }`}
                             />
                             <span className="truncate capitalize font-serif group-hover/title:text-primary transition-colors">
                               {parentLabel}
@@ -851,11 +846,10 @@ function SearchResults() {
                                   }));
                                 }
                               }}
-                              className={`text-xs px-2.5 py-0.5 rounded-full font-black cursor-pointer transition-colors ${
-                                isParentActive
+                              className={`text-xs px-2.5 py-0.5 rounded-full font-black cursor-pointer transition-colors ${isParentActive
                                   ? 'bg-primary text-white shadow-xs'
                                   : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
-                              }`}
+                                }`}
                             >
                               {parentCount}
                             </span>
@@ -873,9 +867,8 @@ function SearchResults() {
                               >
                                 <ChevronDown
                                   size={16}
-                                  className={`transition-transform duration-200 stroke-[2.2] ${
-                                    isOpen ? 'rotate-180 text-primary' : ''
-                                  }`}
+                                  className={`transition-transform duration-200 stroke-[2.2] ${isOpen ? 'rotate-180 text-primary' : ''
+                                    }`}
                                 />
                               </button>
                             )}
@@ -896,24 +889,21 @@ function SearchResults() {
                                   key={sub._id || sub.slug}
                                   type="button"
                                   onClick={() => handleCategorySelect(subId)}
-                                  className={`w-full flex items-center justify-between pl-3 pr-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                                    isSubSelected
+                                  className={`w-full flex items-center justify-between pl-3 pr-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${isSubSelected
                                       ? 'bg-primary text-white font-black shadow-xs'
                                       : 'text-foreground/80 hover:bg-background hover:text-primary font-medium'
-                                  }`}
+                                    }`}
                                 >
                                   <div className="flex items-center space-x-2 truncate mr-2">
                                     <span
-                                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                        isSubSelected ? 'bg-white' : 'bg-primary/40'
-                                      }`}
+                                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSubSelected ? 'bg-white' : 'bg-primary/40'
+                                        }`}
                                     />
                                     <span className="truncate">{subLabel}</span>
                                   </div>
                                   <span
-                                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
-                                      isSubSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-                                    }`}
+                                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${isSubSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+                                      }`}
                                   >
                                     {subCount}
                                   </span>
@@ -978,8 +968,8 @@ function SearchResults() {
                     onClick={() => handleColorSelect(color.name)}
                     style={{ backgroundColor: color.code }}
                     className={`h-7.5 w-7.5 rounded-full border transition-all cursor-pointer ${isSelected
-                        ? 'ring-2 ring-offset-2 ring-primary scale-110 border-background shadow-md'
-                        : 'border-border hover:scale-105 shadow-xs'
+                      ? 'ring-2 ring-offset-2 ring-primary scale-110 border-background shadow-md'
+                      : 'border-border hover:scale-105 shadow-xs'
                       }`}
                     title={color.name}
                     aria-label={`Filter by ${color.name}`}
@@ -1034,8 +1024,8 @@ function SearchResults() {
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center ${viewMode === 'grid'
-                        ? 'bg-primary text-white-force shadow-md scale-105'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'bg-primary text-white-force shadow-md scale-105'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     aria-label="Grid view"
                     title={locale === 'bn' ? 'গ্রিড ভিউ' : 'Grid View'}
@@ -1045,8 +1035,8 @@ function SearchResults() {
                   <button
                     onClick={() => setViewMode('list')}
                     className={`p-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center ${viewMode === 'list'
-                        ? 'bg-primary text-white-force shadow-md scale-105'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'bg-primary text-white-force shadow-md scale-105'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     aria-label="List view"
                     title={locale === 'bn' ? 'লিস্ট ভিউ' : 'List View'}

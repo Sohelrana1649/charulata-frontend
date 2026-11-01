@@ -95,7 +95,7 @@ export async function generateMetadata({
     const categoryName = product?.category?.name || (typeof product?.category === 'string' ? product.category : 'Ethnic Wear');
     const effectivePrice = Number(product?.salePrice || product?.price) || 0;
     const productTitle = product?.title || 'Product';
-    
+
     // Clean plain text and word-boundary truncation for fallback description
     const plainDesc = product?.description ? product.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
     let fallbackDesc = `Buy ${productTitle} (${categoryName}) online at Charulata Lifestyle. Special Price ৳${effectivePrice}. Fast shipping & 1-Click Cash on Delivery across Bangladesh.`;
@@ -111,7 +111,7 @@ export async function generateMetadata({
 
     const title = product?.metaTitle?.trim() || `${productTitle} - ৳${effectivePrice.toLocaleString()} | Charulata Lifestyle`;
     const description = product?.metaDescription?.trim() || fallbackDesc;
-    
+
     const images = (Array.isArray(product?.productImages) ? product.productImages : [])
       .concat(Array.isArray(product?.images) ? product.images : [])
       .concat(product?.image ? [product.image] : [])
@@ -179,7 +179,7 @@ export default async function ProductDetailPageServer({
   // Gracefully fallback to client-side hydration if server SSR fetch is cold or missing
   if (!product) {
     return (
-      <ProductDetailClient 
+      <ProductDetailClient
         slug={slug}
         initialProduct={null}
         initialRelatedProducts={[]}
@@ -343,7 +343,7 @@ export default async function ProductDetailPageServer({
     <>
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
-      <ProductDetailClient 
+      <ProductDetailClient
         slug={slug}
         initialProduct={product}
         initialRelatedProducts={relatedProducts}

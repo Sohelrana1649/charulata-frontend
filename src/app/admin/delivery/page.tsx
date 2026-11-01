@@ -23,6 +23,7 @@ import {
 import { toast } from 'react-toastify';
 import { useRole } from '@/hooks/useRole';
 import RoleGuard from '@/components/admin/RoleGuard';
+import { triggerOnDemandRevalidation } from '@/utils/revalidateHelper';
 
 interface DeliveryZoneForm {
   district: string;
@@ -97,6 +98,7 @@ export default function AdminDeliveryPage() {
       toast.success('Delivery zone saved successfully!');
       setIsModalOpen(false);
       refetch();
+      triggerOnDemandRevalidation({ tags: ['delivery'], paths: ['/checkout'] });
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to save delivery zone.');
     }
@@ -112,6 +114,7 @@ export default function AdminDeliveryPage() {
       await deleteZone(id).unwrap();
       toast.success('Delivery zone deleted successfully!');
       refetch();
+      triggerOnDemandRevalidation({ tags: ['delivery'], paths: ['/checkout'] });
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to delete delivery zone.');
     }

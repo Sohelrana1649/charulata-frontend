@@ -91,11 +91,17 @@ const ENGLISH_TO_BANGLA_DISTRICT_MAP: Record<string, string> = Object.fromEntrie
   Object.entries(BANGLA_DISTRICT_MAP).map(([bn, en]) => [en.toLowerCase(), bn])
 );
 
-export default function CheckoutForm() {
+interface CheckoutFormProps {
+  initialDistricts?: any[];
+}
+
+export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProps = {}) {
   const { locale, t } = useTranslation();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const { data: cartResponse, isLoading: cartLoading, refetch } = useGetCartQuery({}, { skip: !isAuthenticated });
-  const { data: districtsResponse, isLoading: districtsLoading } = useGetDistrictsQuery(undefined);
+  const { data: districtsResponse, isLoading: districtsLoading } = useGetDistrictsQuery(undefined, {
+    skip: Boolean(initialDistricts && initialDistricts.length > 0),
+  });
   const { data: settingsResponse } = useGetSettingsQuery();
   const { data: allProductsResponse } = useGetProductsQuery({ limit: 500 });
   const dbProductsList = useMemo(() => allProductsResponse?.data || allProductsResponse?.products || allProductsResponse || [], [allProductsResponse]);
@@ -200,7 +206,27 @@ export default function CheckoutForm() {
       });
   }, [isAuthenticated, cartData, guestCartItems, dbProductsList, optimisticQuantities]);
 
-  const districtsList = useMemo(() => districtsResponse?.data || districtsResponse || [], [districtsResponse]);
+  const districtsList = useMemo(() => {
+    const fromApi = districtsResponse?.data || districtsResponse;
+    const rawList = Array.isArray(fromApi) && fromApi.length > 0
+      ? fromApi
+      : (Array.isArray(initialDistricts) && initialDistricts.length > 0 ? initialDistricts : []);
+
+    if (!Array.isArray(rawList) || rawList.length === 0) return [];
+
+    // Deduplicate by normalized district name so no district can ever appear twice
+    const seen = new Set<string>();
+    const unique: any[] = [];
+    for (const item of rawList) {
+      const rawName = (item.district || item.nameEn || item.nameBn || '').trim().toLowerCase();
+      const normalizedKey = rawName.replace(/\(.*?\)/g, '').trim() || rawName;
+      if (normalizedKey && !seen.has(normalizedKey)) {
+        seen.add(normalizedKey);
+        unique.push(item);
+      }
+    }
+    return unique;
+  }, [initialDistricts, districtsResponse]);
   const [placeOrder, { isLoading: isPlacing }] = useCheckoutMutation();
   const [placeGuestOrder, { isLoading: isPlacingGuest }] = useGuestCheckoutMutation();
   const [completeProfile, { isLoading: isCompletingProfile }] = useCompleteProfileMutation();
@@ -1954,51 +1980,33 @@ export default function CheckoutForm() {
                             {filteredDistricts.map((d: any) => {
                               const enName = d.nameEn || d.district?.replace(/\(.*?\)/g, '').trim() || d.district;
                               const bnName = d.nameBn || ENGLISH_TO_BANGLA_DISTRICT_MAP[(enName || '').toLowerCase()] || d.district?.match(/\((.*?)\)/)?.[1]?.trim() || '';
-                              const fullDistrictValue = d.district || enName;
+                              const fullDistrictValue = d.district || (bnName ? `${enName}(${bnName})` : enName);
                               const isSelected = shippingAddress.district === fullDistrictValue || shippingAddress.district === bnName || shippingAddress.district === enName;
 
-                              return (
-                                <div key={d._id || d.district} className="bg-card">
-                                  {/* Bangla Option */}
-                                  {bnName && (
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => {
-                                        setShippingAddress(prev => ({ ...prev, district: fullDistrictValue, thana: '' }));
-                                        setDistrictSearch(fullDistrictValue);
-                                        setThanaSearch('');
-                                        setShowDistrictDropdown(false);
-                                        setTimeout(() => setShowThanaDropdown(true), 100);
-                                      }}
-                                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
-                                        isSelected ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
-                                      }`}
-                                    >
-                                      <span className="font-semibold">{bnName} <span className="text-muted-foreground text-xs font-normal">({enName})</span></span>
-                                      <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
-                                    </button>
-                                  )}
+                              const primaryLabel = locale === 'bn' ? (bnName || enName) : (enName || bnName);
+                              const secondaryLabel = locale === 'bn' ? (enName && enName !== bnName ? enName : '') : (bnName && bnName !== enName ? bnName : '');
 
-                                  {/* English Option */}
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => {
-                                      setShippingAddress(prev => ({ ...prev, district: fullDistrictValue, thana: '' }));
-                                      setDistrictSearch(fullDistrictValue);
-                                      setThanaSearch('');
-                                      setShowDistrictDropdown(false);
-                                      setTimeout(() => setShowThanaDropdown(true), 100);
-                                    }}
-                                    className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
-                                      isSelected ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
-                                    }`}
-                                  >
-                                    <span className="font-semibold">{enName} {bnName && <span className="text-muted-foreground text-xs font-normal">({bnName})</span>}</span>
-                                    <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
-                                  </button>
-                                </div>
+                              return (
+                                <button
+                                  key={d._id || d.district}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => {
+                                    setShippingAddress(prev => ({ ...prev, district: fullDistrictValue, thana: '' }));
+                                    setDistrictSearch(fullDistrictValue);
+                                    setThanaSearch('');
+                                    setShowDistrictDropdown(false);
+                                    setTimeout(() => setShowThanaDropdown(true), 100);
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm hover:bg-primary/10 transition-colors flex items-center justify-between ${
+                                    isSelected ? 'bg-primary/10 text-primary font-extrabold' : 'text-[var(--foreground)] font-medium'
+                                  }`}
+                                >
+                                  <span className="font-semibold">
+                                    {primaryLabel} {secondaryLabel && <span className="text-muted-foreground text-xs font-normal">({secondaryLabel})</span>}
+                                  </span>
+                                  <span className="text-xs sm:text-sm text-primary font-bold">৳{d.shippingCharge} {t('checkout.shipping')}</span>
+                                </button>
                               );
                             })}
                           </div>

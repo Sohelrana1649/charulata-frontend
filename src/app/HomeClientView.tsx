@@ -420,7 +420,7 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
           {isProductsLoading ? (
             <BannerSkeleton />
           ) : banners.length > 0 ? (
-            <div 
+            <div
               className="relative overflow-hidden bg-card aspect-[2.2/1] sm:aspect-[2.5/1] md:aspect-[2.65/1] lg:aspect-[2.7/1] min-h-[150px] sm:min-h-[220px] md:min-h-[280px] lg:min-h-[340px] xl:min-h-[380px] max-h-[240px] sm:max-h-[340px] md:max-h-[420px] lg:max-h-[500px] w-full rounded-xl sm:rounded-2xl lg:rounded-3xl group shadow-sm hover:shadow-md transition-shadow border border-border/40 select-none"
               onMouseEnter={() => setIsBannerPaused(true)}
               onMouseLeave={() => setIsBannerPaused(false)}
@@ -445,12 +445,11 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
                 return (
                   <div
                     key={banner._id || idx}
-                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${
-                      isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-100 pointer-events-none'
-                    }`}
+                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${isActive ? 'opacity-100 z-20 scale-100' : 'opacity-0 z-10 scale-100 pointer-events-none'
+                      }`}
                   >
-                    <Link 
-                      href={bannerLink} 
+                    <Link
+                      href={bannerLink}
                       className="block w-full h-full relative cursor-pointer group/banner"
                       aria-label={altText}
                     >
@@ -467,10 +466,9 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
                       {hasText && (
                         <div className="absolute inset-0 z-20 flex items-center w-full h-full pointer-events-none">
                           <div className="pl-4 sm:pl-10 lg:pl-16 pr-4 sm:pr-10 w-full text-left">
-                            <div 
-                              className={`space-y-1.5 sm:space-y-3 transition-all duration-700 ease-out transform max-w-[280px] sm:max-w-md lg:max-w-lg p-3 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl bg-black/40 dark:bg-black/55 backdrop-blur-xs sm:backdrop-blur-sm border border-white/15 shadow-2xl ${
-                                isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-                              }`}
+                            <div
+                              className={`space-y-1.5 sm:space-y-3 transition-all duration-700 ease-out transform max-w-[280px] sm:max-w-md lg:max-w-lg p-3 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl bg-black/40 dark:bg-black/55 backdrop-blur-xs sm:backdrop-blur-sm border border-white/15 shadow-2xl ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                                }`}
                             >
                               {banner.badge && (
                                 <div className="inline-flex items-center space-x-1.5 rounded-full bg-primary text-white px-2.5 sm:px-3 py-0.5 text-[9px] sm:text-xs font-mono font-bold tracking-widest uppercase shadow-xs">
@@ -554,9 +552,8 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
                             setCurrentSlide(idx);
                           }, 300);
                         }}
-                        className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${
-                          isActive ? 'w-5 sm:w-7 bg-primary shadow-xs' : 'w-1.5 sm:w-2 bg-white/45 hover:bg-white/75'
-                        }`}
+                        className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${isActive ? 'w-5 sm:w-7 bg-primary shadow-xs' : 'w-1.5 sm:w-2 bg-white/45 hover:bg-white/75'
+                          }`}
                         aria-label={`${locale === 'bn' ? 'ব্যানার' : 'Slide'} ${idx + 1}`}
                         aria-current={isActive ? 'true' : 'false'}
                       />
@@ -790,89 +787,132 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
 
       {/* 7. Testimonials Section */}
       {slideItems.length > 0 && (
-      <section className="w-full bg-background py-20 overflow-hidden">
-        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
-            <div className="text-center md:text-left">
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">{t('home.testimonialsTag')}</span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground font-serif mt-1">{t('home.testimonialsTitle')}</h2>
+        <section className="w-full bg-background py-20 overflow-hidden">
+          <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
+              <div className="text-center md:text-left">
+                <span className="text-xs font-bold text-primary uppercase tracking-wider">{t('home.testimonialsTag')}</span>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground font-serif mt-1">{t('home.testimonialsTitle')}</h2>
+              </div>
+
+              <div className="flex items-center justify-center space-x-3 mt-6 md:mt-0">
+                <button
+                  onClick={() => testimonialsSwiper?.slidePrev()}
+                  className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-primary/10 text-muted-foreground hover:text-primary hover:border-primary transition-all duration-300 cursor-pointer"
+                  aria-label="Previous testimonial"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={() => testimonialsSwiper?.slideNext()}
+                  className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-primary/10 text-muted-foreground hover:text-primary hover:border-primary transition-all duration-300 cursor-pointer"
+                  aria-label="Next testimonial"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center justify-center space-x-3 mt-6 md:mt-0">
-              <button
-                onClick={() => testimonialsSwiper?.slidePrev()}
-                className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-primary/10 text-muted-foreground hover:text-primary hover:border-primary transition-all duration-300 cursor-pointer"
-                aria-label="Previous testimonial"
+            {mounted ? (
+              <Swiper
+                modules={[Autoplay, Pagination]}
+                onSwiper={setTestimonialsSwiper}
+                spaceBetween={24}
+                slidesPerView={1}
+                loop={slideItems.length > 3}
+                observer={true}
+                observeParents={true}
+                autoplay={{
+                  delay: 3000,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }}
+                pagination={{
+                  clickable: true,
+                }}
+                breakpoints={{
+                  640: {
+                    slidesPerView: 1,
+                  },
+                  768: {
+                    slidesPerView: 2,
+                  },
+                  1024: {
+                    slidesPerView: 3,
+                  },
+                }}
+                className="testimonials-swiper"
               >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={() => testimonialsSwiper?.slideNext()}
-                className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card hover:bg-primary/10 text-muted-foreground hover:text-primary hover:border-primary transition-all duration-300 cursor-pointer"
-                aria-label="Next testimonial"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
+                {slideItems.map((t: any, idx: number) => (
+                  <SwiperSlide key={idx} className="!h-auto">
+                    <div className="h-full w-full bg-card/90 dark:bg-card/75 border border-border/70 hover:border-primary/50 p-6 sm:p-7 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between relative overflow-hidden backdrop-blur-md group">
+                      <Quote size={76} className="absolute -bottom-3 -right-2 text-primary/5 group-hover:text-primary/12 transition-all duration-500 pointer-events-none stroke-[1]" />
 
-          {mounted ? (
-            <Swiper
-              modules={[Autoplay, Pagination]}
-              onSwiper={setTestimonialsSwiper}
-              spaceBetween={24}
-              slidesPerView={1}
-              loop={slideItems.length > 3}
-              observer={true}
-              observeParents={true}
-              autoplay={{
-                delay: 3000,
-                disableOnInteraction: false,
-                pauseOnMouseEnter: true,
-              }}
-              pagination={{
-                clickable: true,
-              }}
-              breakpoints={{
-                640: {
-                  slidesPerView: 1,
-                },
-                768: {
-                  slidesPerView: 2,
-                },
-                1024: {
-                  slidesPerView: 3,
-                },
-              }}
-              className="testimonials-swiper"
-            >
-              {slideItems.map((t: any, idx: number) => (
-                <SwiperSlide key={idx} className="!h-auto">
-                  <div className="h-full w-full bg-card/90 dark:bg-card/75 border border-border/70 hover:border-primary/50 p-6 sm:p-7 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between relative overflow-hidden backdrop-blur-md group">
-                    <Quote size={76} className="absolute -bottom-3 -right-2 text-primary/5 group-hover:text-primary/12 transition-all duration-500 pointer-events-none stroke-[1]" />
+                      <div className="space-y-4 flex-1 z-10">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} size={12} fill="currentColor" className="stroke-amber-400" />
+                            ))}
+                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">
+                              {(t.rating || 5).toFixed(1)}
+                            </span>
+                          </div>
 
-                    <div className="space-y-4 flex-1 z-10">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={12} fill="currentColor" className="stroke-amber-400" />
-                          ))}
-                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">
-                            {(t.rating || 5).toFixed(1)}
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                            <CheckCircle2 size={11} className="stroke-[2.5]" />
+                            <span>{locale === 'bn' ? 'যাচাইকৃত কাস্টমার' : 'Verified Buyer'}</span>
                           </span>
                         </div>
 
+                        <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">
+                          "{t.quote}"
+                        </p>
+                      </div>
+
+                      <div className="pt-4 mt-5 border-t border-border/60 flex items-center gap-3.5 z-10">
+                        {t.profileImage ? (
+                          <Image src={t.profileImage} alt={t.author} width={44} height={44} className="w-11 h-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" />
+                        ) : (
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white font-black text-sm shrink-0 border-2 border-primary/30 shadow-xs">
+                            {t.author?.charAt(0)?.toUpperCase() || 'C'}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">{t.author}</p>
+                          <Link
+                            href={t.productSlug || '/search'}
+                            prefetch={false}
+                            className="inline-flex items-center space-x-1 text-[10px] text-primary hover:underline font-extrabold tracking-wide mt-0.5 max-w-full group/link"
+                            title={locale === 'bn' ? 'প্রোডাক্ট বিস্তারিত দেখুন' : 'View Product Details'}
+                          >
+                            <span className="truncate">{t.role}</span>
+                            <ExternalLink size={10} className="shrink-0 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 text-primary" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {slideItems.slice(0, 3).map((t: any, idx: number) => (
+                  <div key={idx} className="bg-card/90 dark:bg-card/75 border border-border/70 hover:border-primary/50 p-6 sm:p-7 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col justify-between relative overflow-hidden backdrop-blur-md group">
+                    <Quote size={76} className="absolute -bottom-3 -right-2 text-primary/5 group-hover:text-primary/12 transition-all duration-500 pointer-events-none stroke-[1]" />
+                    <div className="space-y-4 flex-1 z-10">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                          {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" className="stroke-amber-400" />)}
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">5.0</span>
+                        </div>
                         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
                           <CheckCircle2 size={11} className="stroke-[2.5]" />
                           <span>{locale === 'bn' ? 'যাচাইকৃত কাস্টমার' : 'Verified Buyer'}</span>
                         </span>
                       </div>
-
-                      <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">
-                        "{t.quote}"
-                      </p>
+                      <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">"{t.quote}"</p>
                     </div>
-
                     <div className="pt-4 mt-5 border-t border-border/60 flex items-center gap-3.5 z-10">
                       {t.profileImage ? (
                         <Image src={t.profileImage} alt={t.author} width={44} height={44} className="w-11 h-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" />
@@ -895,54 +935,11 @@ export default function HomeClientView({ initialData }: HomeClientViewProps) {
                       </div>
                     </div>
                   </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {slideItems.slice(0, 3).map((t: any, idx: number) => (
-                <div key={idx} className="bg-card/90 dark:bg-card/75 border border-border/70 hover:border-primary/50 p-6 sm:p-7 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col justify-between relative overflow-hidden backdrop-blur-md group">
-                  <Quote size={76} className="absolute -bottom-3 -right-2 text-primary/5 group-hover:text-primary/12 transition-all duration-500 pointer-events-none stroke-[1]" />
-                  <div className="space-y-4 flex-1 z-10">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                        {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" className="stroke-amber-400" />)}
-                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-0.5">5.0</span>
-                      </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                        <CheckCircle2 size={11} className="stroke-[2.5]" />
-                        <span>{locale === 'bn' ? 'যাচাইকৃত কাস্টমার' : 'Verified Buyer'}</span>
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed font-medium pt-1">"{t.quote}"</p>
-                  </div>
-                  <div className="pt-4 mt-5 border-t border-border/60 flex items-center gap-3.5 z-10">
-                    {t.profileImage ? (
-                      <Image src={t.profileImage} alt={t.author} width={44} height={44} className="w-11 h-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white font-black text-sm shrink-0 border-2 border-primary/30 shadow-xs">
-                        {t.author?.charAt(0)?.toUpperCase() || 'C'}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">{t.author}</p>
-                      <Link
-                        href={t.productSlug || '/search'}
-                        prefetch={false}
-                        className="inline-flex items-center space-x-1 text-[10px] text-primary hover:underline font-extrabold tracking-wide mt-0.5 max-w-full group/link"
-                        title={locale === 'bn' ? 'প্রোডাক্ট বিস্তারিত দেখুন' : 'View Product Details'}
-                      >
-                        <span className="truncate">{t.role}</span>
-                        <ExternalLink size={10} className="shrink-0 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 text-primary" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
     </div>

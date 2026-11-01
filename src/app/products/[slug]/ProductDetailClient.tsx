@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from '@/components/SafeImage';
-import { 
-  useGetProductBySlugQuery, 
-  useGetProductReviewsQuery, 
+import {
+  useGetProductBySlugQuery,
+  useGetProductReviewsQuery,
   useSubmitReviewMutation,
   useGetProductsQuery
 } from '@/store/api/productApi';
@@ -16,14 +16,14 @@ import ProductDescription from '@/components/common/ProductDescription';
 import ProductImageMagnifier from '@/components/common/ProductImageMagnifier';
 import ProductLightboxModal from '@/components/common/ProductLightboxModal';
 import { useAppSelector } from '@/store/hooks';
-import { 
-  ShoppingBag, 
-  Loader2, 
-  ArrowLeft, 
-  Star, 
-  Check, 
-  Plus, 
-  Minus, 
+import {
+  ShoppingBag,
+  Loader2,
+  ArrowLeft,
+  Star,
+  Check,
+  Plus,
+  Minus,
   AlertTriangle,
   Heart,
   Truck,
@@ -68,7 +68,7 @@ export default function ProductDetailClient({
   const { t, locale } = useTranslation();
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  
+
   const { data: productResponse, isLoading, error } = useGetProductBySlugQuery(slug, {
     skip: !slug || !!initialProduct,
   });
@@ -135,8 +135,8 @@ export default function ProductDetailClient({
         comment: newComment.trim(),
       }).unwrap();
       toast.success(
-        locale === 'bn' 
-          ? 'ধন্যবাদ! আপনার মূল্যবান মতামত ও রিভিউটি সফলভাবে জমা হয়েছে। ✨' 
+        locale === 'bn'
+          ? 'ধন্যবাদ! আপনার মূল্যবান মতামত ও রিভিউটি সফলভাবে জমা হয়েছে। ✨'
           : 'Thank you! Your valuable feedback & review has been submitted successfully. ✨'
       );
       const newReviewItem = {
@@ -435,7 +435,7 @@ export default function ProductDetailClient({
   React.useEffect(() => {
     if (product) {
       const initialAttrs: Record<string, string> = {};
-      
+
       if (effectiveAttributes.length > 0) {
         effectiveAttributes.forEach((attr: any) => {
           if (attr.options && attr.options.length > 0) {
@@ -540,7 +540,7 @@ export default function ProductDetailClient({
     if (!isAuthenticated) {
       addToGuestCart(product, quantity, chosenColor, chosenSize, chosenAttrs, finalUnitPrice);
       toast.success(locale === 'bn' ? 'কার্টে যোগ করা হয়েছে!' : 'Successfully added to your cart!');
-      
+
       if (catalogId) {
         fbEvent('track', 'AddToCart', {
           content_ids: [catalogId],
@@ -565,7 +565,7 @@ export default function ProductDetailClient({
 
       await addToCart(payload).unwrap();
       toast.success('Successfully added to your cart!');
-      
+
       if (catalogId) {
         fbEvent('track', 'AddToCart', {
           content_ids: [catalogId],
@@ -686,8 +686,8 @@ export default function ProductDetailClient({
 
   const currentStock = hasVariantStock
     ? (matchedVariant?.stockQuantity !== undefined && Number(matchedVariant.stockQuantity) > 0
-        ? Number(matchedVariant.stockQuantity)
-        : (matchedVariant?.stockQuantity !== undefined ? Number(matchedVariant.stockQuantity) : productStock))
+      ? Number(matchedVariant.stockQuantity)
+      : (matchedVariant?.stockQuantity !== undefined ? Number(matchedVariant.stockQuantity) : productStock))
     : productStock;
 
   const isInStock = hasVariantStock
@@ -728,7 +728,7 @@ export default function ProductDetailClient({
 
   return (
     <div className="mx-auto max-w-[1536px] 2xl:max-w-[1680px] px-4 sm:px-6 lg:px-10 xl:px-12 w-full py-4 sm:py-8 flex-1 space-y-8 sm:space-y-12">
-      
+
       {/* Sleek Breadcrumb Navigation Bar */}
       <nav className="flex items-center space-x-1.5 text-xs text-muted-foreground overflow-x-auto scrollbar-none py-1">
         <Link href="/" className="hover:text-primary font-bold transition flex items-center gap-1 shrink-0">
@@ -750,7 +750,7 @@ export default function ProductDetailClient({
 
       {/* Main Product Showcase Section (Grid) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
-        
+
         {/* Left Gallery Column (lg:col-span-5 xl:col-span-5) */}
         <div className="lg:col-span-5 xl:col-span-5 space-y-3.5 lg:sticky lg:top-24 max-w-md mx-auto lg:max-w-none w-full">
           {activeMediaType === 'video' && product.videoUrl ? (
@@ -833,17 +833,16 @@ export default function ProductDetailClient({
                     {galleryImages.map((img: string, idx: number) => {
                       const isActive = activeMediaType === 'image' && mainImage === img;
                       return (
-                        <button 
-                          key={idx} 
+                        <button
+                          key={idx}
                           onClick={() => {
                             setActiveMediaType('image');
                             setActiveImage(img);
                           }}
-                          className={`w-20 h-20 sm:w-22 sm:h-22 aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all duration-200 relative shrink-0 snap-start bg-card ${
-                            isActive 
-                              ? 'border-primary ring-2 ring-primary/50 shadow-md scale-105 z-10' 
+                          className={`w-20 h-20 sm:w-22 sm:h-22 aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all duration-200 relative shrink-0 snap-start bg-card ${isActive
+                              ? 'border-primary ring-2 ring-primary/50 shadow-md scale-105 z-10'
                               : 'border-border hover:border-primary/50 opacity-85 hover:opacity-100'
-                          }`}
+                            }`}
                         >
                           <Image src={img} alt={`${product.title} - ${categoryName} Angle ${idx + 1} | চারুলতা লাইফস্টাইল`} fill sizes="120px" className="object-cover" />
                           <span className="absolute bottom-1.5 right-1.5 bg-black/75 text-white font-mono text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
@@ -872,11 +871,10 @@ export default function ProductDetailClient({
                     onClick={() => {
                       setActiveMediaType('video');
                     }}
-                    className={`h-20 sm:h-22 w-24 sm:w-32 rounded-2xl overflow-hidden border cursor-pointer transition-all duration-300 relative shrink-0 snap-start flex items-center justify-center ml-auto shadow-md group ${
-                      activeMediaType === 'video'
+                    className={`h-20 sm:h-22 w-24 sm:w-32 rounded-2xl overflow-hidden border cursor-pointer transition-all duration-300 relative shrink-0 snap-start flex items-center justify-center ml-auto shadow-md group ${activeMediaType === 'video'
                         ? 'border-rose-500 ring-2 ring-rose-500/60 scale-105 z-10'
                         : 'border-rose-500/50 hover:border-rose-500 opacity-95 hover:opacity-100 hover:scale-[1.02]'
-                    }`}
+                      }`}
                     title="Play Product Marketing Video"
                   >
                     <video
@@ -954,9 +952,8 @@ export default function ProductDetailClient({
                     <button
                       key={idx}
                       onClick={() => setActiveImage(img)}
-                      className={`h-16 w-14 sm:h-20 sm:w-16 rounded-xl overflow-hidden border transition-all relative shrink-0 ${
-                        isActive ? 'border-primary ring-2 ring-primary scale-105' : 'border-white/20 opacity-60 hover:opacity-100'
-                      }`}
+                      className={`h-16 w-14 sm:h-20 sm:w-16 rounded-xl overflow-hidden border transition-all relative shrink-0 ${isActive ? 'border-primary ring-2 ring-primary scale-105' : 'border-white/20 opacity-60 hover:opacity-100'
+                        }`}
                     >
                       <Image src={img} alt={`${product.title} - View ${idx + 1} | Charulata Lifestyle`} fill sizes="80px" className="object-cover" />
                     </button>
@@ -1009,14 +1006,14 @@ export default function ProductDetailClient({
 
         {/* Right Details Column - Amazon E-Commerce Typography Specs */}
         <div className="lg:col-span-7 xl:col-span-7 space-y-4">
-          
+
           {/* Top Category & Stock Badge Bar */}
           <div className="space-y-2 border-b border-border/60 pb-3">
             <div className="flex items-center gap-2 flex-wrap text-xs">
               <span className="px-2 py-0.5 bg-muted text-muted-foreground font-normal uppercase tracking-wider rounded text-[11px]">
                 {categoryName}
               </span>
-              
+
               <span className={`text-[11px] font-medium flex items-center gap-1 ${isInStock ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 font-bold'}`}>
                 {isInStock ? <Check size={12} /> : <X size={12} />}
                 <span>{isInStock ? (locale === 'bn' ? 'ইন স্টক' : 'In Stock') : (locale === 'bn' ? 'স্টক আউট' : 'Stock Out')}</span>
@@ -1034,15 +1031,15 @@ export default function ProductDetailClient({
                 <div className="flex items-center space-x-2">
                   <div className="flex text-amber-400">
                     {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        size={13} 
-                        fill={i < Math.round(product.ratings?.average || 5) ? 'currentColor' : 'none'} 
+                      <Star
+                        key={i}
+                        size={13}
+                        fill={i < Math.round(product.ratings?.average || 5) ? 'currentColor' : 'none'}
                         className="stroke-amber-400"
                       />
                     ))}
                   </div>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('reviews')}
                     className="font-normal text-primary hover:underline cursor-pointer"
                   >
@@ -1050,7 +1047,7 @@ export default function ProductDetailClient({
                   </button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => {
                     setActiveTab('reviews');
                     setShowReviewForm(true);
@@ -1064,7 +1061,7 @@ export default function ProductDetailClient({
 
               <div className="flex items-center space-x-1.5 text-muted-foreground font-mono text-[11px]">
                 <span>SKU: <strong className="text-foreground font-normal">{product.sku}</strong></span>
-                <button 
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(product.sku);
                     toast.success('SKU copied!');
@@ -1145,16 +1142,15 @@ export default function ProductDetailClient({
                               key={opt}
                               type="button"
                               onClick={() => handleSelectAttributeOption(attr.name, opt)}
-                              className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                                isSelected
+                              className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
                                   ? 'border-2 border-rose-600 bg-rose-600 text-white font-extrabold shadow-xs scale-[1.02]'
                                   : 'border border-border bg-card text-foreground hover:border-rose-400 font-medium hover:bg-muted/40'
-                              }`}
+                                }`}
                             >
                               {hex && (
-                                <span 
-                                  className={`w-3 h-3 rounded-full border shrink-0 ${isSelected ? 'border-white' : 'border-black/20'}`} 
-                                  style={{ backgroundColor: hex }} 
+                                <span
+                                  className={`w-3 h-3 rounded-full border shrink-0 ${isSelected ? 'border-white' : 'border-black/20'}`}
+                                  style={{ backgroundColor: hex }}
                                 />
                               )}
                               <span>{opt}</span>
@@ -1181,11 +1177,10 @@ export default function ProductDetailClient({
                         <button
                           key={color}
                           onClick={() => setSelectedColor(color)}
-                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all capitalize cursor-pointer ${
-                            isSelected
+                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all capitalize cursor-pointer ${isSelected
                               ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
                               : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
-                          }`}
+                            }`}
                         >
                           {color}
                         </button>
@@ -1207,11 +1202,10 @@ export default function ProductDetailClient({
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
-                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-                            isSelected
+                          className={`px-3.5 py-1.5 rounded-md text-xs transition-all cursor-pointer ${isSelected
                               ? 'border-2 border-rose-600 bg-rose-600 text-white font-bold shadow-xs'
                               : 'border border-border bg-card text-foreground hover:border-gray-400 font-normal'
-                          }`}
+                            }`}
                         >
                           {size}
                         </button>
@@ -1260,11 +1254,10 @@ export default function ProductDetailClient({
               <button
                 onClick={handleBuyNow}
                 disabled={isAdding || !isInStock}
-                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${
-                  isInStock
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${isInStock
                     ? 'bg-rose-600 hover:bg-rose-700 text-white hover:scale-[1.01] active:scale-[0.97] shadow-md shadow-rose-600/20 cursor-pointer'
                     : 'bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60'
-                }`}
+                  }`}
               >
                 <Zap size={18} />
                 <span>
@@ -1278,13 +1271,11 @@ export default function ProductDetailClient({
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding || !isInStock}
-                className={`w-full border-2 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${
-                  !isInStock
+                className={`w-full border-2 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 ${!isInStock
                     ? 'border-border text-muted-foreground bg-muted/40 cursor-not-allowed opacity-60'
-                    : `border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card hover:scale-[1.01] active:scale-[0.97] cursor-pointer ${
-                        isCartBouncing ? 'animate-cart-bounce' : ''
-                      }`
-                }`}
+                    : `border-rose-600 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 bg-card hover:scale-[1.01] active:scale-[0.97] cursor-pointer ${isCartBouncing ? 'animate-cart-bounce' : ''
+                    }`
+                  }`}
               >
                 {isAdding ? (
                   <>
@@ -1309,11 +1300,10 @@ export default function ProductDetailClient({
               <button
                 onClick={() => handleWishlistToggle(product)}
                 disabled={isAddingToWishlist || isRemovingFromWishlist}
-                className={`flex-1 py-2 px-3 rounded-lg border text-xs font-normal transition flex items-center justify-center space-x-1.5 cursor-pointer ${
-                  isInWishlist 
-                    ? 'border-rose-300 bg-rose-500/10 text-rose-600 dark:text-rose-400' 
+                className={`flex-1 py-2 px-3 rounded-lg border text-xs font-normal transition flex items-center justify-center space-x-1.5 cursor-pointer ${isInWishlist
+                    ? 'border-rose-300 bg-rose-500/10 text-rose-600 dark:text-rose-400'
                     : 'border-border bg-card text-foreground hover:bg-muted'
-                }`}
+                  }`}
               >
                 <Heart size={14} fill={isInWishlist ? "currentColor" : "none"} className={isInWishlist ? "stroke-rose-600" : "stroke-current"} />
                 <span>{isInWishlist ? (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত আছে' : 'Saved in Wishlist') : (locale === 'bn' ? 'পছন্দের তালিকায় যুক্ত করুন' : 'Add to Wishlist')}</span>
@@ -1343,20 +1333,20 @@ export default function ProductDetailClient({
               : `Hello Charulata, I want to order this product:\nProduct: ${productName}\nSKU: ${productSku}\nPrice: ৳${productPrice}\nLink: ${pageLink}`;
 
             return (
-              <a 
-                href={`https://wa.me/8801620556299?text=${encodeURIComponent(whatsappMessage)}`} 
-                target="_blank" 
+              <a
+                href={`https://wa.me/8801620556299?text=${encodeURIComponent(whatsappMessage)}`}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 p-3.5 rounded-2xl flex items-center justify-between transition-all duration-300 cursor-pointer group shadow-xs hover:shadow-md min-h-[44px]"
                 title={locale === 'bn' ? 'হোয়াটসঅ্যাপে অর্ডার করুন' : 'Order via WhatsApp'}
               >
                 <div className="flex items-center space-x-3">
                   <div className="relative w-10 h-10 shrink-0 flex items-center justify-center">
-                    <Image 
-                      src="/auth/whatsapp.svg" 
-                      alt="WhatsApp Order" 
-                      width={40} 
-                      height={40} 
+                    <Image
+                      src="/auth/whatsapp.svg"
+                      alt="WhatsApp Order"
+                      width={40}
+                      height={40}
                       className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-xs"
                     />
                   </div>
@@ -1423,33 +1413,30 @@ export default function ProductDetailClient({
         <div className="flex items-center space-x-4 border-b border-border overflow-x-auto scrollbar-none pb-0.5 mb-6">
           <button
             onClick={() => setActiveTab('description')}
-            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${
-              activeTab === 'description'
+            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${activeTab === 'description'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             {t('product.description')}
           </button>
 
           <button
             onClick={() => setActiveTab('specifications')}
-            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${
-              activeTab === 'specifications'
+            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${activeTab === 'specifications'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             {locale === 'bn' ? 'স্পেসিফিকেশন ও তথ্য' : 'Specifications & Details'}
           </button>
 
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${
-              activeTab === 'reviews'
+            className={`pb-3 text-sm font-extrabold transition cursor-pointer whitespace-nowrap border-b-2 ${activeTab === 'reviews'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             {t('product.reviews')} ({reviewsList.length})
           </button>
@@ -1458,8 +1445,8 @@ export default function ProductDetailClient({
         {activeTab === 'description' && (
           <div className="space-y-4 max-w-4xl animate-in fade-in">
             <h3 className="text-base font-bold text-foreground font-sans">Product Description & Details</h3>
-            <ProductDescription 
-              html={product.description || (locale === 'bn' ? '<p>এই পণ্যের জন্য বিস্তারিত বিবরণ উপলব্ধ রয়েছে।</p>' : '<p>Premium quality Bangladeshi lifestyle product crafted with precision and care.</p>')} 
+            <ProductDescription
+              html={product.description || (locale === 'bn' ? '<p>এই পণ্যের জন্য বিস্তারিত বিবরণ উপলব্ধ রয়েছে।</p>' : '<p>Premium quality Bangladeshi lifestyle product crafted with precision and care.</p>')}
             />
           </div>
         )}
@@ -1505,7 +1492,7 @@ export default function ProductDetailClient({
             {showReviewForm && (
               <form onSubmit={handleReviewSubmit} className="bg-card border border-border rounded-2xl p-5 md:p-6 max-w-2xl space-y-4">
                 <h4 className="text-sm font-extrabold text-foreground">{t('product.writeReview')}</h4>
-                
+
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">{t('product.rating')}</label>
                   <div className="flex items-center space-x-1">
@@ -1627,9 +1614,9 @@ export default function ProductDetailClient({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
             {relatedProducts.map((rel: any) => (
-              <ProductCard 
-                key={rel._id} 
-                product={rel} 
+              <ProductCard
+                key={rel._id}
+                product={rel}
                 isWishlisted={wishlistArray.some((id: string) => id === rel._id?.toString())}
                 onWishlistToggle={handleWishlistToggle}
               />

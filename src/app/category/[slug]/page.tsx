@@ -177,10 +177,10 @@ export default async function CategoryPageServer({
     <>
       <JsonLd data={breadcrumbJsonLd} />
       {products.length > 0 && <JsonLd data={itemListJsonLd} />}
-      <CategoryClientView 
-        initialCategory={category} 
-        initialProducts={products} 
-        slug={slug} 
+      <CategoryClientView
+        initialCategory={category}
+        initialProducts={products}
+        slug={slug}
       />
     </>
   );
