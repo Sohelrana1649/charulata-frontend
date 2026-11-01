@@ -8,6 +8,7 @@ import { useGetDistrictsQuery, useCompleteProfileMutation } from '@/store/api/us
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/authSlice';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Printer, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck, X, Minus, Plus, CreditCard, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -232,6 +233,21 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
   const [completeProfile, { isLoading: isCompletingProfile }] = useCompleteProfileMutation();
   const [removeCartItem, { isLoading: isRemovingCartItem }] = useRemoveFromCartMutation();
   const dispatch = useAppDispatch();
+  const router = useRouter();
+
+  // Automatically remove ghost/deleted products from server cart so checkout is never blocked
+  useEffect(() => {
+    if (isAuthenticated && Array.isArray(cartData?.items)) {
+      const ghostItems = cartData.items.filter((it: any) => !it.product || (typeof it.product === 'object' && !it.product.title));
+      if (ghostItems.length > 0) {
+        ghostItems.forEach((it: any) => {
+          if (it._id) {
+            removeCartItem(it._id).catch(() => {});
+          }
+        });
+      }
+    }
+  }, [isAuthenticated, cartData, removeCartItem]);
 
   const handleRemoveCartItem = async (itemId: string) => {
     const targetKey = String(itemId);
@@ -942,14 +958,24 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
         };
         res = await placeOrder(payload).unwrap();
       } else {
-        // Guest Checkout Flow
-        const guestItems = items.map((item: any) => ({
-          product: item.product?._id || item.product,
-          quantity: item.quantity,
-          selectedColor: item.color || item.selectedColor,
-          selectedSize: item.size || item.selectedSize,
-          selectedAttributes: item.selectedAttributes
-        }));
+        // Guest Checkout Flow - ensure only valid active products are submitted
+        const guestItems = items
+          .filter((item: any) => {
+            const p = item.product;
+            return p && (p._id || p.id || typeof p === 'string');
+          })
+          .map((item: any) => ({
+            product: typeof item.product === 'object' ? (item.product?._id || item.product?.id) : item.product,
+            quantity: item.quantity,
+            selectedColor: item.color || item.selectedColor,
+            selectedSize: item.size || item.selectedSize,
+            selectedAttributes: item.selectedAttributes
+          }));
+
+        if (guestItems.length === 0) {
+          toast.error(locale === 'bn' ? 'আপনার কার্টে কোনো পণ্য নেই বা পণ্যটি আর উপলব্ধ নেই।' : 'Your cart is empty or the product is no longer available.');
+          return;
+        }
 
         const guestPayload = {
           name: shippingAddress.recipientName.trim(),
@@ -985,6 +1011,32 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
           setGuestCartItems([]);
         } else {
           refetch();
+        }
+
+        const orderIdVal = String(orderObj.orderId || orderObj._id || orderObj.id || '');
+        const recipientPhone = shippingAddress.recipientPhone || orderObj.shippingAddress?.recipientPhone || '';
+
+        // Store session verification token and order details in sessionStorage and localStorage
+        try {
+          const sessionPayload = {
+            orderId: orderIdVal,
+            _id: orderObj._id,
+            order: orderObj,
+            phone: recipientPhone,
+            createdAt: orderObj.createdAt || new Date().toISOString()
+          };
+          if (orderIdVal) {
+            sessionStorage.setItem(`charulata_order_${orderIdVal}`, JSON.stringify(sessionPayload));
+          }
+          if (orderObj._id) {
+            sessionStorage.setItem(`charulata_order_${orderObj._id}`, JSON.stringify(sessionPayload));
+          }
+          const storedOrders = JSON.parse(localStorage.getItem('charulata_placed_orders') || '{}');
+          if (orderIdVal) storedOrders[orderIdVal] = sessionPayload;
+          if (orderObj._id) storedOrders[orderObj._id] = sessionPayload;
+          localStorage.setItem('charulata_placed_orders', JSON.stringify(storedOrders));
+        } catch (e) {
+          console.warn('Could not store order in session:', e);
         }
 
         // Track Meta Pixel Purchase event with catalog SKU/IDs matching XML feed <g:id>
@@ -1024,6 +1076,11 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
           num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
           order_id: purchaseOrderId || undefined
         });
+
+        // Navigate immediately to the dedicated Order Success Page so refresh never lands back on checkout form
+        if (orderIdVal) {
+          router.replace(`/order-success/${encodeURIComponent(orderIdVal)}`);
+        }
       } else {
         setErrorMsg('Invalid checkout response from server.');
       }

@@ -40,14 +40,33 @@ export function getStockStatus(product: any, selectedVariant?: any): StockStatus
 
   // If a specific variant is selected (e.g. in ProductDetailClient)
   if (selectedVariant && typeof selectedVariant === 'object') {
-    const variantStock = selectedVariant.stockQuantity !== undefined && selectedVariant.stockQuantity !== null
+    const rawVariantStock = selectedVariant.stockQuantity !== undefined && selectedVariant.stockQuantity !== null
       ? Number(selectedVariant.stockQuantity)
-      : (selectedVariant.stock !== undefined && selectedVariant.stock !== null ? Number(selectedVariant.stock) : 0);
+      : (selectedVariant.stock !== undefined && selectedVariant.stock !== null ? Number(selectedVariant.stock) : null);
 
-    const isInStock = variantStock > 0 && product.isActive !== false;
+    // If variants have individual stock tracked across the product (>0 on at least one variant):
+    // use that specific variant's stock.
+    // If variants do NOT track individual stock (all variants have 0 / unset stock),
+    // fallback gracefully to product-level stock (e.g. product.stockQuantity = 100).
+    const effectiveStock = hasVariantStock
+      ? (rawVariantStock !== null ? Math.max(0, rawVariantStock) : 0)
+      : Math.max(0, productLevelStock);
+
+    let isInStock = effectiveStock > 0;
+
+    // Explicit flags override
+    if (
+      product.isActive === false ||
+      product.isOutOfStock === true ||
+      selectedVariant.isActive === false ||
+      selectedVariant.isOutOfStock === true
+    ) {
+      isInStock = false;
+    }
+
     return {
       isInStock,
-      stockQuantity: Math.max(0, variantStock),
+      stockQuantity: effectiveStock,
       hasVariants: true,
       hasVariantStock,
       statusTextEn: isInStock ? 'In Stock' : 'Out of Stock',

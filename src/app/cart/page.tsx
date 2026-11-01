@@ -582,9 +582,7 @@ export default function CartPage() {
               onClick={() => {
                 const hasOutOfStock = items.some((it: any) => {
                   const p = it.product || {};
-                  const s = p?.stockQuantity !== undefined ? Number(p.stockQuantity) : 0;
-                  const hv = Array.isArray(p?.variants) && p.variants.length > 0 && p.variants.some((v: any) => (Number(v?.stockQuantity) || 0) > 0);
-                  return hv ? (s <= 0 && !hv) : s <= 0;
+                  return !getStockStatus(p).isInStock;
                 });
                 if (hasOutOfStock) {
                   toast.error(locale === 'bn' ? 'আপনার কার্টে স্টক আউট পণ্য রয়েছে। অনুগ্রহ করে সেটি সরিয়ে অর্ডার করুন।' : 'Your cart contains out-of-stock items. Please remove them before proceeding.');
