@@ -236,18 +236,9 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     }
   }, [addToWishlist, effectiveIsWishlisted, isAuthenticated, isSale, locale, onWishlistToggle, price, product, removeFromWishlist, salePrice]);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('a')) {
-      return;
-    }
-    router.push(`/products/${product.slug}`);
-  };
-
   return (
     <div
-      onClick={handleCardClick}
-      className="product-card group flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative h-full cursor-pointer"
+      className="product-card group flex flex-col bg-card border border-border/60 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative h-full"
     >
       {/* Discount Badge */}
       {isSale && discountPercent > 0 && (
@@ -279,10 +270,8 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       </button>
 
       {/* Product Image - 3:4 Aspect Ratio for Fashion */}
-      <Link
-        href={`/products/${product.slug}`}
-        prefetch={false}
-        className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none cursor-pointer"
+      <div
+        className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none"
       >
         <Image
           src={img}
@@ -309,7 +298,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             <span suppressHydrationWarning>{productTimeLeftText}</span>
           </span>
         )}
-      </Link>
+      </div>
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">
