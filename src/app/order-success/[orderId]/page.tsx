@@ -23,19 +23,26 @@ import {
   Lock,
   AlertTriangle,
   RotateCcw,
-  PackageCheck
+  PackageCheck,
+  Eye,
+  EyeOff,
+  Mail,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setCredentials } from '@/store/authSlice';
 import { useGetOrderDetailsQuery } from '@/store/api/orderApi';
+import { useCompleteProfileMutation } from '@/store/api/userApi';
 import { downloadInvoicePdf } from '@/utils/invoicePdf';
 import { parseAndFormatOrderAddress } from '@/utils/orderAddress';
 
 export default function OrderSuccessPage() {
   const params = useParams();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { t, locale } = useTranslation();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
@@ -48,6 +55,15 @@ export default function OrderSuccessPage() {
   const [phoneInput, setPhoneInput] = useState<string>('');
   const [verifyError, setVerifyError] = useState<string>('');
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+
+  // Post-checkout guest account creation states
+  const [upgradePassword, setUpgradePassword] = useState('');
+  const [upgradeConfirmPassword, setUpgradeConfirmPassword] = useState('');
+  const [upgradeEmail, setUpgradeEmail] = useState('');
+  const [showUpgradePassword, setShowUpgradePassword] = useState(false);
+  const [showUpgradeConfirmPassword, setShowUpgradeConfirmPassword] = useState(false);
+  const [isUpgraded, setIsUpgraded] = useState(false);
+  const [completeProfile, { isLoading: isCompletingProfile }] = useCompleteProfileMutation();
 
   // If user is authenticated, query the server directly for this order
   const { data: serverOrderData, isLoading: isServerLoading, error: serverError } = useGetOrderDetailsQuery(
@@ -185,6 +201,49 @@ export default function OrderSuccessPage() {
       return;
     }
     downloadInvoicePdf(order);
+  };
+
+  const handleCompleteProfilePostCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!upgradePassword || upgradePassword.length < 6) {
+      toast.error(locale === 'bn' ? 'পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.');
+      return;
+    }
+    if (upgradePassword !== upgradeConfirmPassword) {
+      toast.error(locale === 'bn' ? 'পাসওয়ার্ড দুটি মিলছে না। আবার চেষ্টা করুন।' : 'Passwords do not match. Please try again.');
+      return;
+    }
+
+    try {
+      const phoneToUse = (order?.shippingAddress?.recipientPhone || order?.customer?.phone || phoneInput || '').trim();
+      const nameToUse = (order?.shippingAddress?.recipientName || order?.customer?.name || '').trim();
+
+      const res = await completeProfile({
+        phone: phoneToUse,
+        password: upgradePassword,
+        name: nameToUse,
+        email: upgradeEmail.trim() || undefined
+      }).unwrap();
+
+      const token = res?.token || res?.data?.token || res?.accessToken;
+      const userObj = res?.user || res?.data?.user;
+
+      if (token && userObj) {
+        localStorage.setItem('charulata_token', token);
+        localStorage.setItem('charulata_user', JSON.stringify(userObj));
+        dispatch(setCredentials({ user: userObj, token }));
+        window.dispatchEvent(new Event('auth_updated'));
+        window.dispatchEvent(new Event('storage'));
+        setIsUpgraded(true);
+        toast.success(
+          locale === 'bn'
+            ? 'অভিনন্দন! আপনার পাসওয়ার্ড সফলভাবে সেট করা হয়েছে এবং সাইন-ইন সম্পন্ন হয়েছে!'
+            : 'Congratulations! Your password has been set and you are now signed in!'
+        );
+      }
+    } catch (err: any) {
+      toast.error(err?.data?.message || err?.message || (locale === 'bn' ? 'পাসওয়ার্ড সেট করতে ব্যর্থ হয়েছে।' : 'Failed to set password.'));
+    }
   };
 
   // Calculations & Details
@@ -539,6 +598,150 @@ export default function OrderSuccessPage() {
 
         {/* RIGHT COLUMN: Price Calculation & Summary Card (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
+          {/* Post-Checkout Account Upgrade & Password Setup Card (Only for Guests / Unauthenticated Users) */}
+          {(!isAuthenticated || isUpgraded) && (
+            <div className="p-4 sm:p-5 bg-primary/5 border border-primary/25 rounded-2xl text-left space-y-3.5 shadow-2xs relative overflow-hidden bg-gradient-to-b from-primary/10 via-primary/5 to-card">
+              <div className="flex items-center space-x-2 text-primary font-bold text-xs sm:text-sm">
+                <Sparkles size={16} className="text-primary animate-pulse" />
+                <span>
+                  {locale === 'bn' ? 'পাসওয়ার্ড সেট করে প্রোফাইল সম্পূর্ণ করুন!' : 'Set Password & Complete Profile!'}
+                </span>
+              </div>
+
+              {isUpgraded ? (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl space-y-1.5 text-left">
+                  <div className="flex items-center space-x-1.5 text-emerald-600 font-bold text-xs">
+                    <CheckCircle2 size={16} />
+                    <span>{locale === 'bn' ? 'অ্যাকাউন্ট সফলভাবে প্রস্তুত হয়েছে!' : 'Account Successfully Created!'}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {locale === 'bn'
+                      ? 'অভিনন্দন! আপনার পাসওয়ার্ড সফলভাবে সেট হয়েছে এবং আপনি সাইন-ইন হয়ে আছেন। প্রোফাইল থেকে যেকোনো সময় অর্ডার ট্র্যাকিং ও ইতিহাস দেখতে পারবেন।'
+                      : 'Congratulations! Your password has been set and you are now signed in. You can track orders anytime from your profile.'}
+                  </p>
+                  <div className="pt-1">
+                    <Link
+                      href="/profile"
+                      className="inline-flex items-center text-xs font-bold text-primary hover:underline gap-1"
+                    >
+                      <span>{locale === 'bn' ? 'আমার প্রোফাইলে যান' : 'Go to Profile'}</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {locale === 'bn'
+                      ? 'পাসওয়ার্ড সেট করার সাথে সাথেই আপনার অ্যাকাউন্টটি নিবন্ধিত ও সাইন-ইন হয়ে যাবে, যাতে পরবর্তীতে যেকোনো সময় আপনি সহজে লগইন করে অর্ডারের ট্র্যাকিং দেখতে পারেন।'
+                      : 'Setting a password registers and signs you in immediately, allowing you to easily log in and track your orders anytime.'}
+                  </p>
+
+                  <form onSubmit={handleCompleteProfilePostCheckout} className="space-y-2.5 pt-0.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        {locale === 'bn' ? 'নতুন পাসওয়ার্ড লিখুন *' : 'Set New Password *'}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type={showUpgradePassword ? 'text' : 'password'}
+                          required
+                          minLength={6}
+                          placeholder={locale === 'bn' ? 'নূন্যতম ৬ অক্ষরের পাসওয়ার্ড দিন' : 'Enter password (min 6 characters)'}
+                          value={upgradePassword}
+                          onChange={(e) => setUpgradePassword(e.target.value)}
+                          className="w-full pl-8 pr-9 py-2 text-xs rounded-xl border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowUpgradePassword(!showUpgradePassword)}
+                          className="absolute right-3 top-2 text-muted-foreground hover:text-foreground transition cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showUpgradePassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        {locale === 'bn' ? 'পাসওয়ার্ড নিশ্চিত করুন *' : 'Confirm Password *'}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type={showUpgradeConfirmPassword ? 'text' : 'password'}
+                          required
+                          minLength={6}
+                          placeholder={locale === 'bn' ? 'আবার পাসওয়ার্ড লিখুন' : 'Re-enter your password'}
+                          value={upgradeConfirmPassword}
+                          onChange={(e) => setUpgradeConfirmPassword(e.target.value)}
+                          className={`w-full pl-8 pr-9 py-2 text-xs rounded-xl border bg-card focus:outline-none font-medium text-foreground transition ${
+                            upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword
+                              ? 'border-rose-500 focus:border-rose-500'
+                              : upgradeConfirmPassword && upgradePassword === upgradeConfirmPassword
+                              ? 'border-emerald-500 focus:border-emerald-500'
+                              : 'border-border focus:border-primary'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowUpgradeConfirmPassword(!showUpgradeConfirmPassword)}
+                          className="absolute right-3 top-2 text-muted-foreground hover:text-foreground transition cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showUpgradeConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      {upgradeConfirmPassword && upgradePassword !== upgradeConfirmPassword && (
+                        <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                          {locale === 'bn' ? '⚠ পাসওয়ার্ড দুটি মিলছে না' : '⚠ Passwords do not match'}
+                        </p>
+                      )}
+                      {upgradeConfirmPassword && upgradePassword === upgradeConfirmPassword && (
+                        <p className="text-[10px] text-emerald-500 font-semibold mt-1">
+                          {locale === 'bn' ? '✓ পাসওয়ার্ড মিলেছে' : '✓ Passwords match'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        {locale === 'bn' ? 'ইমেইল ঠিকানা (ঐচ্ছিক)' : 'Email Address (Optional)'}
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="email"
+                          placeholder={locale === 'bn' ? 'আপনার ইমেইল ঠিকানা (optional)' : 'Your email address (optional)'}
+                          value={upgradeEmail}
+                          onChange={(e) => setUpgradeEmail(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-border bg-card focus:border-primary focus:outline-none font-medium text-foreground transition"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isCompletingProfile}
+                      className="w-full bg-primary hover:bg-[#b0842e] text-white py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-md"
+                    >
+                      {isCompletingProfile ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <>
+                          <span>{locale === 'bn' ? 'পাসওয়ার্ড সেট করুন ও সাইন ইন সম্পন্ন করুন' : 'Set Password & Sign In'}</span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="bg-card border border-border rounded-2xl p-5 shadow-2xs space-y-4 sticky top-20">
             <h2 className="text-sm font-bold text-foreground font-serif border-b border-border/70 pb-3">
               {locale === 'bn' ? 'অর্ডার হিসাব বিবরণী' : 'Order Summary'}

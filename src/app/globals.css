@@ -651,6 +651,61 @@ table thead td {
   border-radius: 4px;
 }
 
+/* --- Product Swiper: pre-init (SSR / before hydration) layout ---
+ * Swiper calculates slide widths with JS after mount. Until then every
+ * .swiper-slide is width:100%, so on page reload a single product card
+ * covers the whole screen. These rules mirror the JS breakpoints so the
+ * server-rendered markup already looks like the final slider.
+ */
+.product-swiper:not(.swiper-initialized) .swiper-wrapper {
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+}
+.product-swiper:not(.swiper-initialized) .swiper-slide {
+  flex: 0 0 calc((100% - 10px) / 2);
+  width: calc((100% - 10px) / 2);
+  margin-right: 0 !important;
+}
+@media (min-width: 480px) {
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-wrapper {
+    gap: 12px;
+  }
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-slide {
+    flex-basis: calc((100% - 2 * 12px) / 2.2);
+    width: calc((100% - 2 * 12px) / 2.2);
+  }
+}
+@media (min-width: 640px) {
+  .product-swiper:not(.swiper-initialized) .swiper-wrapper,
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-wrapper {
+    gap: 14px;
+  }
+  .product-swiper:not(.swiper-initialized) .swiper-slide,
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-slide {
+    flex-basis: calc((100% - 2 * 14px) / 3);
+    width: calc((100% - 2 * 14px) / 3);
+  }
+}
+@media (min-width: 900px) {
+  .product-swiper:not(.swiper-initialized) .swiper-wrapper,
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-wrapper {
+    gap: 16px;
+  }
+  .product-swiper:not(.swiper-initialized) .swiper-slide,
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-slide {
+    flex-basis: calc((100% - 3 * 16px) / 4);
+    width: calc((100% - 3 * 16px) / 4);
+  }
+}
+@media (min-width: 1200px) {
+  .product-swiper:not(.swiper-initialized) .swiper-slide,
+  .product-swiper.product-swiper--peek:not(.swiper-initialized) .swiper-slide {
+    flex-basis: calc((100% - 4 * 16px) / 5);
+    width: calc((100% - 4 * 16px) / 5);
+  }
+}
+
 /* --- Campaign Swiper Luxury Pagination & Custom Styles --- */
 :root {
   --swiper-theme-color: var(--primary) !important;

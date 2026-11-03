@@ -132,7 +132,7 @@ export default function ProductSlider({
           onBreakpoint={sync}
           onLock={sync}
           onUnlock={sync}
-          className="!py-1 !px-0.5"
+          className="product-swiper product-swiper--peek !py-1 !px-0.5"
         >
           {products.map((product: any) => {
             const productId = (product._id || product.id)?.toString();

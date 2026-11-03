@@ -270,8 +270,10 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
       </button>
 
       {/* Product Image - 3:4 Aspect Ratio for Fashion */}
-      <div
-        className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none"
+      <Link
+        href={`/products/${product.slug}`}
+        prefetch={false}
+        className="aspect-[3/4] overflow-hidden bg-muted/50 relative block select-none cursor-pointer"
       >
         <Image
           src={img}
@@ -298,7 +300,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
             <span suppressHydrationWarning>{productTimeLeftText}</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Body Info & Actions */}
       <div className="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-1.5">

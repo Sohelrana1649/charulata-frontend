@@ -40,12 +40,12 @@ export default function ProductSlider({ products, wishlistArray = [], onWishlist
             slidesPerView: 4,
             spaceBetween: 16,
           },
-          1100: {
+          1200: {
             slidesPerView: 5,
             spaceBetween: 16,
           },
         }}
-        className="!py-1 !px-0.5"
+        className="product-swiper !py-1 !px-0.5"
       >
         {products.map((product) => {
           const isWishlisted = wishlistArray.some(

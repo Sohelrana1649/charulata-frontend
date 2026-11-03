@@ -316,7 +316,7 @@ export default function FlashSaleSection({
                 spaceBetween: 16,
               },
             }}
-            className="!py-1 !px-0.5"
+            className="product-swiper !py-1 !px-0.5"
           >
             {validProducts.map((product: any) => {
               const productId = product._id?.toString() || product.id?.toString();

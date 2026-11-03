@@ -1166,7 +1166,7 @@ function SearchResults() {
                         key={product._id}
                         className="group flex flex-col sm:flex-row bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 relative p-4 gap-5 items-center sm:items-start"
                       >
-                        <div className="w-full sm:w-48 aspect-[4/3] sm:aspect-square overflow-hidden bg-muted relative rounded-xl shrink-0 block">
+                        <Link href={`/products/${product.slug}`} className="w-full sm:w-48 aspect-[4/3] sm:aspect-square overflow-hidden bg-muted relative rounded-xl shrink-0 block cursor-pointer">
                           <Image
                             src={img}
                             alt={product.title}
@@ -1179,7 +1179,7 @@ function SearchResults() {
                               {product.badge}
                             </span>
                           )}
-                        </div>
+                        </Link>
 
                         <div className="flex-1 flex flex-col justify-between space-y-3 w-full h-full">
                           <div>
