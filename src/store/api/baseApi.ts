@@ -5,7 +5,7 @@ import { getErrorMessage } from '@/utils/errorHelper';
 import { toast } from 'react-toastify';
 
 const getDynamicBaseUrl = () => {
-  let url = process.env.NEXT_PUBLIC_API_URL;
+  const url = process.env.NEXT_PUBLIC_API_URL;
   // If not configured or compiled as dead localhost:5000, fallback to live API
   if (!url || url.includes('localhost:5000')) {
     return 'https://api.charulatalifestyle.com/api/v1';

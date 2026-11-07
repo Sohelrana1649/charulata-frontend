@@ -320,6 +320,7 @@ export default function ProductLightboxModal({
         {/* Zoomable Image Container */}
         <div
           className={`relative max-w-full max-h-[75vh] w-full h-full flex items-center justify-center transition-transform ${
+            // eslint-disable-next-line react-hooks/refs
             isDragging || isPinchActiveRef.current ? 'duration-0' : 'duration-200 ease-out'
           }`}
           style={{

@@ -273,11 +273,12 @@ function ProfileContent() {
   }, [notificationsResponse]);
 
   const activeNotifications = useMemo(() => {
+    const now = Date.now(); // eslint-disable-line react-hooks/purity
     return notificationsArray.map((n: any) => {
       const createdAt = n.createdAt ? new Date(n.createdAt) : null;
       let timeStr = 'Just now';
       if (createdAt) {
-        const diffMs = Date.now() - createdAt.getTime();
+        const diffMs = now - createdAt.getTime();
         const diffMins = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
