@@ -156,6 +156,33 @@ function PixelTrackerInner() {
       return origSend.apply(this, arguments);
     };
   }
+
+  // Intercept HTMLImageElement .src to block unauthorized 1x1 image Purchase beacons (new Image().src)
+  if (typeof HTMLImageElement !== 'undefined') {
+    var imgDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    if (imgDescriptor && imgDescriptor.set) {
+      var origImgSrcSet = imgDescriptor.set;
+      Object.defineProperty(HTMLImageElement.prototype, 'src', {
+        configurable: true,
+        enumerable: true,
+        get: function() {
+          return imgDescriptor.get ? imgDescriptor.get.call(this) : '';
+        },
+        set: function(val) {
+          try {
+            var urlStr = String(val || '');
+            if (urlStr.indexOf('facebook.com/tr') !== -1 && urlStr.indexOf('ev=Purchase') !== -1) {
+              if (!window.__CHARULATA_PURCHASE_AUTHORIZED__) {
+                console.warn('[Meta Tracking Shield] Blocked unauthorized Image Purchase beacon to Meta Pixel');
+                return;
+              }
+            }
+          } catch (e) {}
+          return origImgSrcSet.call(this, val);
+        }
+      });
+    }
+  }
 })();
 
 !function(f,b,e,v,n,t,s)
