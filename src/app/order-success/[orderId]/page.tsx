@@ -38,6 +38,7 @@ import { useGetOrderDetailsQuery } from '@/store/api/orderApi';
 import { useCompleteProfileMutation } from '@/store/api/userApi';
 import { downloadInvoicePdf } from '@/utils/invoicePdf';
 import { parseAndFormatOrderAddress } from '@/utils/orderAddress';
+import { trackMetaPurchase, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 
 export default function OrderSuccessPage() {
   const params = useParams();
@@ -147,6 +148,66 @@ export default function OrderSuccessPage() {
       }
     }
   }, [isVerified, Boolean(order)]);
+
+  // Meta Pixel Purchase Event - Tracked EXACTLY ONCE only upon successful verified order
+  useEffect(() => {
+    if (isVerified && order) {
+      const orderKey = String(order.orderId || order._id || orderId || '');
+      if (!orderKey) return;
+
+      let purchaseEventId = order.metaEventId;
+      let cachedContentIds: string[] | undefined = undefined;
+
+      try {
+        const sessionKey = `charulata_order_${orderKey}`;
+        const sessionData = sessionStorage.getItem(sessionKey);
+        if (sessionData) {
+          const parsed = JSON.parse(sessionData);
+          if (parsed.metaEventId) purchaseEventId = parsed.metaEventId;
+          if (Array.isArray(parsed.purchasedContentIds)) cachedContentIds = parsed.purchasedContentIds;
+        }
+        if (!purchaseEventId) {
+          const storedOrders = JSON.parse(localStorage.getItem('charulata_placed_orders') || '{}');
+          if (storedOrders[orderKey]?.metaEventId) {
+            purchaseEventId = storedOrders[orderKey].metaEventId;
+          }
+          if (Array.isArray(storedOrders[orderKey]?.purchasedContentIds)) {
+            cachedContentIds = storedOrders[orderKey].purchasedContentIds;
+          }
+        }
+      } catch {}
+
+      if (!purchaseEventId) {
+        purchaseEventId = `pur_${orderKey}`;
+      }
+
+      const orderItems = order.items || [];
+      const contentIds = (cachedContentIds && cachedContentIds.length > 0)
+        ? cachedContentIds
+        : orderItems.map((item: any) => {
+            const prod = item.product;
+            if (typeof prod === 'object' && prod !== null) {
+              return getCatalogProductId(prod);
+            }
+            return getCatalogProductId(item.sku || prod || item);
+          }).filter(Boolean);
+
+      const totalVal = Number(order.totalAmount || order.payableAmount || 0);
+
+      trackMetaPurchase(orderKey, purchaseEventId, {
+        content_ids: contentIds,
+        content_type: 'product',
+        contents: orderItems.map((item: any, idx: number) => ({
+          id: contentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
+          quantity: item.quantity || 1,
+        })).filter((c: any) => c.id),
+        value: totalVal,
+        currency: 'BDT',
+        num_items: orderItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
+        order_id: orderKey
+      });
+    }
+  }, [isVerified, Boolean(order), orderId]);
 
   // Manual ownership verification for external unauthenticated visitors
   const handleVerifyOwnership = (e: React.FormEvent) => {

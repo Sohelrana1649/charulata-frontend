@@ -252,7 +252,15 @@ export const trackMetaPurchase = (orderKey: string, eventId: string, customData:
   try {
     const fbq = (window as any).fbq;
     if (typeof fbq === 'function') {
+      // Temporarily authorize Purchase event for this genuine verified order
+      (window as any).__CHARULATA_PURCHASE_AUTHORIZED__ = true;
       fbq('track', 'Purchase', customData, { eventID: eventId });
+      // Keep authorized window open for 4 seconds so that asynchronous beacon / network request can be transmitted
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          (window as any).__CHARULATA_PURCHASE_AUTHORIZED__ = false;
+        }
+      }, 4000);
     } else if (process.env.NODE_ENV === 'development') {
       console.log('[Meta Pixel Log] track: Purchase', customData || '', { eventID: eventId });
     }

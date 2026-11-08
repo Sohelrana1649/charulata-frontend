@@ -920,30 +920,7 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
         const orderIdVal = String(orderObj.orderId || orderObj._id || orderObj.id || '');
         const recipientPhone = shippingAddress.recipientPhone || orderObj.shippingAddress?.recipientPhone || '';
 
-        // Store session verification token and order details in sessionStorage and localStorage
-        try {
-          const sessionPayload = {
-            orderId: orderIdVal,
-            _id: orderObj._id,
-            order: orderObj,
-            phone: recipientPhone,
-            createdAt: orderObj.createdAt || new Date().toISOString()
-          };
-          if (orderIdVal) {
-            sessionStorage.setItem(`charulata_order_${orderIdVal}`, JSON.stringify(sessionPayload));
-          }
-          if (orderObj._id) {
-            sessionStorage.setItem(`charulata_order_${orderObj._id}`, JSON.stringify(sessionPayload));
-          }
-          const storedOrders = JSON.parse(localStorage.getItem('charulata_placed_orders') || '{}');
-          if (orderIdVal) storedOrders[orderIdVal] = sessionPayload;
-          if (orderObj._id) storedOrders[orderObj._id] = sessionPayload;
-          localStorage.setItem('charulata_placed_orders', JSON.stringify(storedOrders));
-        } catch (e) {
-          console.warn('Could not store order in session:', e);
-        }
-
-        // Track Meta Pixel Purchase event with catalog SKU/IDs matching XML feed <g:id>
+        // Map catalog SKU/IDs matching XML feed <g:id>
         const purchasedContentIds = (orderObj.items || items || []).map((item: any) => {
           const prod = item.product;
           if (typeof prod === 'object' && prod !== null) {
@@ -963,28 +940,54 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
           return getCatalogProductId(item.sku || prod);
         }).filter(Boolean);
 
-        // Browser Purchase uses the server's event ID (response.metaEventId, which equals the _eventId we sent)
-        // and fires only once per order. The server already sent the Purchase CAPI event: no /meta-event call here.
         const purchaseItems = (orderObj.items || items || []);
         const purchaseOrderId = String(orderObj.orderId || orderObj._id || orderObj.id || '');
         const purchaseEventId = res?.metaEventId || res?.data?.metaEventId || eventId;
-        trackMetaPurchase(purchaseOrderId, purchaseEventId, {
-          content_ids: purchasedContentIds,
-          content_type: 'product',
-          contents: purchaseItems.map((item: any, idx: number) => ({
-            id: purchasedContentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
-            quantity: item.quantity || 1,
-          })).filter((c: any) => c.id),
-          value: orderObj.totalAmount || totalAmount,
-          currency: 'BDT',
-          num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
-          order_id: purchaseOrderId || undefined
-        });
 
-        // Navigate immediately to the dedicated Order Success Page
+        // Store session verification token and order details in sessionStorage and localStorage
+        try {
+          const sessionPayload = {
+            orderId: orderIdVal,
+            _id: orderObj._id,
+            order: orderObj,
+            phone: recipientPhone,
+            createdAt: orderObj.createdAt || new Date().toISOString(),
+            metaEventId: purchaseEventId,
+            purchasedContentIds: purchasedContentIds,
+            totalAmount: orderObj.totalAmount || totalAmount
+          };
+          if (orderIdVal) {
+            sessionStorage.setItem(`charulata_order_${orderIdVal}`, JSON.stringify(sessionPayload));
+          }
+          if (orderObj._id) {
+            sessionStorage.setItem(`charulata_order_${orderObj._id}`, JSON.stringify(sessionPayload));
+          }
+          const storedOrders = JSON.parse(localStorage.getItem('charulata_placed_orders') || '{}');
+          if (orderIdVal) storedOrders[orderIdVal] = sessionPayload;
+          if (orderObj._id) storedOrders[orderObj._id] = sessionPayload;
+          localStorage.setItem('charulata_placed_orders', JSON.stringify(storedOrders));
+        } catch (e) {
+          console.warn('Could not store order in session:', e);
+        }
+
+        // Navigate immediately to the dedicated Order Success Page where Purchase event is cleanly fired once
         if (orderIdVal) {
           window.location.href = `/order-success/${encodeURIComponent(orderIdVal)}`;
           return;
+        } else {
+          // Fallback only if orderIdVal is absent
+          trackMetaPurchase(purchaseOrderId, purchaseEventId, {
+            content_ids: purchasedContentIds,
+            content_type: 'product',
+            contents: purchaseItems.map((item: any, idx: number) => ({
+              id: purchasedContentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
+              quantity: item.quantity || 1,
+            })).filter((c: any) => c.id),
+            value: orderObj.totalAmount || totalAmount,
+            currency: 'BDT',
+            num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
+            order_id: purchaseOrderId || undefined
+          });
         }
       } else {
         setErrorMsg('Invalid checkout response from server.');
