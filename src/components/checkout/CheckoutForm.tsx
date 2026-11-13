@@ -1007,7 +1007,7 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
             value: orderObj.totalAmount || totalAmount,
             currency: 'BDT',
             num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
-            order_id: String(orderObj._id || orderObj.id || purchaseOrderId) || undefined
+            order_id: String(orderObj.orderId || purchaseOrderId || orderObj._id || orderObj.id) || undefined
           });
         }
       } else {
