@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { fbEvent } from '@/components/analytics/FacebookPixel';
 import { 
   MapPin, 
   Phone, 
@@ -27,6 +28,7 @@ export default function ContactClientView() {
     if (noteForm.name && noteForm.email && noteForm.message) {
       try {
         await submitContactForm(noteForm).unwrap();
+        fbEvent('track', 'Contact', { contact_method: 'contact_form' });
         setNoteSubmitted(true);
         setErrorMessage('');
         setNoteForm({ name: '', email: '', message: '' });

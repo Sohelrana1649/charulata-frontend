@@ -597,6 +597,8 @@ export default function CartPage() {
                     currency: 'BDT',
                     num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
                   });
+                  // Tell the checkout page InitiateCheckout was already sent for this click
+                  try { sessionStorage.setItem('meta_ic_fired_at', String(Date.now())); } catch { }
                 }
                 router.push('/checkout');
               }}

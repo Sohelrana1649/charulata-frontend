@@ -204,7 +204,8 @@ export default function OrderSuccessPage() {
         value: totalVal,
         currency: 'BDT',
         num_items: orderItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
-        order_id: orderKey
+        // Must equal the server CAPI Purchase order_id (backend sends the MongoDB _id)
+        order_id: String(order._id || order.id || orderKey)
       });
     }
   }, [isVerified, Boolean(order), orderId]);

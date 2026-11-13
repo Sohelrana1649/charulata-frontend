@@ -62,6 +62,28 @@ function PixelTrackerInner() {
     }
   }, [searchParams]);
 
+  // Meta Contact event: any click on a phone / WhatsApp / Messenger / email link anywhere on the site
+  useEffect(() => {
+    let lastFired = 0;
+    const onClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = (anchor.getAttribute("href") || "").toLowerCase();
+      let method = "";
+      if (href.startsWith("tel:")) method = "phone";
+      else if (href.includes("wa.me/") || href.includes("whatsapp.com")) method = "whatsapp";
+      else if (href.includes("m.me/") || href.includes("messenger.com")) method = "messenger";
+      else if (href.startsWith("mailto:")) method = "email";
+      if (!method) return;
+      const now = Date.now();
+      if (now - lastFired < 2000) return; // ignore accidental double taps
+      lastFired = now;
+      fbEvent("track", "Contact", { contact_method: method });
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   // Track PageView on client-side route changes only.
   // The initial PageView is fired by the base pixel code below.
   useEffect(() => {
@@ -86,53 +108,58 @@ function PixelTrackerInner() {
         dangerouslySetInnerHTML={{
           __html: `
 (function() {
-  // Global authorization flag: Purchase is STRICTLY forbidden unless authorized by verified order completion flow
+  // Purchase is STRICTLY forbidden unless it carries an event ID registered by the verified
+  // order-success flow (trackMetaPurchase). Blocks Event Setup Tool / auto-detected Purchases.
+  window.__CHARULATA_PURCHASE_EIDS__ = window.__CHARULATA_PURCHASE_EIDS__ || [];
   window.__CHARULATA_PURCHASE_AUTHORIZED__ = false;
+  window.__charulataIsPurchaseAllowed = function(eid) {
+    if (window.__CHARULATA_PURCHASE_AUTHORIZED__) return true;
+    return !!eid && window.__CHARULATA_PURCHASE_EIDS__.indexOf(String(eid)) !== -1;
+  };
 
-  // Intercept sendBeacon to block unauthorized Purchase beacons to Meta
+  var isMetaTr = function(url) { return String(url || '').indexOf('facebook.com/tr') !== -1; };
+  var readParam = function(src, name) {
+    try {
+      if (!src) return null;
+      if (typeof src === 'string') {
+        var q = src.indexOf('?') !== -1 ? src.split('?')[1] : src;
+        return new URLSearchParams(q).get(name);
+      }
+      if (typeof FormData !== 'undefined' && src instanceof FormData) return src.get(name);
+      if (typeof URLSearchParams !== 'undefined' && src instanceof URLSearchParams) return src.get(name);
+    } catch (e) {}
+    return null;
+  };
+  // true => request must be dropped
+  var shouldBlock = function(url, body) {
+    if (!isMetaTr(url)) return false;
+    var ev = readParam(String(url), 'ev') || readParam(body, 'ev');
+    if (ev !== 'Purchase') return false;
+    var eid = readParam(String(url), 'eid') || readParam(body, 'eid');
+    if (window.__charulataIsPurchaseAllowed(eid)) return false;
+    console.warn('[Meta Tracking Shield] Blocked unauthorized Purchase request', eid || '');
+    return true;
+  };
+
   if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
     var origSendBeacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function(url, data) {
-      try {
-        var urlStr = String(url || '');
-        if (urlStr.indexOf('facebook.com/tr') !== -1) {
-          var isPur = urlStr.indexOf('ev=Purchase') !== -1;
-          if (!isPur && data) {
-            var dataStr = typeof data === 'string' ? data : (data instanceof FormData ? '' : String(data));
-            if (dataStr && dataStr.indexOf('ev=Purchase') !== -1) isPur = true;
-          }
-          if (isPur && !window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-            console.warn('[Meta Tracking Shield] Blocked unauthorized sendBeacon Purchase request to Meta Pixel');
-            return true;
-          }
-        }
-      } catch (e) {}
+      try { if (shouldBlock(url, data)) return true; } catch (e) {}
       return origSendBeacon(url, data);
     };
   }
 
-  // Intercept fetch to block unauthorized Purchase requests to Meta
   if (typeof window.fetch === 'function') {
     var origFetch = window.fetch;
     window.fetch = function(input, init) {
       try {
-        var urlStr = typeof input === 'string' ? input : (input && input.url ? String(input.url) : '');
-        if (urlStr.indexOf('facebook.com/tr') !== -1) {
-          var isPur = urlStr.indexOf('ev=Purchase') !== -1;
-          if (!isPur && init && init.body && typeof init.body === 'string') {
-            if (init.body.indexOf('ev=Purchase') !== -1) isPur = true;
-          }
-          if (isPur && !window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-            console.warn('[Meta Tracking Shield] Blocked unauthorized fetch Purchase request to Meta Pixel');
-            return Promise.resolve(new Response(null, { status: 200 }));
-          }
-        }
+        var u = typeof input === 'string' ? input : (input && input.url ? String(input.url) : '');
+        if (shouldBlock(u, init && init.body)) return Promise.resolve(new Response(null, { status: 200 }));
       } catch (e) {}
       return origFetch.apply(this, arguments);
     };
   }
 
-  // Intercept XMLHttpRequest to block unauthorized Purchase requests to Meta
   if (typeof window.XMLHttpRequest === 'function') {
     var origOpen = XMLHttpRequest.prototype.open;
     var origSend = XMLHttpRequest.prototype.send;
@@ -141,47 +168,39 @@ function PixelTrackerInner() {
       return origOpen.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function(body) {
-      try {
-        if (this.__trUrl && this.__trUrl.indexOf('facebook.com/tr') !== -1) {
-          var isPur = this.__trUrl.indexOf('ev=Purchase') !== -1;
-          if (!isPur && typeof body === 'string' && body.indexOf('ev=Purchase') !== -1) {
-            isPur = true;
-          }
-          if (isPur && !window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-            console.warn('[Meta Tracking Shield] Blocked unauthorized XHR Purchase request to Meta Pixel');
-            return;
-          }
-        }
-      } catch (e) {}
+      try { if (shouldBlock(this.__trUrl, body)) return; } catch (e) {}
       return origSend.apply(this, arguments);
     };
   }
 
-  // Intercept HTMLImageElement .src to block unauthorized 1x1 image Purchase beacons (new Image().src)
+  // 1x1 image beacons (new Image().src = 'https://www.facebook.com/tr?...')
   if (typeof HTMLImageElement !== 'undefined') {
-    var imgDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
-    if (imgDescriptor && imgDescriptor.set) {
-      var origImgSrcSet = imgDescriptor.set;
+    var imgDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    if (imgDesc && imgDesc.set && imgDesc.get) {
       Object.defineProperty(HTMLImageElement.prototype, 'src', {
         configurable: true,
         enumerable: true,
-        get: function() {
-          return imgDescriptor.get ? imgDescriptor.get.call(this) : '';
-        },
+        get: function() { return imgDesc.get.call(this); },
         set: function(val) {
-          try {
-            var urlStr = String(val || '');
-            if (urlStr.indexOf('facebook.com/tr') !== -1 && urlStr.indexOf('ev=Purchase') !== -1) {
-              if (!window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-                console.warn('[Meta Tracking Shield] Blocked unauthorized Image Purchase beacon to Meta Pixel');
-                return;
-              }
-            }
-          } catch (e) {}
-          return origImgSrcSet.call(this, val);
+          try { if (shouldBlock(val, null)) return; } catch (e) {}
+          return imgDesc.set.call(this, val);
         }
       });
     }
+  }
+
+  // Large payloads are POSTed through a hidden form
+  if (typeof HTMLFormElement !== 'undefined') {
+    var origSubmit = HTMLFormElement.prototype.submit;
+    HTMLFormElement.prototype.submit = function() {
+      try {
+        if (isMetaTr(this.action)) {
+          var fd = new FormData(this);
+          if (shouldBlock(this.action, fd)) return;
+        }
+      } catch (e) {}
+      return origSubmit.apply(this, arguments);
+    };
   }
 })();
 
@@ -194,47 +213,36 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 
-// Intercept fbq method calls to prevent auto-events / Event Setup Tool from triggering Purchase on button clicks
+// Guard Purchase calls WITHOUT replacing window.fbq.
+// (Replacing window.fbq with a wrapper broke every event fired after fbevents.js loaded:
+//  ViewContent, AddToCart, SPA PageViews, etc. were silently stuck in the stub queue.)
+// fbevents.js assigns fbq.callMethod on load; we wrap it through a setter on the ORIGINAL stub.
 (function() {
-  var origFbq = window.fbq;
-  if (!origFbq) return;
-
-  window.fbq = function() {
-    var args = Array.prototype.slice.call(arguments);
-    if ((args[0] === 'track' || args[0] === 'trackCustom') && args[1] === 'Purchase') {
-      if (!window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-        console.warn('[Meta Tracking Shield] Blocked unauthorized fbq Purchase call:', args);
-        return;
-      }
-    }
-    return origFbq.apply(this, args);
-  };
-  for (var key in origFbq) {
-    if (Object.prototype.hasOwnProperty.call(origFbq, key)) {
-      window.fbq[key] = origFbq[key];
-    }
-  }
-
-  var _callMethod = window.fbq.callMethod;
-  Object.defineProperty(window.fbq, 'callMethod', {
-    configurable: true,
-    enumerable: true,
-    get: function() {
-      return _callMethod;
-    },
-    set: function(fn) {
-      _callMethod = function() {
-        var args = Array.prototype.slice.call(arguments);
-        if ((args[0] === 'track' || args[0] === 'trackCustom') && args[1] === 'Purchase') {
-          if (!window.__CHARULATA_PURCHASE_AUTHORIZED__) {
-            console.warn('[Meta Tracking Shield] Blocked unauthorized callMethod Purchase call:', args);
-            return;
+  var stub = window.fbq;
+  if (!stub || stub.__charulataGuarded) return;
+  stub.__charulataGuarded = true;
+  var _callMethod = stub.callMethod;
+  try {
+    Object.defineProperty(stub, 'callMethod', {
+      configurable: true,
+      enumerable: true,
+      get: function() { return _callMethod; },
+      set: function(fn) {
+        if (typeof fn !== 'function') { _callMethod = fn; return; }
+        _callMethod = function() {
+          var args = arguments;
+          if ((args[0] === 'track' || args[0] === 'trackCustom') && args[1] === 'Purchase') {
+            var eid = args[3] && args[3].eventID;
+            if (!window.__charulataIsPurchaseAllowed(eid)) {
+              console.warn('[Meta Tracking Shield] Blocked unauthorized fbq Purchase call');
+              return;
+            }
           }
-        }
-        return fn.apply(this, args);
-      };
-    }
-  });
+          return fn.apply(this, args);
+        };
+      }
+    });
+  } catch (e) {}
 })();
 
 // Explicitly disable Automatic Configuration & automatic button click detection

@@ -270,6 +270,19 @@ function SearchResults() {
     setSearchText(urlQuery);
   }, [urlQuery]);
 
+  // Meta Search event: once per distinct search term (works on client-side route changes too)
+  const lastTrackedSearchRef = React.useRef<string>('');
+  useEffect(() => {
+    const term = urlQuery.trim();
+    if (!term || lastTrackedSearchRef.current === term) return;
+    lastTrackedSearchRef.current = term;
+    fbEvent('track', 'Search', {
+      search_string: term,
+      content_type: 'product',
+      currency: 'BDT'
+    });
+  }, [urlQuery]);
+
   useEffect(() => {
     setSelectedCategory(urlCategory);
   }, [urlCategory]);

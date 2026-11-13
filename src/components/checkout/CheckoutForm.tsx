@@ -733,9 +733,16 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
   ]);
 
   const initiateCheckoutTracked = React.useRef(false);
+  const addPaymentInfoTracked = React.useRef(false);
   useEffect(() => {
     if (items.length > 0 && !initiateCheckoutTracked.current) {
       initiateCheckoutTracked.current = true;
+      // Skip if the cart page's "Proceed to Checkout" button already fired it moments ago
+      try {
+        const firedAt = Number(sessionStorage.getItem('meta_ic_fired_at') || 0);
+        sessionStorage.removeItem('meta_ic_fired_at');
+        if (firedAt && Date.now() - firedAt < 2 * 60 * 1000) return;
+      } catch { }
       const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
       if (contentIds.length > 0) {
         fbEvent('track', 'InitiateCheckout', {
@@ -810,6 +817,20 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
         toast.error(locale === 'bn' ? 'অনুগ্রহ করে সঠিক আলফানিউমেরিক Transaction ID (TrxID) প্রদান করুন (যেমন: 9K20PLM910)' : 'Please enter a valid alphanumeric Transaction ID (e.g. 9K20PLM910).');
         return;
       }
+    }
+
+    // Meta AddPaymentInfo: customer filled all required info + payment method (fires once per checkout)
+    if (!addPaymentInfoTracked.current) {
+      addPaymentInfoTracked.current = true;
+      const apiContentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
+      fbEvent('track', 'AddPaymentInfo', {
+        content_ids: apiContentIds,
+        content_type: 'product',
+        value: totalAmount,
+        currency: 'BDT',
+        num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
+        payment_type: paymentMethod || (!requireAdvancePayment ? 'COD' : '')
+      });
     }
 
     const trimmedAddress = shippingAddress.addressLine.trim();
@@ -986,7 +1007,7 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
             value: orderObj.totalAmount || totalAmount,
             currency: 'BDT',
             num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
-            order_id: purchaseOrderId || undefined
+            order_id: String(orderObj._id || orderObj.id || purchaseOrderId) || undefined
           });
         }
       } else {
