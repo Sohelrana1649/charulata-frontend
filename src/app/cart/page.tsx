@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { useRouter } from 'next/navigation';
-import { useGetCartQuery, useLazyGetCartQuery, useUpdateCartQuantityMutation, useRemoveFromCartMutation, useClearCartMutation, useAddToCartMutation } from '@/store/api/cartApi';
+import { useGetCartQuery, useUpdateCartQuantityMutation, useRemoveFromCartMutation, useClearCartMutation, useAddToCartMutation, useChangeCartItemVariantMutation } from '@/store/api/cartApi';
 import { useGetWishlistQuery } from '@/store/api/userApi';
 import { useAppSelector } from '@/store/hooks';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, Loader2, Heart, AlertTriangle } from 'lucide-react';
@@ -67,7 +67,7 @@ export default function CartPage() {
   const [removeItem, { isLoading: isRemoving }] = useRemoveFromCartMutation();
   const [clearCartApi, { isLoading: isClearing }] = useClearCartMutation();
   const [addToCartApi] = useAddToCartMutation();
-  const [fetchFreshCart] = useLazyGetCartQuery();
+  const [changeCartItemVariant] = useChangeCartItemVariantMutation();
   const [updatingVariantItemId, setUpdatingVariantItemId] = React.useState<string | null>(null);
   const [highlightItemId, setHighlightItemId] = React.useState<string | null>(null);
 
@@ -183,12 +183,12 @@ export default function CartPage() {
   /**
    * Change size / colour / attributes of a cart line.
    * Guest: updated in localStorage.
-   * Logged in: the API has no "change variant" endpoint, so we add the new variant line
-   * (POST /cart) and only then remove the old line (DELETE /cart/:id) after confirming the new
-   * line exists. If the backend didn't create a separate line, the quantity is restored so the
-   * customer never loses an item.
+   * Logged in: uses atomic changeCartItemVariant mutation (updates optimistically in place,
+   * swaps on server without intermediate cache refetch so duplicate cards never appear).
    */
   const handleVariantSelect = async (item: any, attrName: string, value: string) => {
+    if (updatingVariantItemId) return;
+
     const product = item.product || {};
     const currentSelection = getItemSelection(product, item);
     const newSelection = { ...currentSelection, [attrName]: value };
@@ -204,45 +204,16 @@ export default function CartPage() {
       return;
     }
 
-    const productId = product._id || product.id;
     const oldId = String(item._id);
-    const oldQty = item.quantity || 1;
     setUpdatingVariantItemId(oldId);
     try {
-      await addToCartApi({ product: productId, quantity: oldQty, ...payload }).unwrap();
-
-      const fresh = await fetchFreshCart(undefined).unwrap();
-      const freshCart = fresh?.data?.cart || fresh?.cart || fresh?.data || fresh;
-      const freshItems: any[] = Array.isArray(freshCart?.items) ? freshCart.items : [];
-      const sameProduct = (i: any) => String(typeof i.product === 'object' ? i.product?._id : i.product) === String(productId);
-
-      const newLine = freshItems.find((i) =>
-        String(i._id) !== oldId && sameProduct(i) && isSameSelection(getItemSelection(product, i), newSelection)
-      );
-
-      if (newLine) {
-        await removeItem(oldId).unwrap();
-        return;
-      }
-
-      // Backend merged into the old line instead of creating a new one
-      const oldLine = freshItems.find((i) => String(i._id) === oldId);
-      if (oldLine && isSameSelection(getItemSelection(product, oldLine), newSelection)) {
-        if ((oldLine.quantity || 1) !== oldQty) {
-          await updateQuantity({ itemId: oldId, quantity: oldQty }).unwrap();
-        }
-        return;
-      }
-
-      // If backend deduplicated only by product+color+size without updating selectedAttributes,
-      // remove the old line first and re-add with the new attributes & original quantity
-      if (oldLine) {
-        await removeItem(oldId).unwrap();
-        await addToCartApi({ product: productId, quantity: oldQty, ...payload }).unwrap();
-        return;
-      }
-
-      toast.error(locale === 'bn' ? 'অপশন পরিবর্তন করা যায়নি। পণ্যটি মুছে আবার যোগ করুন।' : 'Could not change the option. Please remove and add the product again.');
+      await changeCartItemVariant({
+        oldItemId: oldId,
+        product,
+        quantity: item.quantity || 1,
+        ...payload,
+        newSelection,
+      }).unwrap();
     } catch (error: any) {
       console.error('Failed to change variant:', error);
       toast.error(error?.data?.message || (locale === 'bn' ? 'অপশন পরিবর্তন করা যায়নি, আবার চেষ্টা করুন।' : 'Failed to change option. Please try again.'));
