@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AlertTriangle, Check, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import {
   findMatchingVariant,
   getColorHex,
@@ -41,8 +41,6 @@ export default function CartVariantSelector({
 
   if (attributes.length === 0) return null;
 
-  const selectedCount = attributes.filter((a) => Boolean(selection[a.name])).length;
-
   return (
     <div
       className={`rounded-xl border p-3 sm:p-3.5 space-y-2.5 transition-all duration-300 bg-card ${
@@ -69,17 +67,10 @@ export default function CartVariantSelector({
           </span>
         )}
 
-        {isUpdating ? (
+        {isUpdating && (
           <span className="flex items-center gap-1 text-[10px] font-bold text-primary shrink-0">
             <Loader2 size={12} className="animate-spin" />
             <span>{bn ? 'আপডেট হচ্ছে...' : 'Updating...'}</span>
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono shrink-0">
-            {!hasMissing && <Check size={11} className="text-emerald-600 stroke-[3]" />}
-            <span>
-              {selectedCount}/{attributes.length} {bn ? 'নির্বাচিত' : 'selected'}
-            </span>
           </span>
         )}
       </div>
