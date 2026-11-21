@@ -131,3 +131,41 @@ export const clearGuestCart = () => {
   localStorage.removeItem('charulata_guest_cart');
   window.dispatchEvent(new Event('guest_cart_updated'));
 };
+
+/**
+ * Changes the variant (size / colour / attributes) of a guest cart line.
+ * If the same product + variant already exists in the cart, the two lines are merged.
+ */
+export const updateGuestCartItemVariant = (
+  itemId: string,
+  variant: { color?: string; size?: string; selectedAttributes?: Record<string, string>; price?: number }
+) => {
+  const currentCart = getGuestCart();
+  const targetId = String(itemId);
+  const index = currentCart.findIndex(i => String(i._id) === targetId);
+  if (index === -1) return;
+
+  const item = currentCart[index];
+  const productId = item.product?._id || item.product?.id || item.product;
+  const attrsKey = JSON.stringify(variant.selectedAttributes || {});
+
+  const duplicateIndex = currentCart.findIndex((other, idx) =>
+    idx !== index &&
+    String(other.product?._id || other.product?.id || other.product) === String(productId) &&
+    (other.color || undefined) === (variant.color || undefined) &&
+    (other.size || undefined) === (variant.size || undefined) &&
+    JSON.stringify(other.selectedAttributes || {}) === attrsKey
+  );
+
+  if (duplicateIndex > -1) {
+    currentCart[duplicateIndex].quantity += item.quantity;
+    currentCart.splice(index, 1);
+  } else {
+    item.color = variant.color;
+    item.size = variant.size;
+    item.selectedAttributes = variant.selectedAttributes;
+    if (variant.price !== undefined && variant.price > 0) item.price = variant.price;
+  }
+
+  saveGuestCart(currentCart);
+};

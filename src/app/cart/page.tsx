@@ -4,18 +4,27 @@ import React from 'react';
 import Link from 'next/link';
 import Image from '@/components/SafeImage';
 import { useRouter } from 'next/navigation';
-import { useGetCartQuery, useUpdateCartQuantityMutation, useRemoveFromCartMutation, useClearCartMutation, useAddToCartMutation } from '@/store/api/cartApi';
+import { useGetCartQuery, useLazyGetCartQuery, useUpdateCartQuantityMutation, useRemoveFromCartMutation, useClearCartMutation, useAddToCartMutation } from '@/store/api/cartApi';
 import { useGetWishlistQuery } from '@/store/api/userApi';
 import { useAppSelector } from '@/store/hooks';
-import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, Loader2, Heart } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, Loader2, Heart, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'react-toastify';
 
 import { useGetProductsQuery } from '@/store/api/productApi';
-import { getGuestCart, addToGuestCart, removeFromGuestCart, updateGuestCartQuantity, clearGuestCart } from '@/utils/guestCart';
+import { getGuestCart, addToGuestCart, removeFromGuestCart, updateGuestCartQuantity, clearGuestCart, updateGuestCartItemVariant } from '@/utils/guestCart';
 import { getGuestWishlistItems } from '@/utils/guestWishlist';
 import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 import { getStockStatus } from '@/utils/stock';
+import CartVariantSelector from '@/components/cart/CartVariantSelector';
+import {
+  buildVariantPayload,
+  findMatchingVariant,
+  getEffectiveAttributes,
+  getItemSelection,
+  getMissingAttributes,
+  isSameSelection,
+} from '@/utils/productVariants';
 
 export default function CartPage() {
   const router = useRouter();
@@ -58,8 +67,21 @@ export default function CartPage() {
   const [removeItem, { isLoading: isRemoving }] = useRemoveFromCartMutation();
   const [clearCartApi, { isLoading: isClearing }] = useClearCartMutation();
   const [addToCartApi] = useAddToCartMutation();
+  const [fetchFreshCart] = useLazyGetCartQuery();
+  const [updatingVariantItemId, setUpdatingVariantItemId] = React.useState<string | null>(null);
+  const [highlightItemId, setHighlightItemId] = React.useState<string | null>(null);
 
-  const dbProductsList = React.useMemo(() => allProductsResponse?.data || allProductsResponse?.products || allProductsResponse || [], [allProductsResponse]);
+  const dbProductsList = React.useMemo(
+    () =>
+      allProductsResponse?.data?.products ||
+      allProductsResponse?.products ||
+      (Array.isArray(allProductsResponse?.data)
+        ? allProductsResponse.data
+        : Array.isArray(allProductsResponse)
+          ? allProductsResponse
+          : []),
+    [allProductsResponse]
+  );
 
   const wishlistItems = React.useMemo(() => {
     if (!isAuthenticated) return guestWishlistItems;
@@ -155,6 +177,77 @@ export default function CartPage() {
       await clearCartApi({}).unwrap();
     } catch (error) {
       console.error('Failed to clear cart:', error);
+    }
+  };
+
+  /**
+   * Change size / colour / attributes of a cart line.
+   * Guest: updated in localStorage.
+   * Logged in: the API has no "change variant" endpoint, so we add the new variant line
+   * (POST /cart) and only then remove the old line (DELETE /cart/:id) after confirming the new
+   * line exists. If the backend didn't create a separate line, the quantity is restored so the
+   * customer never loses an item.
+   */
+  const handleVariantSelect = async (item: any, attrName: string, value: string) => {
+    const product = item.product || {};
+    const currentSelection = getItemSelection(product, item);
+    const newSelection = { ...currentSelection, [attrName]: value };
+    if (isSameSelection(currentSelection, newSelection)) return;
+
+    const payload = buildVariantPayload(newSelection);
+    const variant = findMatchingVariant(product, newSelection);
+    const variantPrice = Number(variant?.price) > 0 ? Number(variant.price) : undefined;
+
+    if (!isAuthenticated) {
+      updateGuestCartItemVariant(item._id, { ...payload, price: variantPrice });
+      setGuestCartItems(getGuestCart());
+      return;
+    }
+
+    const productId = product._id || product.id;
+    const oldId = String(item._id);
+    const oldQty = item.quantity || 1;
+    setUpdatingVariantItemId(oldId);
+    try {
+      await addToCartApi({ product: productId, quantity: oldQty, ...payload }).unwrap();
+
+      const fresh = await fetchFreshCart(undefined).unwrap();
+      const freshCart = fresh?.data?.cart || fresh?.cart || fresh?.data || fresh;
+      const freshItems: any[] = Array.isArray(freshCart?.items) ? freshCart.items : [];
+      const sameProduct = (i: any) => String(typeof i.product === 'object' ? i.product?._id : i.product) === String(productId);
+
+      const newLine = freshItems.find((i) =>
+        String(i._id) !== oldId && sameProduct(i) && isSameSelection(getItemSelection(product, i), newSelection)
+      );
+
+      if (newLine) {
+        await removeItem(oldId).unwrap();
+        return;
+      }
+
+      // Backend merged into the old line instead of creating a new one
+      const oldLine = freshItems.find((i) => String(i._id) === oldId);
+      if (oldLine && isSameSelection(getItemSelection(product, oldLine), newSelection)) {
+        if ((oldLine.quantity || 1) !== oldQty) {
+          await updateQuantity({ itemId: oldId, quantity: oldQty }).unwrap();
+        }
+        return;
+      }
+
+      // If backend deduplicated only by product+color+size without updating selectedAttributes,
+      // remove the old line first and re-add with the new attributes & original quantity
+      if (oldLine) {
+        await removeItem(oldId).unwrap();
+        await addToCartApi({ product: productId, quantity: oldQty, ...payload }).unwrap();
+        return;
+      }
+
+      toast.error(locale === 'bn' ? 'অপশন পরিবর্তন করা যায়নি। পণ্যটি মুছে আবার যোগ করুন।' : 'Could not change the option. Please remove and add the product again.');
+    } catch (error: any) {
+      console.error('Failed to change variant:', error);
+      toast.error(error?.data?.message || (locale === 'bn' ? 'অপশন পরিবর্তন করা যায়নি, আবার চেষ্টা করুন।' : 'Failed to change option. Please try again.'));
+    } finally {
+      setUpdatingVariantItemId(null);
     }
   };
 
@@ -429,193 +522,280 @@ export default function CartPage() {
         <div className="lg:col-span-8 space-y-4">
           {items.map((item: any) => {
             const product = item.product || {};
-            const { isInStock: isItemInStock, stockQuantity: itemStock } = getStockStatus(product);
+            const selection = getItemSelection(product, item);
+            const missingAttrs = getMissingAttributes(product, selection);
+            const effectiveAttrs = getEffectiveAttributes(product);
+            const matchedVariant = findMatchingVariant(product, selection);
+            const { isInStock: isItemInStock, stockQuantity: itemStock } = getStockStatus(product, matchedVariant);
             const { effectivePrice, regularPrice, isSale } = getItemPriceInfo(item);
-            const image = product.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150';
+            const image = (matchedVariant?.image && matchedVariant.image.trim() !== '')
+              ? matchedVariant.image
+              : (product.productImages?.[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150');
+            const isItemUpdatingVariant = updatingVariantItemId === String(item._id);
+            const isHighlighted = highlightItemId === String(item._id);
 
             return (
               <div
                 key={item._id}
-                className="bg-card border border-border/70 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:shadow-xs hover:border-primary/20 transition-all duration-300"
+                id={`cart-item-${item._id}`}
+                className={`bg-card border rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 shadow-2xs hover:shadow-xs transition-all duration-300 ${
+                  missingAttrs.length > 0
+                    ? 'border-primary/40 hover:border-primary/60'
+                    : 'border-border/70 hover:border-primary/20'
+                }`}
               >
-
-                {/* Left: Thumbnail & Details */}
-                <div className="flex items-center space-x-3.5 sm:space-x-4 flex-1 min-w-0">
-                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-muted border border-border/80 overflow-hidden relative shrink-0 shadow-2xs">
-                    <Image src={image} alt={product.title || 'Cart product'} fill sizes="100px" className="object-cover" />
-                  </div>
-
-                  <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                    <Link href={`/products/${product.slug || product._id}`} className="font-extrabold text-foreground font-serif text-sm sm:text-base hover:text-primary transition line-clamp-1">
-                      {product.title || product.name || 'Product'}
+                {/* Top Row: Thumbnail + Info (Left) & Qty + Price + Trash (Right) */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Left: Thumbnail & Details */}
+                  <div className="flex items-center space-x-3.5 sm:space-x-4 flex-1 min-w-0">
+                    <Link
+                      href={`/products/${product.slug || product._id}`}
+                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-muted border border-border/80 overflow-hidden relative shrink-0 shadow-2xs block"
+                    >
+                      <Image src={image} alt={product.title || 'Cart product'} fill sizes="100px" className="object-cover" />
                     </Link>
 
-                    {/* Attributes & In Stock / Stock Out Badges */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      {isItemInStock ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          {locale === 'bn' ? 'ইন স্টক' : 'In Stock'}
+                    <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                      <Link href={`/products/${product.slug || product._id}`} className="font-extrabold text-foreground font-serif text-sm sm:text-base hover:text-primary transition line-clamp-2 sm:line-clamp-1">
+                        {product.title || product.name || 'Product'}
+                      </Link>
+
+                      {/* Stock Badge & Legacy Static Badges (only if product has no selectable variants) */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        {isItemInStock ? (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {locale === 'bn' ? 'ইন স্টক' : 'In Stock'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                            {locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+                          </span>
+                        )}
+
+                        {effectiveAttrs.length === 0 && (
+                          <>
+                            {item.color && renderColorBadge(item.color)}
+                            {item.size && renderSizeBadge(item.size)}
+                            {item.selectedAttributes &&
+                              Object.entries(
+                                item.selectedAttributes instanceof Map
+                                  ? Object.fromEntries(item.selectedAttributes)
+                                  : item.selectedAttributes
+                              ).map(([k, v]) => {
+                                if (k === 'Color' || k === 'Size' || !v) return null;
+                                return (
+                                  <span key={k} className="inline-flex items-center bg-muted/70 text-foreground text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-xl border border-border/80">
+                                    {k}: {String(v)}
+                                  </span>
+                                );
+                              })}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mt-1.5 sm:hidden">
+                        {isSale && (
+                          <span className="text-[11px] text-muted-foreground line-through font-mono">
+                            ৳{(regularPrice * item.quantity).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <span className="text-xs font-extrabold text-foreground font-mono">
+                          ৳{(effectivePrice * item.quantity).toLocaleString('en-IN')}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/25 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          {locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}
+                        <span className="text-[10px] text-muted-foreground">
+                          (৳{effectivePrice.toLocaleString('en-IN')} {locale === 'bn' ? 'প্রতিটি' : 'each'})
                         </span>
-                      )}
-                      {item.color && renderColorBadge(item.color)}
-                      {item.size && renderSizeBadge(item.size)}
-                      {item.selectedAttributes &&
-                        Object.entries(
-                          item.selectedAttributes instanceof Map
-                            ? Object.fromEntries(item.selectedAttributes)
-                            : item.selectedAttributes
-                        ).map(([k, v]) => {
-                          if (k === 'Color' || k === 'Size' || !v) return null;
-                          return (
-                            <span key={k} className="inline-flex items-center bg-muted/70 text-foreground text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-xl border border-border/80">
-                              {k}: {String(v)}
-                            </span>
-                          );
-                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Quantity Controls, Price & Delete Action */}
+                  <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-8 pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0">
+
+                    {/* Quantity selector pill */}
+                    <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs shrink-0">
+                      <button
+                        onClick={() => handleQuantityChange(item._id, item.quantity, -1, itemStock)}
+                        disabled={item.quantity <= 1 || isUpdating || isItemUpdatingVariant}
+                        className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                        title={locale === 'bn' ? 'পরিমাণ কমান' : 'Decrease Quantity'}
+                      >
+                        <Minus size={14} strokeWidth={2.5} />
+                      </button>
+                      <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{item.quantity}</span>
+                      <button
+                        onClick={() => handleQuantityChange(item._id, item.quantity, 1, itemStock)}
+                        disabled={isUpdating || isItemUpdatingVariant || !isItemInStock || (itemStock > 0 && item.quantity >= itemStock)}
+                        className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs disabled:cursor-not-allowed"
+                        title={locale === 'bn' ? 'পরিমাণ বাড়ান' : 'Increase Quantity'}
+                      >
+                        <Plus size={14} strokeWidth={2.5} />
+                      </button>
                     </div>
 
-                    <p className="text-xs font-bold text-muted-foreground mt-2 sm:hidden">
-                      ৳{effectivePrice.toLocaleString()} {locale === 'bn' ? 'প্রতিটি' : 'each'}
-                    </p>
+                    {/* Total Price display */}
+                    <div className="hidden sm:block text-right min-w-[90px]">
+                      <div className="flex items-center space-x-1.5 justify-end">
+                        {isSale && (
+                          <span className="text-xs text-muted-foreground line-through font-mono">
+                            ৳{(regularPrice * item.quantity).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <span className="text-sm font-extrabold text-foreground font-serif">
+                          ৳{(effectivePrice * item.quantity).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">৳{effectivePrice.toLocaleString('en-IN')} {locale === 'bn' ? 'প্রতিটি' : 'each'}</p>
+                    </div>
+
+                    {/* Trash Delete button */}
+                    <button
+                      onClick={() => handleRemoveItem(item._id)}
+                      disabled={isRemoving || isItemUpdatingVariant}
+                      className="p-2.5 text-rose-500 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/20 rounded-xl transition-all duration-200 cursor-pointer shrink-0 shadow-2xs active:scale-95 disabled:opacity-50"
+                      title={locale === 'bn' ? 'কার্ট থেকে মুছুন' : 'Remove from cart'}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Right: Quantity Controls, Price & Delete Action */}
-                <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-8 pt-2.5 sm:pt-0 border-t border-border/40 sm:border-0">
-
-                  {/* Quantity selector pill */}
-                  <div className="flex items-center border border-primary/25 rounded-xl bg-card p-1 shadow-2xs shrink-0">
-                    <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity, -1, itemStock)}
-                      disabled={item.quantity <= 1 || isUpdating}
-                      className="h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
-                      title={locale === 'bn' ? 'পরিমাণ কমান' : 'Decrease Quantity'}
-                    >
-                      <Minus size={14} strokeWidth={2.5} />
-                    </button>
-                    <span className="w-8 text-center text-xs font-black text-foreground font-mono select-none">{item.quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity, 1, itemStock)}
-                      disabled={isUpdating || !isItemInStock || (itemStock > 0 && item.quantity >= itemStock)}
-                      className="h-8 w-8 rounded-lg bg-primary text-white hover:bg-primary/90 border border-primary flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 shadow-2xs disabled:cursor-not-allowed"
-                      title={locale === 'bn' ? 'পরিমাণ বাড়ান' : 'Increase Quantity'}
-                    >
-                      <Plus size={14} strokeWidth={2.5} />
-                    </button>
-                  </div>
-
-                  {/* Total Price display */}
-                  <div className="hidden sm:block text-right min-w-[90px]">
-                    <div className="flex items-center space-x-1.5 justify-end">
-                      {isSale && (
-                        <span className="text-xs text-muted-foreground line-through font-mono">
-                          ৳{(regularPrice * item.quantity).toLocaleString('en-IN')}
-                        </span>
-                      )}
-                      <span className="text-sm font-extrabold text-foreground font-serif">
-                        ৳{(effectivePrice * item.quantity).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">৳{effectivePrice.toLocaleString('en-IN')} {locale === 'bn' ? 'প্রতিটি' : 'each'}</p>
-                  </div>
-
-                  {/* Trash Delete button */}
-                  <button
-                    onClick={() => handleRemoveItem(item._id)}
-                    disabled={isRemoving}
-                    className="p-2.5 text-rose-500 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/20 rounded-xl transition-all duration-200 cursor-pointer shrink-0 shadow-2xs active:scale-95"
-                    title={locale === 'bn' ? 'কার্ট থেকে মুছুন' : 'Remove from cart'}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {/* Interactive Variant Selector (mirrors Product Details Page) */}
+                {effectiveAttrs.length > 0 && (
+                  <CartVariantSelector
+                    product={product}
+                    selection={selection}
+                    missing={missingAttrs}
+                    isUpdating={isItemUpdatingVariant}
+                    highlight={isHighlighted}
+                    locale={locale}
+                    onSelect={(attrName, value) => handleVariantSelect(item, attrName, value)}
+                  />
+                )}
               </div>
             );
           })}
         </div>
 
         {/* Order Summary sidebar */}
-        <div className="lg:col-span-4 bg-muted/20 border border-border/80 rounded-3xl p-5 sm:p-6 shadow-2xs">
-          <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-4 font-serif border-b pb-3 border-border/60">
-            {t('cart.orderSummary')}
-          </h2>
+        {(() => {
+          const itemsMissingVariants = items.filter((it: any) => {
+            const p = it.product || {};
+            const sel = getItemSelection(p, it);
+            return getMissingAttributes(p, sel).length > 0;
+          });
 
-          <div className="space-y-3.5 text-xs sm:text-sm mb-6">
-            {productOfferDiscount > 0 && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>{locale === 'bn' ? 'মূল দাম' : 'Regular Total'}</span>
-                <span className="font-bold text-foreground font-mono">৳{regularSubTotal.toLocaleString('en-IN')}</span>
+          return (
+            <div className="lg:col-span-4 bg-card border border-border/80 rounded-3xl p-5 sm:p-6 shadow-2xs">
+              <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-4 font-serif border-b pb-3 border-border/60">
+                {t('cart.orderSummary')}
+              </h2>
+
+              <div className="space-y-3.5 text-xs sm:text-sm mb-6">
+                {productOfferDiscount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>{locale === 'bn' ? 'মূল দাম' : 'Regular Total'}</span>
+                    <span className="font-bold text-foreground font-mono">৳{regularSubTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {productOfferDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>{locale === 'bn' ? 'অফার ছাড়' : 'Offer Discount'}</span>
+                    <span className="font-mono">-৳{productOfferDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{t('cart.subtotal')}</span>
+                  <span className="font-bold text-foreground font-serif">৳{subTotal.toLocaleString('en-IN')}</span>
+                </div>
+
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{t('cart.shipping')}</span>
+                  <span className="text-[11px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-lg border border-border">
+                    {locale === 'bn' ? 'চেকআউটে হিসাব করা হবে' : 'Calculated at checkout'}
+                  </span>
+                </div>
+
+                <div className="border-t border-border/60 pt-3.5 flex justify-between font-black text-foreground text-sm sm:text-base">
+                  <span>{t('cart.total')}</span>
+                  <span className="text-primary font-serif">৳{subTotal.toLocaleString()}</span>
+                </div>
               </div>
-            )}
-            {productOfferDiscount > 0 && (
-              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
-                <span>{locale === 'bn' ? 'অফার ছাড়' : 'Offer Discount'}</span>
-                <span className="font-mono">-৳{productOfferDiscount.toLocaleString('en-IN')}</span>
+
+              <div className="space-y-3">
+                {itemsMissingVariants.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-[11px] sm:text-xs font-bold text-primary">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5 text-primary" />
+                    <span>
+                      {locale === 'bn'
+                        ? `চেকআউটে যাওয়ার আগে অনুগ্রহ করে ${itemsMissingVariants.length} টি পণ্যের সাইজ/কালার নির্বাচন করুন।`
+                        : `Please select required options for ${itemsMissingVariants.length} item(s) before proceeding to checkout.`}
+                    </span>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (updatingVariantItemId) return;
+
+                    if (itemsMissingVariants.length > 0) {
+                      const firstMissing = itemsMissingVariants[0];
+                      const firstProd = firstMissing.product || {};
+                      const firstMissingNames = getMissingAttributes(firstProd, getItemSelection(firstProd, firstMissing));
+                      toast.error(
+                        locale === 'bn'
+                          ? `অনুগ্রহ করে "${firstProd.title || firstProd.name}" এর ${firstMissingNames.join(', ')} নির্বাচন করুন।`
+                          : `Please select ${firstMissingNames.join(', ')} for "${firstProd.title || firstProd.name}".`
+                      );
+                      const el = document.getElementById(`cart-item-${firstMissing._id}`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setHighlightItemId(String(firstMissing._id));
+                      setTimeout(() => setHighlightItemId(null), 2500);
+                      return;
+                    }
+
+                    const hasOutOfStock = items.some((it: any) => {
+                      const p = it.product || {};
+                      const v = findMatchingVariant(p, getItemSelection(p, it));
+                      return !getStockStatus(p, v).isInStock;
+                    });
+                    if (hasOutOfStock) {
+                      toast.error(locale === 'bn' ? 'আপনার কার্টে স্টক আউট পণ্য রয়েছে। অনুগ্রহ করে সেটি সরিয়ে অর্ডার করুন।' : 'Your cart contains out-of-stock items. Please remove them before proceeding.');
+                      return;
+                    }
+                    const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
+                    if (contentIds.length > 0) {
+                      fbEvent('track', 'InitiateCheckout', {
+                        content_ids: contentIds,
+                        content_type: 'product',
+                        value: subTotal,
+                        currency: 'BDT',
+                        num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
+                      });
+                      // Tell the checkout page InitiateCheckout was already sent for this click
+                      try { sessionStorage.setItem('meta_ic_fired_at', String(Date.now())); } catch { }
+                    }
+                    router.push('/checkout');
+                  }}
+                  disabled={Boolean(updatingVariantItemId)}
+                  className="w-full bg-primary text-white py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold hover:opacity-90 transition flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer active:scale-98 disabled:opacity-60"
+                >
+                  <span>{t('cart.proceedCheckout')}</span>
+                  <ArrowRight size={15} />
+                </button>
+
+                <Link
+                  href="/"
+                  className="block w-full text-center py-2 text-[11px] sm:text-xs text-muted-foreground hover:text-primary transition font-extrabold"
+                >
+                  {t('cart.continueShopping')}
+                </Link>
               </div>
-            )}
-            <div className="flex justify-between text-muted-foreground">
-              <span>{t('cart.subtotal')}</span>
-              <span className="font-bold text-foreground font-serif">৳{subTotal.toLocaleString('en-IN')}</span>
             </div>
-
-            <div className="flex justify-between text-muted-foreground">
-              <span>{t('cart.shipping')}</span>
-              <span className="text-[11px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-lg border border-border">
-                {locale === 'bn' ? 'চেকআউটে হিসাব করা হবে' : 'Calculated at checkout'}
-              </span>
-            </div>
-
-            <div className="border-t border-border/60 pt-3.5 flex justify-between font-black text-foreground text-sm sm:text-base">
-              <span>{t('cart.total')}</span>
-              <span className="text-primary font-serif">৳{subTotal.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                const hasOutOfStock = items.some((it: any) => {
-                  const p = it.product || {};
-                  return !getStockStatus(p).isInStock;
-                });
-                if (hasOutOfStock) {
-                  toast.error(locale === 'bn' ? 'আপনার কার্টে স্টক আউট পণ্য রয়েছে। অনুগ্রহ করে সেটি সরিয়ে অর্ডার করুন।' : 'Your cart contains out-of-stock items. Please remove them before proceeding.');
-                  return;
-                }
-                const contentIds = items.map((item: any) => getCatalogProductId(item.product || item)).filter(Boolean);
-                if (contentIds.length > 0) {
-                  fbEvent('track', 'InitiateCheckout', {
-                    content_ids: contentIds,
-                    content_type: 'product',
-                    value: subTotal,
-                    currency: 'BDT',
-                    num_items: items.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0)
-                  });
-                  // Tell the checkout page InitiateCheckout was already sent for this click
-                  try { sessionStorage.setItem('meta_ic_fired_at', String(Date.now())); } catch { }
-                }
-                router.push('/checkout');
-              }}
-              className="w-full bg-primary text-white py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold hover:opacity-90 transition flex items-center justify-center space-x-2 shadow-md shadow-primary/10 cursor-pointer active:scale-98"
-            >
-              <span>{t('cart.proceedCheckout')}</span>
-              <ArrowRight size={15} />
-            </button>
-
-            <Link
-              href="/"
-              className="block w-full text-center py-2 text-[11px] sm:text-xs text-muted-foreground hover:text-primary transition font-extrabold"
-            >
-              {t('cart.continueShopping')}
-            </Link>
-          </div>
-        </div>
+          );
+        })()}
 
       </div>
     </div>

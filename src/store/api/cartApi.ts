@@ -65,6 +65,7 @@ export const cartApi = baseApi.injectEndpoints({
 
 export const {
   useGetCartQuery,
+  useLazyGetCartQuery,
   useAddToCartMutation,
   useUpdateCartQuantityMutation,
   useRemoveFromCartMutation,
