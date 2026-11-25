@@ -16,7 +16,6 @@ export {
   generateEventId,
   sendServerMetaEvent,
   trackMetaEvent,
-  trackMetaPurchase,
 } from "@/utils/metaTracking";
 
 /**

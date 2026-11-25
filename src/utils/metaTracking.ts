@@ -4,10 +4,8 @@
  * Every browser fbq() event that is also relayed to the backend CAPI endpoint
  * MUST use the same eventId so Meta can deduplicate them.
  *
- * NOTE: Purchase is NOT relayed from the browser. The backend sends the Purchase
- * CAPI event itself when the order is created (using the `_eventId` we send in the
- * order request body). The browser only fires fbq('track', 'Purchase') with the
- * same event ID (see trackMetaPurchase).
+ * NOTE: Purchase is NEVER fired from the frontend. The backend fires the
+ * CAPI Purchase event only when Admin confirms the order (Pending → Confirmed).
  */
 
 type MetaUserData = Record<string, any>;
@@ -24,7 +22,7 @@ export interface TrackMetaOptions {
 /** Events the backend /tracking/meta-event endpoint accepts (Purchase is server-side from the order API). */
 const CAPI_RELAY_EVENTS = ['ViewContent', 'AddToCart', 'InitiateCheckout', 'Contact', 'Search'];
 
-const PURCHASE_FLAG_PREFIX = 'meta_purchase_tracked_';
+// PURCHASE_FLAG_PREFIX removed — Purchase no longer fires from frontend
 
 const SKU_MAP_STORAGE_KEY = 'meta_catalog_sku_map_v1';
 let skuMapCache: Record<string, string> | null = null;
@@ -234,35 +232,4 @@ export const trackMetaCustomEvent = (eventName: string, customData?: any, eventI
   return id;
 };
 
-/**
- * Fires the browser Purchase pixel EXACTLY ONCE per order (guarded by a localStorage flag keyed by
- * order id) using the event ID the server used (`response.metaEventId`, falling back to the `_eventId`
- * we sent). Does NOT call the backend relay: the server already sent the Purchase CAPI event.
- * Returns true if the event was fired, false if it was skipped as a duplicate.
- */
-export const trackMetaPurchase = (orderKey: string, eventId: string, customData: any): boolean => {
-  if (typeof window === 'undefined' || !eventId) return false;
-  const flagKey = `${PURCHASE_FLAG_PREFIX}${orderKey || eventId}`;
-  try {
-    if (localStorage.getItem(flagKey)) return false;
-    localStorage.setItem(flagKey, '1');
-  } catch {
-    // storage unavailable: still fire once for this call
-  }
-  try {
-    const fbq = (window as any).fbq;
-    if (typeof fbq === 'function') {
-      // Authorize ONLY this verified order's event ID with the Meta Tracking Shield (FacebookPixel.tsx).
-      // Works even if fbevents.js finishes loading later and flushes the queued call.
-      const w = window as any;
-      w.__CHARULATA_PURCHASE_EIDS__ = w.__CHARULATA_PURCHASE_EIDS__ || [];
-      w.__CHARULATA_PURCHASE_EIDS__.push(String(eventId));
-      fbq('track', 'Purchase', customData, { eventID: eventId });
-    } else if (process.env.NODE_ENV === 'development') {
-      console.log('[Meta Pixel Log] track: Purchase', customData || '', { eventID: eventId });
-    }
-  } catch {
-    // Silent fail: tracking must never break the UI
-  }
-  return true;
-};
+// trackMetaPurchase REMOVED — Purchase is now fired ONLY by backend on order Confirmed status

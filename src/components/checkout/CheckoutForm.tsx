@@ -13,7 +13,7 @@ import Image from '@/components/SafeImage';
 import { ShoppingCart, MapPin, Truck, Phone, User, FileText, CheckCircle2, Ticket, Loader2, Sparkles, Lock, ArrowRight, ArrowLeft, Package, Eye, EyeOff, Mail, History, Navigation, BadgeCheck, X, Minus, Plus, CreditCard, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fbEvent, getCatalogProductId } from '@/components/analytics/FacebookPixel';
-import { generateEventId, getFbp, getFbc, trackMetaPurchase } from '@/utils/metaTracking';
+import { generateEventId, getFbp, getFbc } from '@/utils/metaTracking';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useGetProductsQuery } from '@/store/api/productApi';
 import { useGetSettingsQuery } from '@/store/api/settingsApi';
@@ -961,9 +961,7 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
           return getCatalogProductId(item.sku || prod);
         }).filter(Boolean);
 
-        const purchaseItems = (orderObj.items || items || []);
-        const purchaseOrderId = String(orderObj.orderId || orderObj._id || orderObj.id || '');
-        const purchaseEventId = res?.metaEventId || res?.data?.metaEventId || eventId;
+        // Purchase tracking removed — backend fires CAPI Purchase on order Confirmed
 
         // Store session verification token and order details in sessionStorage and localStorage
         try {
@@ -973,7 +971,6 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
             order: orderObj,
             phone: recipientPhone,
             createdAt: orderObj.createdAt || new Date().toISOString(),
-            metaEventId: purchaseEventId,
             purchasedContentIds: purchasedContentIds,
             totalAmount: orderObj.totalAmount || totalAmount
           };
@@ -991,24 +988,10 @@ export default function CheckoutForm({ initialDistricts = [] }: CheckoutFormProp
           console.warn('Could not store order in session:', e);
         }
 
-        // Navigate immediately to the dedicated Order Success Page where Purchase event is cleanly fired once
+        // Navigate to Order Success Page
         if (orderIdVal) {
           window.location.href = `/order-success/${encodeURIComponent(orderIdVal)}`;
           return;
-        } else {
-          // Fallback only if orderIdVal is absent
-          trackMetaPurchase(purchaseOrderId, purchaseEventId, {
-            content_ids: purchasedContentIds,
-            content_type: 'product',
-            contents: purchaseItems.map((item: any, idx: number) => ({
-              id: purchasedContentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
-              quantity: item.quantity || 1,
-            })).filter((c: any) => c.id),
-            value: orderObj.totalAmount || totalAmount,
-            currency: 'BDT',
-            num_items: purchaseItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
-            order_id: String(orderObj.orderId || purchaseOrderId || orderObj._id || orderObj.id) || undefined
-          });
         }
       } else {
         setErrorMsg('Invalid checkout response from server.');
