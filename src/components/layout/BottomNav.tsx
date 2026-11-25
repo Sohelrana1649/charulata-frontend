@@ -103,11 +103,12 @@ export default function BottomNav() {
     setIsWishlistOpen(false);
   }, [pathname]);
 
-  // Do not render on admin dashboard or checkout page to avoid overlapping controls
+  // Do not render on admin dashboard, checkout page, or product details page (has its own sticky bar)
   const isAdminPage = pathname?.startsWith('/admin');
   const isCheckoutPage = pathname === '/checkout';
+  const isProductDetailPage = /^\/products\/[^/]+$/.test(pathname || '');
 
-  if (!pathname || isAdminPage || isCheckoutPage) {
+  if (!pathname || isAdminPage || isCheckoutPage || isProductDetailPage) {
     return null;
   }
 

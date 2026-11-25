@@ -1238,8 +1238,8 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* Distinct Action CTA Buttons */}
-          <div className="space-y-2.5 pt-2">
+          {/* Distinct Action CTA Buttons — Desktop Only */}
+          <div className="space-y-2.5 pt-2 hidden md:block">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Buy Now (Primary Solid Red Action) */}
               <button
@@ -1615,6 +1615,60 @@ export default function ProductDetailClient({
           </div>
         </div>
       )}
+
+      {/* ─── Mobile Fixed Sticky Order Bar (HoludMaya Style) ─── */}
+      <div
+        className="md:hidden"
+        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="bg-card border-t border-border/60 shadow-[0_-4px_16px_rgba(0,0,0,0.1)] px-3 py-2">
+          <div className="flex items-center gap-2">
+            {/* Price */}
+            <div className="shrink-0 min-w-[60px]">
+              <span className="text-lg font-extrabold text-foreground">৳{finalUnitPrice.toLocaleString()}</span>
+              {isSale && (
+                <span className="block text-xs text-muted-foreground line-through">৳{price.toLocaleString()}</span>
+              )}
+            </div>
+
+            {/* Add to Cart */}
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdding || !isInStock}
+              className={`flex-1 border-2 py-2.5 rounded-lg font-bold text-[13px] transition-all duration-150 flex items-center justify-center space-x-1.5 ${!isInStock
+                  ? 'border-border text-muted-foreground bg-muted/40 cursor-not-allowed opacity-60'
+                  : `border-primary text-primary bg-card active:scale-[0.97] cursor-pointer ${isCartBouncing ? 'animate-cart-bounce' : ''}`
+                }`}
+            >
+              {isAdding ? (
+                <Loader2 className="animate-spin h-4 w-4" />
+              ) : (
+                <>
+                  <ShoppingBag size={15} />
+                  <span>{t('product.addToCart')}</span>
+                </>
+              )}
+            </button>
+
+            {/* Buy Now */}
+            <button
+              onClick={handleBuyNow}
+              disabled={isAdding || !isInStock}
+              className={`flex-1 py-2.5 rounded-lg font-bold text-[13px] transition-all duration-150 flex items-center justify-center space-x-1.5 ${isInStock
+                  ? 'bg-primary text-primary-foreground active:scale-[0.97] shadow-sm cursor-pointer'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                }`}
+            >
+              {!isInStock
+                ? <span>{locale === 'bn' ? 'স্টক আউট' : 'Stock Out'}</span>
+                : <span>{locale === 'bn' ? 'Buy Now' : 'Buy Now'}</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer for mobile sticky bar */}
+      <div aria-hidden="true" className="md:hidden h-14" />
 
       {/* ─── Ultra-HD Fullscreen Zoom & Swipe Lightbox Modal (Mobile & Desktop) ─── */}
       <ProductLightboxModal
