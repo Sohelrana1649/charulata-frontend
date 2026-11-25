@@ -22,7 +22,8 @@ export interface TrackMetaOptions {
 /** Events the backend /tracking/meta-event endpoint accepts (Purchase is server-side from the order API). */
 const CAPI_RELAY_EVENTS = ['ViewContent', 'AddToCart', 'InitiateCheckout', 'Contact', 'Search'];
 
-// PURCHASE_FLAG_PREFIX removed — Purchase no longer fires from frontend
+// PURCHASE_FLAG_PREFIX — guards browser Purchase to fire only once per order
+const PURCHASE_FLAG_PREFIX = 'meta_purchase_tracked_';
 
 const SKU_MAP_STORAGE_KEY = 'meta_catalog_sku_map_v1';
 let skuMapCache: Record<string, string> | null = null;
@@ -232,4 +233,42 @@ export const trackMetaCustomEvent = (eventName: string, customData?: any, eventI
   return id;
 };
 
-// trackMetaPurchase REMOVED — Purchase is now fired ONLY by backend on order Confirmed status
+/**
+ * Fires the browser-only Purchase pixel EXACTLY ONCE per order.
+ * Uses eventID = `pur_${orderKey}` which matches the backend CAPI Purchase eventId,
+ * so Meta deduplicates them as one event.
+ *
+ * Does NOT call the backend CAPI relay — the backend fires its own CAPI Purchase
+ * when Admin changes order status from Pending → Confirmed.
+ *
+ * Returns true if the event was fired, false if skipped (duplicate).
+ */
+export const trackMetaPurchase = (orderKey: string, customData: any): boolean => {
+  if (typeof window === 'undefined' || !orderKey) return false;
+
+  const eventId = `pur_${orderKey}`;
+  const flagKey = `${PURCHASE_FLAG_PREFIX}${orderKey}`;
+
+  try {
+    if (localStorage.getItem(flagKey)) return false;
+    localStorage.setItem(flagKey, '1');
+  } catch {
+    // storage unavailable: still fire once for this page load
+  }
+
+  try {
+    const fbq = (window as any).fbq;
+    if (typeof fbq === 'function') {
+      // Authorize this event ID with the Purchase Shield (FacebookPixel.tsx)
+      const w = window as any;
+      w.__CHARULATA_PURCHASE_EIDS__ = w.__CHARULATA_PURCHASE_EIDS__ || [];
+      w.__CHARULATA_PURCHASE_EIDS__.push(String(eventId));
+      fbq('track', 'Purchase', customData, { eventID: eventId });
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log('[Meta Pixel Log] track: Purchase', customData || '', { eventID: eventId });
+    }
+  } catch {
+    // Silent fail: tracking must never break the UI
+  }
+  return true;
+};

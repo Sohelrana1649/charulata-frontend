@@ -38,7 +38,7 @@ import { useGetOrderDetailsQuery } from '@/store/api/orderApi';
 import { useCompleteProfileMutation } from '@/store/api/userApi';
 import { downloadInvoicePdf } from '@/utils/invoicePdf';
 import { parseAndFormatOrderAddress } from '@/utils/orderAddress';
-// Purchase event removed from frontend — now fired only by backend on Confirmed status
+import { trackMetaPurchase, getCatalogProductId } from '@/components/analytics/FacebookPixel';
 
 export default function OrderSuccessPage() {
   const params = useParams();
@@ -149,7 +149,38 @@ export default function OrderSuccessPage() {
     }
   }, [isVerified, Boolean(order)]);
 
-  // Purchase event REMOVED from frontend — backend fires CAPI Purchase on Confirmed status only
+  // Browser-only Purchase pixel — deduplicates with backend CAPI via matching eventID (pur_<orderId>)
+  useEffect(() => {
+    if (isVerified && order) {
+      const orderKey = String(order.orderId || order._id || orderId || '');
+      if (!orderKey) return;
+
+      const orderItems = order.items || [];
+      const contentIds = orderItems.map((item: any) => {
+        const prod = item.product;
+        if (typeof prod === 'object' && prod !== null) {
+          return getCatalogProductId(prod);
+        }
+        return getCatalogProductId(item.sku || prod || item);
+      }).filter(Boolean);
+
+      const totalVal = Number(order.totalAmount || order.payableAmount || 0);
+
+      trackMetaPurchase(orderKey, {
+        content_ids: contentIds,
+        content_type: 'product',
+        contents: orderItems.map((item: any, idx: number) => ({
+          id: contentIds[idx] || String(item.sku || item.product?._id || item.product || ''),
+          quantity: item.quantity || 1,
+          item_price: item.price || item.salePrice || 0
+        })).filter((c: any) => c.id),
+        value: totalVal,
+        currency: 'BDT',
+        num_items: orderItems.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0),
+        order_id: String(order.orderId || orderKey || order._id || '')
+      });
+    }
+  }, [isVerified, Boolean(order), orderId]);
 
   // Manual ownership verification for external unauthenticated visitors
   const handleVerifyOwnership = (e: React.FormEvent) => {
